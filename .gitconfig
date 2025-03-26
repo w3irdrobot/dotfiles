@@ -1,0 +1,47 @@
+[user]
+	name =
+	useConfigOnly = true
+	email =
+[alias]
+	aa = add --all
+	com = commit -m
+	p = push
+	pullr = pull --rebase
+	s = status --short --untracked-files --branch
+	co = checkout
+	br = branch -vv
+	b = branch -vv
+	f = fetch -v
+	l = log --oneline --graph
+	d = diff
+[ui]
+	colors = true
+[core]
+	fileMode = false
+	pager = diff-so-fancy | less --tabs=4 -RFX
+	excludesfile = /home/foma/.gitignore
+[color]
+	ui = true
+[color "diff-highlight"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
+[color "diff"]
+	meta = 227
+	frag = magenta bold
+	commit = 227 bold
+	old = red bold
+	new = green bold
+	whitespace = red reverse
+[fetch]
+	prune = true
+[include]
+	path = ./.gitconfig_local
+[pull]
+	rebase = true
+[init]
+	defaultBranch = master
+
+[credential]
+	helper = store

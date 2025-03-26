@@ -1,0 +1,9 @@
+# shellcheck shell=bash
+
+alias c="clear"
+alias ..="cd .."
+alias ll="ls -GFalh --group-directories-first --color"
+alias lg="lazygit"
+alias cat="bat --theme Dracula"
+alias clip="xclip -sel clip"
+alias get_idf='. $HOME/.esp/esp-idf/export.sh'

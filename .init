@@ -1,0 +1,5 @@
+# shellcheck shell=bash
+
+source "${AS_DOTFILES_DIR}/.variables"
+source "${AS_DOTFILES_DIR}/.aliases"
+source "${AS_DOTFILES_DIR}/.functions"

@@ -1,0 +1,105 @@
+add_newline = true
+
+palette = "dracula"
+
+[palettes.dracula]
+background = "#282a36"
+current_line = "#44475a"
+foreground = "#f8f8f2"
+comment = "#6272a4"
+cyan = "#8be9fd"
+green = "#50fa7b"
+orange = "#ffb86c"
+pink = "#ff79c6"
+purple = "#bd93f9"
+red = "#ff5555"
+yellow = "#f1fa8c"
+
+[aws]
+style = "bold #ffb86c"
+
+[character]
+error_symbol = "[₿](bold #ff5555)"
+success_symbol = "[₿](bold #50fa7b)"
+
+[battery]
+disabled = true
+
+[cmd_duration]
+style = "bold #f1fa8c"
+
+[conda]
+disabled = true
+
+[directory]
+style = "bold #50fa7b"
+
+[docker_context]
+disabled = true
+
+[dotnet]
+disabled = true
+
+[elixir]
+disabled = true
+
+[erlang]
+disabled = true
+
+[git_branch]
+style = "bold #ff79c6"
+
+[git_status]
+style = "bold #ff5555"
+
+[hostname]
+style = "bold #bd93f9"
+
+[java]
+disabled = true
+
+[julia]
+disabled = true
+
+[kotlin]
+disabled = true
+
+[kubernetes]
+disabled = false
+
+[lua]
+disabled = true
+
+[nim]
+disabled = true
+
+[nodejs]
+disabled = true
+
+[ocaml]
+disabled = true
+
+[openstack]
+disabled = true
+
+[perl]
+disabled = true
+
+[php]
+disabled = true
+
+[purescript]
+disabled = true
+
+[status]
+disabled = false
+
+[swift]
+disabled = true
+
+[username]
+format = "[$user]($style) on "
+style_user = "bold #8be9fd"
+
+[zig]
+disabled = true

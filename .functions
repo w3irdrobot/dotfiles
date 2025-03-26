@@ -1,0 +1,73 @@
+# shellcheck shell=bash
+
+function take() {
+  mkdir -p "${1}"
+  cd "${1}" || return
+}
+
+function myip() {
+    curl --silent ipinfo.io | jq .
+}
+
+function tailscale_update_exit_node() {
+    exit_node=$(tailscale exit-node list --filter=USA | shuf -n 1 | awk '{print $2}')
+    sudo tailscale set --exit-node="$exit_node"
+    location=$(curl --silent ipinfo.io | jq -r .city)
+    echo "new exit node: $exit_node"
+    echo "location: $location"
+}
+
+function tailscale_remove_exit_node() {
+    sudo tailscale set --exit-node=
+}
+
+function config_git() {
+    set -o pipefail
+
+    git config user.name "${1}"
+    git config user.email "${2}"
+
+    if key=$(
+        gpg --list-secret-keys --with-colons --fixed-list-mode "${2}" | \
+        grep sec | \
+        gawk --field-separator ':' '{print $5}')
+    then
+        git config commit.gpgSign "true"
+        git config user.signingKey "${key}"
+        git config tag.forceSignAnnotated true
+    fi
+}
+
+function remove_git_submodule() {
+    git submodule deinit -f -- "$1"
+    rm -rf .git/modules/"$1"
+    git rm -f "$1"
+}
+
+function clear_history() {
+    history -c
+    history -w
+}
+
+function scratch() {
+    directory=$(mktemp --directory -t scratch_XXXXXX)
+    cd "$directory" || return
+}
+
+function get_cert_info() {
+    echo | openssl s_client -showcerts -servername "${1}" -connect "${1}":443 2>/dev/null | openssl x509 -inform pem -noout -text
+}
+
+function clean_branches() {
+    git br -vv | grep gone | awk '{print $1}' | xargs git br -D
+}
+
+function y() {
+    local tmp cwd
+    tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        builtin cd -- "$cwd" || return
+    fi
+    rm -f -- "$tmp"
+}
