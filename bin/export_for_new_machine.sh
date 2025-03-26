@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 DOTFILES_DIR=$(realpath "$SCRIPT_DIR/..")
 
-if [[ -z "$1" ]]; then
+if [[ $# -ne 1 ]]; then
 	echo "Usage: $0 <export_base>"
 	exit 1
 fi
@@ -35,7 +35,7 @@ cp -r "$DOTFILES_DIR/dracula-pro" "$DRACULA_PRO_DIR"
 # Backup ssh keys
 SSH_DIR="$EXPORT_DIR/ssh"
 cp -r "$HOME/.ssh" "$SSH_DIR"
-rm "$SSH_DIR/known_hosts*"
+rm "$SSH_DIR"/known_hosts*
 
 # Backup sparrow wallets
 SPARROW_DIR="$EXPORT_DIR/sparrow"
