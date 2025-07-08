@@ -5,5 +5,5 @@ alias ..="cd .."
 alias ll="ls -GFalh --group-directories-first --color"
 alias lg="lazygit"
 alias cat="bat --theme Dracula"
-alias clip="xclip -sel clip"
+alias clip="xclip -sel clip -r"
 alias get_idf='. $HOME/.esp/esp-idf/export.sh'
