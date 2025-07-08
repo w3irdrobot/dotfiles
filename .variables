@@ -36,3 +36,6 @@ export STARSHIP_CONFIG="${AS_DOTFILES_DIR}/starship_config.toml"
 
 # Custom scripts and such
 export PATH="${HOME}/.local/bin:${PATH}"
+
+# Default browser
+export BROWSER="/usr/bin/brave"
