@@ -1,0 +1,23 @@
+# Embassy
+192.168.1.116 moldy-wealth.local
+
+# Alby Hub
+192.168.1.116 rqha7jlanfnvhvvv6t5tple4mpdcffo3ozirbyw4tdv4temammcg7kid.local
+
+# Core Lightning
+192.168.1.116 igy3l45dhib3roaar2dhc3hqpnkkdjwsyskmijwna2swl2tuuaph3kad.local
+
+# JAM
+192.168.1.116 ck65qycdihbirjr6fm5c4z4pl6cyqogkzdbul4myfsbqfmlotpu67rad.local
+
+# Mempool
+192.168.1.116 zidxshoicv3xiranw56ddjl67eeaun25exhl24zf3hycinb5v5awhmyd.local
+
+# Nextcloud
+192.168.1.116 pw2cysc4auyqdwjo7p7ffzyp6teutqzph2gzdxwv4w6khdiaojdnzgyd.local
+
+# RTL
+192.168.1.116 3by35tdtvr53c74nnw4a2jfu4vvhum2fnm5xjo6dj7snjvjure2zuoqd.local
+
+# Bitwarden
+192.168.1.116 ex4nsidnqjhpihufo7xylvyyfynfajz3jq3vr2lhr7ubkjflfnswxyad.local
