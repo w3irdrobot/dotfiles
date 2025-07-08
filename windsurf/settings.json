@@ -28,7 +28,7 @@
   "editor.trimAutoWhitespace": true,
   "editor.useTabStops": true,
   "editor.wordSeparators": "./\\()\"'-:,.;<>~!@#$%^&*|+=[]{}`~?",
-  "editor.wordWrap": "bounded",
+  "editor.wordWrap": "wordWrapColumn",
   "editor.wordWrapColumn": 100,
   "emmet.triggerExpansionOnTab": true,
   "extensions.ignoreRecommendations": false,
@@ -99,7 +99,6 @@
   ],
   "svelte.plugin.svelte.note-new-transformation": false,
   "editor.renderLineHighlight": "all",
-  "workbench.colorTheme": "Dracula Pro (Van Helsing)",
   "githubPullRequests.pullBranch": "never",
   "typescript.updateImportsOnFileMove.enabled": "always",
   "go.lintTool": "golangci-lint",
@@ -195,7 +194,8 @@
   "windsurf.chatFontSize": "default",
   "windsurf.rememberLastModelSelection": true,
   "windsurf.explainAndFixInCurrentConversation": true,
-  "rust-analyzer.cargo.features": [],
+  "rust-analyzer.cargo.features": "all",
   "editor.minimap.enabled": false,
-  "windsurf.openRecentConversation": true
+  "windsurf.openRecentConversation": true,
+  "workbench.colorTheme": "Dracula Pro"
 }
