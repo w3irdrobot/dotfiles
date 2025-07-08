@@ -33,8 +33,6 @@ eval "$(fzf --bash)"
 # initialize starship prompt
 eval "$(starship init bash)"
 
-# initialize espup
-source "$HOME/.local/bin/export-esp.sh"
-
 # initialize zoxide
 eval "$(zoxide init bash)"
+
