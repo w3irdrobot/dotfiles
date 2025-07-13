@@ -1,0 +1,170 @@
+/* American Traditional Tattoo Theme for Waybar */
+
+/* ===== COLORS ===== */
+@define-color primary-black #1a1a1a;
+@define-color bold-red #e74c3c;
+@define-color eagle-blue #3498db;
+@define-color leaf-green #2ecc71;
+@define-color mustard-yellow #f1c40f;
+@define-color off-white #f5f5f5;
+@define-color skin-tone #f7dcb4;
+@define-color bg-color #0a0a0a;
+@define-color bg-secondary #121212;
+
+/* ===== GLOBAL STYLES ===== */
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 14px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: @bg-color;
+    color: @off-white;
+    border-bottom: 2px solid @primary-black;
+    padding: 0 4px;
+}
+
+/* Module containers */
+.modules-left,
+.modules-center,
+.modules-right {
+    margin: 0 4px;
+}
+
+/* Module base styles */
+#waybar>* {
+    padding: 0 6px;
+}
+
+/* Module states */
+.module {
+    padding: 0 12px;
+    margin: 0 1px;
+    color: @off-white;
+}
+
+.module.highlight {
+    color: @mustard-yellow;
+}
+
+.module.warning {
+    color: @mustard-yellow;
+}
+
+.module.critical {
+    color: @bold-red;
+}
+
+/* ===== MODULES - LEFT TO RIGHT ===== */
+
+/* 1. Workspaces */
+#workspaces button {
+    padding: 0 8px;
+    background: transparent;
+    color: @eagle-blue;
+    border: 2px solid @eagle-blue;
+    margin: 4px 2px;
+    border-radius: 4px; /* Match system border radius */
+}
+
+#workspaces button.active {
+    background: @eagle-blue;
+    color: @bg-color;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background: @bold-red;
+    color: @off-white;
+    border-color: @bold-red;
+}
+
+/* 2. Window Title */
+#window {
+    color: @off-white;
+    margin-left: 8px;
+}
+
+/* 3. Idle Inhibitor */
+#idle_inhibitor.activated {
+    color: @mustard-yellow;
+}
+
+/* 4. Weather */
+#custom-weather {
+    /* Uses .module base styles */
+}
+
+/* 5. Network */
+#network {
+    color: @eagle-blue;
+}
+
+#network.disconnected {
+    color: @bold-red;
+}
+
+/* 6. Bluetooth */
+#bluetooth {
+    border-left: 2px solid @primary-black;
+    padding-left: 12px;
+    padding-right: 0;
+}
+
+#bluetooth.connected {
+    color: @mustard-yellow;
+}
+
+/* 7. Audio */
+#pulseaudio.muted {
+    color: @bold-red;
+}
+
+/* 8. Battery */
+#battery {
+    color: @leaf-green;
+}
+
+#battery.warning:not(.charging) {
+    color: @mustard-yellow;
+}
+
+#battery.critical:not(.charging) {
+    color: @bold-red;
+    animation: blink 0.5s linear infinite alternate;
+}
+
+/* 9. Power Button */
+#custom-power {
+    color: @bold-red;
+    font-size: 16px;
+    padding: 0 16px 0 12px;
+    margin-left: 4px;
+}
+
+/* 10. Clock (Center) */
+#clock {
+    color: @mustard-yellow;
+    font-weight: bold;
+    padding: 0 12px;
+    border-top: 2px solid @mustard-yellow;
+    border-bottom: 2px solid @mustard-yellow;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.tooltip {
+    background: @bg-secondary;
+    border: 2px solid @primary-black;
+    color: @off-white;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes blink {
+    to {
+        background-color: @bg-color;
+        color: @off-white;
+    }
+}

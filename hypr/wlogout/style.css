@@ -1,0 +1,116 @@
+/* American Traditional Tattoo Theme for wlogout */
+
+* {
+    all: unset;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 24px;
+    font-weight: bold;
+}
+
+window {
+    background-color: rgba(10, 10, 10, 0.95);
+}
+
+#outer-box {
+    margin: 20px;
+}
+
+#box {
+    margin: 10px;
+}
+
+button {
+    background-color: rgba(20, 20, 20, 0.9);
+    border: 3px solid;
+    border-radius: 4px; /* Match window decoration */
+    color: white;
+    margin: 10px;
+    min-width: 180px;
+    min-height: 80px;
+    padding: 15px;
+    transition: all 0.2s ease;
+}
+
+button:focus,
+button:active,
+button:hover {
+    background-color: rgba(40, 40, 40, 0.9);
+}
+
+/* Lock Button - Blue */
+#lock {
+    color: rgb(52, 152, 219);
+    border-color: rgb(52, 152, 219);
+}
+
+#lock:focus,
+#lock:active,
+#lock:hover {
+    color: rgb(92, 192, 255);
+    border-color: rgb(92, 192, 255);
+}
+
+/* Logout Button - Purple */
+#logout {
+    color: rgb(155, 89, 182);
+    border-color: rgb(155, 89, 182);
+}
+
+#logout:focus,
+#logout:active,
+#logout:hover {
+    color: rgb(185, 119, 212);
+    border-color: rgb(185, 119, 212);
+}
+
+/* Suspend Button - Yellow */
+#suspend {
+    color: rgb(241, 196, 15);
+    border-color: rgb(241, 196, 15);
+}
+
+#suspend:focus,
+#suspend:active,
+#suspend:hover {
+    color: rgb(255, 231, 100);
+    border-color: rgb(255, 231, 100);
+}
+
+/* Hibernate Button - Orange */
+#hibernate {
+    color: rgb(230, 126, 34);
+    border-color: rgb(230, 126, 34);
+}
+
+#hibernate:focus,
+#hibernate:active,
+#hibernate:hover {
+    color: rgb(250, 146, 54);
+    border-color: rgb(250, 146, 54);
+}
+
+/* Shutdown Button - Red */
+#shutdown {
+    color: rgb(231, 76, 60);
+    border-color: rgb(231, 76, 60);
+}
+
+#shutdown:focus,
+#shutdown:active,
+#shutdown:hover {
+    color: rgb(255, 100, 84);
+    border-color: rgb(255, 100, 84);
+}
+
+/* Reboot Button - Green */
+#reboot {
+    color: rgb(46, 204, 113);
+    border-color: rgb(46, 204, 113);
+}
+
+#reboot:focus,
+#reboot:active,
+#reboot:hover {
+    color: rgb(86, 244, 153);
+    border-color: rgb(86, 244, 153);
+}
