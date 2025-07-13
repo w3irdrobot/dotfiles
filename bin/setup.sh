@@ -764,8 +764,6 @@ setup_telegram() {
     log "Telegram setup completed"
 }
 
-setup_telegram || exit 1
-
 # Setup Newsflash
 setup_newsflash() {
     display_header "newsflash"
@@ -780,7 +778,6 @@ setup_newsflash() {
     log "Newsflash setup completed"
 }
 
-setup_newsflash || exit 1
 
 # Setup Restic
 setup_restic() {
@@ -796,8 +793,6 @@ setup_restic() {
     log "Restic setup completed"
 }
 
-setup_restic || exit 1
-
 # Setup GNOME tools
 setup_gnome_tools() {
     display_header "gnome tools"
@@ -811,8 +806,6 @@ setup_gnome_tools() {
 
     log "GNOME tools setup completed"
 }
-
-setup_gnome_tools || exit 1
 
 # Cleanup unwanted packages
 cleanup_packages() {
@@ -872,8 +865,6 @@ cleanup_packages() {
     log "Cleanup completed"
 }
 
-cleanup_packages || exit 1
-
 # Setup GNOME tweaks
 setup_gnome_tweaks() {
     display_header "tweaking gnome"
@@ -901,8 +892,6 @@ setup_gnome_tweaks() {
     log "GNOME tweaks setup completed"
 }
 
-setup_gnome_tweaks || exit 1
-
 # Setup package cache cleanup
 setup_package_cache_cleanup() {
     display_header "package cache cleanup"
@@ -922,8 +911,6 @@ setup_package_cache_cleanup() {
 
     log "Package cache cleanup setup completed"
 }
-
-setup_package_cache_cleanup || exit 1
 
 # Setup Bluetooth service
 setup_bluetooth() {
@@ -950,8 +937,6 @@ setup_bluetooth() {
 
     log "Bluetooth setup completed"
 }
-
-setup_bluetooth || exit 1
 
 # Setup network configurations
 setup_network_configs() {
@@ -998,6 +983,17 @@ setup_network_configs() {
     log "Network configurations completed"
 }
 
+setup_hyprland() {
+    display_header "hyprland"
+    log "Setting up hyprland"
+
+    log "Installing hyprland"
+    if ! paru --needed -S hyprland uwsm; then
+        log_error "Failed to install hyprland"
+        return 1
+    fi
+}
+
 # Execute all setup functions
 setup_network
 install_dev_tools
@@ -1031,6 +1027,10 @@ setup_gnome_tweaks || exit 1
 setup_package_cache_cleanup || exit 1
 setup_bluetooth || exit 1
 setup_network_configs || exit 1
+setup_restic || exit 1
+setup_newsflash || exit 1
+setup_hyprland || exit 1
+
 
 # Record successful completion
 log "Setup completed successfully"
