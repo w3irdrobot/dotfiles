@@ -7,3 +7,4 @@ alias lg="lazygit"
 alias cat="bat --theme Dracula"
 alias clip="xclip -sel clip -r"
 alias get_idf='. $HOME/.esp/esp-idf/export.sh'
+alias calc="wcalc"
