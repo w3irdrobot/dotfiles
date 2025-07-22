@@ -1,7 +1,7 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 30,
+    "height": 40,
     "spacing": 4,
     "modules-left": [
         "hyprland/workspaces",
@@ -12,6 +12,7 @@
     ],
     "modules-right": [
         "idle_inhibitor",
+        "custom/block-height",
         "custom/weather",
         "network",
         "bluetooth",
@@ -78,9 +79,11 @@
     "bluetooth": {
         "format": " {status}",
         "format-disabled": "",
-        "format-connected": " {device_alias}",
-        "tooltip-format": "{device_alias} {device_address}",
-        "tooltip-format-connected": "{device_alias} ({address})\n{device_battery_percentage}% {device_battery} {device_battery_percentage}%"
+        "format-connected": "<span class='bluetooth-active'> {device_alias}</span>",
+        "format-connected-battery": "<span class='bluetooth-active'> {device_alias} {device_battery_percentage}%</span>",
+        "tooltip-format": "Bluetooth {status}\n\n{device_enumerate}",
+        "tooltip-format-connected": "Bluetooth Connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias} ({device_address}) - {device_battery_percentage}%"
     },
     "idle_inhibitor": {
         "format": "{icon}",
@@ -94,5 +97,10 @@
         "format": "{} ",
         "interval": 1200,
         "exec": "curl -s 'wttr.in/45069?u&format=1' | sed 's/.* //' | tr -d '\\n'"
+    },
+    "custom/block-height": {
+        "format": "{}",
+        "interval": 420,
+        "exec": "curl https://mempool.space/api/blocks/tip/height"
     }
 }

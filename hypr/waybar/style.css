@@ -11,6 +11,11 @@
 @define-color bg-color #0a0a0a;
 @define-color bg-secondary #121212;
 
+/* ===== BLUETOOTH ===== */
+.bluetooth-active {
+    color: @mustard-yellow;
+}
+
 /* ===== GLOBAL STYLES ===== */
 * {
     border: none;
@@ -67,7 +72,8 @@ window#waybar {
     color: @eagle-blue;
     border: 2px solid @eagle-blue;
     margin: 4px 2px;
-    border-radius: 4px; /* Match system border radius */
+    border-radius: 4px;
+    /* Match system border radius */
 }
 
 #workspaces button.active {
@@ -94,9 +100,7 @@ window#waybar {
 }
 
 /* 4. Weather */
-#custom-weather {
-    /* Uses .module base styles */
-}
+#custom-weather {}
 
 /* 5. Network */
 #network {
@@ -109,7 +113,6 @@ window#waybar {
 
 /* 6. Bluetooth */
 #bluetooth {
-    border-left: 2px solid @primary-black;
     padding-left: 12px;
     padding-right: 0;
 }
@@ -152,6 +155,12 @@ window#waybar {
     padding: 0 12px;
     border-top: 2px solid @mustard-yellow;
     border-bottom: 2px solid @mustard-yellow;
+}
+
+/* 11. Block Height */
+#custom-block-height {
+    color: @mustard-yellow;
+    font-weight: bold;
 }
 
 /* ===== UTILITY CLASSES ===== */
