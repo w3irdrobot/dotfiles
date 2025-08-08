@@ -3,7 +3,7 @@
 # terminal colors and language
 export CLICOLOR=1
 export TERM=xterm-256color
-export LSCOLORS=HeExBxDxcxegedabagacad
+export LS_COLORS="ln=38;5;36:di=38;5;220:ex=38;5;10:so=38;5;12:*.txt=38;5;15:*.md=38;5;15:*.json=38;5;15:*.conf=38;5;15:*.py=38;5;45:*.sh=38;5;45:*.js=38;5;45:*.rs=38;5;45:*.go=38;5;45:*.jpg=38;5;13:*.jpeg=38;5;13:*.png=38;5;13:*.gif=38;5;13:*.webp=38;5;13:*.zip=38;5;13:*.tar=38;5;13:*.gz=38;5;13:*.xz=38;5;13:*.bz2=38;5;13:*.7z=38;5;13:*.deb=38;5;13:*.rpm=38;5;13"
 export LANG="en_US.UTF-8"
 export HISTCONTROL=ignoreboth
 

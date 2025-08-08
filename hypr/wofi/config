@@ -1,0 +1,32 @@
+### General Settings ###
+show=drun
+prompt=Search...
+filter_rate=100
+allow_markup=true
+no_actions=true
+always_parse_args=true
+layer=overlay
+
+### Animation Settings ###
+hide-print=20       # Time in ms before starting to hide (shorter = faster)
+hide-scroll=true   # Hide on scroll
+hide-search=20     # Time in ms before hiding search results (shorter = faster)
+no-actions=true    # Disable actions for faster response
+no-cancel=50       # Time in ms before canceling on no input (shorter = faster)
+allow_svg=true     # Enable SVG for potentially better performance
+
+### Size and Position ###
+width=40%
+height=40%
+location=center
+x_offset=0
+y_offset=0
+columns=2
+
+### Theme and Appearance ###
+allow_images=true
+image_size=24
+
+### Keybindings ###
+key_expand=Tab
+key_exit=Escape

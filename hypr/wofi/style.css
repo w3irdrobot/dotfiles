@@ -1,0 +1,101 @@
+/* American Traditional Tattoo Theme for Wofi */
+
+/* Color Variables */
+@define-color primary-black #1a1a1a;
+@define-color bold-red #e74c3c;
+@define-color eagle-blue #3498db;
+@define-color leaf-green #2ecc71;
+@define-color mustard-yellow #f1c40f;
+@define-color off-white #f5f5f5;
+@define-color bg-color #0a0a0a;
+@define-color bg-secondary #121212;
+
+/* Main Window */
+window {
+    margin: 0px;
+    padding: 10px;
+    border: 2px solid @bold-red;
+    border-radius: 4px;
+    background-color: @bg-color;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 14px;
+    transition: opacity 50ms linear, transform 50ms linear;
+}
+
+/* Input Box */
+#input {
+    margin: 5px;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background-color: @bg-secondary;
+    color: @off-white;
+    font-size: 16px;
+}
+
+/* Inner Box */
+#inner-box {
+    margin: 5px;
+    padding: 10px;
+    background-color: transparent;
+}
+
+/* Scroll */
+#scroll {
+    margin: 5px 0px;
+}
+
+/* Entries */
+#entry {
+    padding: 8px;
+    border-radius: 4px;
+    background-color: transparent;
+    color: @off-white;
+}
+
+#entry:selected {
+    background-color: @mustard-yellow;
+    color: @bg-color;
+    font-weight: bold;
+    transition: all 50ms linear;
+}
+
+#entry:selected #text {
+    color: @bg-color;
+}
+
+#entry #text {
+    margin: 2px 10px;
+    color: @off-white;
+}
+
+/* Icons */
+#entry image {
+    margin-right: 10px;
+}
+
+/* Categories */
+#entry:drop(active) {
+    background-color: @eagle-blue;
+    color: @bg-color;
+}
+
+/* Hide the selected entry's text when not selected */
+#entry:selected #text {
+    color: @bg-color;
+}
+
+/* Hide the selected entry's icon when not selected */
+#entry:selected image {
+    color: @bg-color;
+}
+
+/* Hide the window when it's not focused */
+window:not(:focus) {
+    opacity: 0.9;
+}
+
+/* Hover effect */
+#entry:hover {
+    background-color: @bg-secondary;
+}

@@ -7,7 +7,7 @@
 
 {
     "label" : "logout",
-    "action" : "hyprctl dispatch exit",
+    "action" : "loginctl terminate-user ''",
     "text" : "🚪 Logout",
     "keybind" : "e"
 }

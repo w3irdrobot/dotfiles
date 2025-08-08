@@ -11,11 +11,6 @@
 @define-color bg-color #0a0a0a;
 @define-color bg-secondary #121212;
 
-/* ===== BLUETOOTH ===== */
-.bluetooth-active {
-    color: @mustard-yellow;
-}
-
 /* ===== GLOBAL STYLES ===== */
 * {
     border: none;
@@ -115,6 +110,10 @@ window#waybar {
 #bluetooth {
     padding-left: 12px;
     padding-right: 0;
+}
+
+.bluetooth-active {
+    color: @mustard-yellow;
 }
 
 #bluetooth.connected {
