@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 
 # initialize base environment
-export AS_DOTFILES_DIR="${HOME}/dotfiles"
+export AS_DOTFILES_DIR="${HOME}/.dotfiles"
 
 # shellcheck source=./.init
 source "${AS_DOTFILES_DIR}/.init"

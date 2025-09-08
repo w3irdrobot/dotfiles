@@ -1,6 +1,0 @@
-apps-menu@gnome-shell-extensions.gcampax.github.com
-drive-menu@gnome-shell-extensions.gcampax.github.com
-gnome-ui-tune@itstime.tech
-legacyschemeautoswitcher@joshimukul29.gmail.com
-system-monitor@gnome-shell-extensions.gcampax.github.com
-user-theme@gnome-shell-extensions.gcampax.github.com

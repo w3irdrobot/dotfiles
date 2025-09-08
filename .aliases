@@ -2,9 +2,10 @@
 
 alias c="clear"
 alias ..="cd .."
-alias ll="ls -GFalh --group-directories-first --color"
+alias ls="exa"
+alias find="fd"
+alias ll="exa -GalhF --group-directories-first --color"
 alias lg="lazygit"
-alias cat="bat --theme Dracula"
+alias cat="bat"
 alias clip="xclip -sel clip -r"
-alias get_idf='. $HOME/.esp/esp-idf/export.sh'
-alias calc="wcalc"
+alias cd="z"

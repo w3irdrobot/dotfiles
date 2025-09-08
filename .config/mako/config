@@ -1,0 +1,27 @@
+# American Traditional theme for mako
+
+# Global defaults
+font=Sans 12
+background-color=#121212
+text-color=#f5f5f5
+border-size=2
+border-radius=4
+default-timeout=5000
+# newest notifications at the top
+sort=-time
+
+# You can adjust width/height/margins if needed:
+# width=350
+# height=200
+# margin=10,10,10,10
+padding=8
+
+# Urgency-specific styling
+[urgency=low]
+border-color=#2ecc71
+
+[urgency=normal]
+border-color=#f1c40f
+
+[urgency=critical]
+border-color=#e74c3c

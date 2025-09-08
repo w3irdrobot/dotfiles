@@ -1,0 +1,13 @@
+.git
+/bin
+/hypr
+/kitty
+/windsurf
+.aliases
+.function
+/.gitignore
+.init
+.variables
+hosts.txt
+README.md
+vscode_extensions.txt

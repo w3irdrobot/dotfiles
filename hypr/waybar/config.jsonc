@@ -17,8 +17,7 @@
         "network",
         "bluetooth",
         "pulseaudio",
-        "battery",
-        "custom/power"
+        "battery"
     ],
     "hyprland/workspaces": {
         "format": "{name}",
@@ -70,11 +69,6 @@
         "format-alt": "{time} {icon}",
         "format-icons": ["", "", "", "", ""],
         "tooltip-format": "{timeTo} {capacity}%"
-    },
-    "custom/power": {
-        "format": "",
-        "on-click": "wlogout",
-        "tooltip": false
     },
     "bluetooth": {
         "format": " {status}",

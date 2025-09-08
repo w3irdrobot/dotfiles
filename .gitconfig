@@ -19,7 +19,7 @@
 [core]
 	fileMode = false
 	pager = diff-so-fancy | less --tabs=4 -RFX
-	excludesfile = /home/foma/.gitignore
+	excludesfile = ~/.dotfiles/.gitignore_global
 [color]
 	ui = true
 [color "diff-highlight"]
