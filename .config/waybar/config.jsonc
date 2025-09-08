@@ -54,7 +54,12 @@
             "phone": "",
             "portable": "",
             "car": "",
-            "default": ["", "", "", ""]
+            "default": [
+                "",
+                "",
+                "",
+                ""
+            ]
         },
         "on-click": "pavucontrol"
     },
@@ -67,7 +72,13 @@
         "format-charging": "{capacity}% 󰂄",
         "format-plugged": "{capacity}% ",
         "format-alt": "{time} {icon}",
-        "format-icons": ["", "", "", "", ""],
+        "format-icons": [
+            "",
+            "",
+            "",
+            "",
+            ""
+        ],
         "tooltip-format": "{timeTo} {capacity}%"
     },
     "bluetooth": {
@@ -90,7 +101,7 @@
     "custom/weather": {
         "format": "{} ",
         "interval": 1200,
-        "exec": "curl -s 'wttr.in/45069?u&format=1' | sed 's/.* //' | tr -d '\\n'"
+        "exec": "curl -s 'wttr.in/~39.3306649,-84.408229?u&format=1' | sed 's/.* //' | tr -d '\\n'"
     },
     "custom/block-height": {
         "format": "{}",
