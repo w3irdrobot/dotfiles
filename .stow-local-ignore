@@ -6,8 +6,10 @@
 .aliases
 .function
 /.gitignore
+.gitignore_global
 .init
 .variables
 hosts.txt
 README.md
 vscode_extensions.txt
+justfile
