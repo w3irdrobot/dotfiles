@@ -2,9 +2,9 @@
 
 alias c="clear"
 alias ..="cd .."
-alias ls="exa"
+alias ls="eza"
 alias find="fd"
-alias ll="exa -GalhF --group-directories-first --color"
+alias ll="eza -alhF --group-directories-first --color"
 alias lg="lazygit"
 alias cat="bat"
 alias clip="xclip -sel clip -r"
