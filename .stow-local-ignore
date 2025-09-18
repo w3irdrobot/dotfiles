@@ -13,3 +13,4 @@ hosts.txt
 README.md
 vscode_extensions.txt
 justfile
+autologin.conf
