@@ -20,11 +20,14 @@ fi
 
 log_info "Installing base tools"
 yay -Syu --needed \
+    bind \
+    hugo \
     jq \
     just \
     man-db \
     pacman-contrib \
     unzip \
+    wl-clipboard \
     zip
 
 log_info "Enabling paccache and ssh-agent"

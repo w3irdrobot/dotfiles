@@ -10,3 +10,10 @@ yay -Syu --needed \
     rustup
 
 rustup install stable
+
+yay -Syu --needed \
+    cargo-binstall \
+    cargo-generate \
+    cargo-outdated \
+    cargo-nextest \
+    cargo-release

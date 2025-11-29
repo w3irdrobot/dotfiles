@@ -162,6 +162,12 @@ window#waybar {
     font-weight: bold;
 }
 
+/* 12. Mullvad */
+#custom-mullvad {
+    color: @leaf-green;
+}
+
+
 /* ===== UTILITY CLASSES ===== */
 .tooltip {
     background: @bg-secondary;

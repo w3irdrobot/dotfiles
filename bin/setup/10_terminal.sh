@@ -15,5 +15,4 @@ yay -Syu --needed \
     kitty \
     ripgrep \
     starship \
-    xclip \
     zoxide

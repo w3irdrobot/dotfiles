@@ -8,6 +8,7 @@ source "$SETUP_DIR/utils.sh"
 log_info "Installing hyprland and friends for desktop environment"
 yay -Syu --needed \
     brightnessctl \
+    grim \
     hypridle \
     hyprland \
     hyprlock \
@@ -15,6 +16,7 @@ yay -Syu --needed \
     hyprpolkitagent \
     hyprsunset \
     mako \
+    slurp \
     ttf-jetbrains-mono-nerd \
     uwsm \
     waybar \

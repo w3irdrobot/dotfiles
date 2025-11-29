@@ -13,4 +13,6 @@ yay -Syu --needed \
     chromium \
     discord \
     standardnotes-bin \
-    signal-desktop
+    signal-desktop \
+    telegram-desktop \
+    torbrowser-launcher

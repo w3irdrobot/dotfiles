@@ -14,6 +14,7 @@
         "idle_inhibitor",
         "custom/block-height",
         "custom/weather",
+        "custom/mullvad",
         "network",
         "bluetooth",
         "pulseaudio",
@@ -107,5 +108,10 @@
         "format": "{}",
         "interval": 420,
         "exec": "curl https://mempool.space/api/blocks/tip/height"
+    },
+    "custom/mullvad": {
+        "format": "{}",
+        "interval": 60,
+        "exec": "mullvad status --json | jq -r 'if ((.state // \"\") | ascii_downcase) == \"connected\" then ( .details.location // .location // {} ) as $loc | ($loc.city // \"Connected\") as $city | ($loc.hostname // .details.endpoint.hostname // \"\") as $host | if $host != \"\" then \"\\($city) (\\($host))\" else $city end else \"Not Connected\" end'"
     }
 }
