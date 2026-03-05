@@ -14,3 +14,5 @@ README.md
 vscode_extensions.txt
 justfile
 autologin.conf
+clamshell.conf
+/AGENTS.md

@@ -21,6 +21,7 @@ fi
 log_info "Installing base tools"
 yay -Syu --needed \
     bind \
+    fwupd \
     hugo \
     jq \
     just \
@@ -33,3 +34,6 @@ yay -Syu --needed \
 log_info "Enabling paccache and ssh-agent"
 sudo systemctl enable --now paccache.timer
 systemctl --user enable --now ssh-agent.socket
+
+log_info "Enabling fwupd"
+sudo systemctl enable --now fwupd

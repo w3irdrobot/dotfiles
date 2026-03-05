@@ -14,5 +14,6 @@ yay -Syu --needed \
     discord \
     standardnotes-bin \
     signal-desktop \
+    spotify-launcher \
     telegram-desktop \
     torbrowser-launcher

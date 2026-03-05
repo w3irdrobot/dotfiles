@@ -31,5 +31,10 @@ systemctl --user enable --now \
     mako \
     waybar
 
+# https://adamhollister.com/hyprland-clamshell-mode
+log_info "Setting up clamshell mode"
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp "$DOTFILES_DIR/clamshell.conf" /etc/systemd/logind.conf.d/
+
 log_info "Enabling autologin"
 sudo cp "$DOTFILES_DIR/autologin.conf" /etc/systemd/system/getty@tty1.service.d/autologin.conf

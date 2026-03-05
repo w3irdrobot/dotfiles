@@ -9,33 +9,55 @@ function myip() {
     curl --silent ipinfo.io | jq .
 }
 
-function tailscale_update_exit_node() {
-    exit_node=$(tailscale exit-node list --filter=USA | shuf -n 1 | awk '{print $2}')
-    sudo tailscale set --exit-node="$exit_node"
-    location=$(curl --silent ipinfo.io | jq -r .city)
-    echo "new exit node: $exit_node"
-    echo "location: $location"
-}
-
-function tailscale_remove_exit_node() {
-    sudo tailscale set --exit-node=
-}
-
 function config_git() {
-    set -o pipefail
+  set -o pipefail
 
-    git config user.name "${1}"
-    git config user.email "${2}"
+  local name="${1}"
 
-    if key=$(
-        gpg --list-secret-keys --with-colons --fixed-list-mode "${2}" | \
-        grep sec | \
-        gawk --field-separator ':' '{print $5}')
-    then
-        git config commit.gpgSign "true"
-        git config user.signingKey "${key}"
-        git config tag.forceSignAnnotated true
-    fi
+  if [[ -z "${name}" ]]; then
+    echo "Usage: config_git <name>"
+    return 1
+  fi
+
+  # Get list of GPG keys with their emails and key IDs
+  # Format: email|keyid
+  local selected
+  selected=$(gpg --list-secret-keys --with-colons --fixed-list-mode | \
+    awk -F: '
+      /^sec/ { key = $5 }
+      /^uid/ && key {
+        # Extract email from uid field (format: Name <email>)
+        match($10, /<([^>]+)>/, arr)
+        if (arr[1]) {
+          print arr[1] "|" key
+          key = ""
+        }
+      }
+    ' | \
+    sort -u | \
+    fzf --prompt="Select GPG key: " --height=40% --reverse --header="Select email/key for git config")
+
+  if [[ -z "${selected}" ]]; then
+    echo "No key selected. Aborting."
+    return 1
+  fi
+
+  # Parse selected email and key
+  local email key
+  email=$(echo "${selected}" | cut -d'|' -f1)
+  key=$(echo "${selected}" | cut -d'|' -f2)
+
+  # Configure git
+  git config user.name "${name}"
+  git config user.email "${email}"
+  git config commit.gpgSign "true"
+  git config user.signingKey "${key}"
+  git config tag.forceSignAnnotated true
+
+  echo "Git configured:"
+  echo "  Name: ${name}"
+  echo "  Email: ${email}"
+  echo "  Signing Key: ${key}"
 }
 
 function remove_git_submodule() {

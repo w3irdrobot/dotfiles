@@ -13,3 +13,7 @@ yay -Syu --needed \
 
 sudo systemctl enable --now \
     docker.socket
+
+log_info "Adding user to docker group"
+sudo groupadd -f docker
+sudo usermod -aG docker "$USER"
