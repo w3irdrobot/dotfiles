@@ -1,0 +1,19 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "linux" -}}
+
+if command -v yay &> /dev/null; then
+    echo "yay already installed"
+    exit 0
+fi
+
+echo "Installing yay..."
+sudo pacman -S --needed --noconfirm git base-devel
+
+TEMP_DIR=$(mktemp -d)
+git clone https://aur.archlinux.org/yay.git "$TEMP_DIR/yay"
+(cd "$TEMP_DIR/yay" && makepkg -si --noconfirm)
+rm -rf "$TEMP_DIR"
+
+echo "yay installed"
+
+{{ end -}}

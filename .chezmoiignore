@@ -1,0 +1,20 @@
+README.md
+Brewfile
+install.sh
+LICENSE
+
+# System configs are handled by scripts, not chezmoi's normal apply
+system/
+
+# Linux-only configs (ignore on macOS)
+{{ if eq .chezmoi.os "darwin" }}
+.config/hypr/
+.config/waybar/
+.bitcoin/
+.local/
+{{ end }}
+
+# macOS-only configs (ignore on Linux)
+{{ if eq .chezmoi.os "linux" }}
+Library/
+{{ end }}

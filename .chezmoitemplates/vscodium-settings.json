@@ -1,0 +1,18 @@
+{
+    "workbench.colorTheme": "Catppuccin Mocha",
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', 'FiraCode Nerd Font', 'monospace', monospace",
+    "editor.wordWrap": "bounded",
+    "telemetry.feedback.enabled": false,
+    "editor.renderWhitespace": "boundary",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "workbench.startupEditor": "none",
+    "redhat.telemetry.enabled": false,
+    "workbench.iconTheme": "vscode-great-icons",
+    "editor.wordWrapColumn": 100,
+    "editor.wrapOnEscapedLineFeeds": true,
+    "editor.formatOnSave": true,
+    "editor.minimap.showSlider": "always",
+    "editor.fontSize": 15,
+    "workbench.editor.enablePreview": false
+}

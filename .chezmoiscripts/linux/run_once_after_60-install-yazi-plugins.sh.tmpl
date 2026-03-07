@@ -1,0 +1,28 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "linux" -}}
+
+if command -v ya &> /dev/null; then
+    echo "Installing yazi plugins..."
+
+    has_yazi_plugin() {
+        ya pkg list | grep "$1" &> /dev/null
+    }
+
+    if ! has_yazi_plugin "mount"; then
+        ya pkg add yazi-rs/plugins:mount
+    fi
+
+    if ! has_yazi_plugin "chmod"; then
+        ya pkg add yazi-rs/plugins:chmod
+    fi
+
+    if ! has_yazi_plugin "compress"; then
+        ya pkg add KKV9/compress
+    fi
+
+    echo "Yazi plugins installed"
+else
+    echo "Yazi not found, skipping plugin installation"
+fi
+
+{{ end -}}

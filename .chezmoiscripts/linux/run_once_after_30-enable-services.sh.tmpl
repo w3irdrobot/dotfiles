@@ -1,0 +1,45 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "linux" -}}
+
+echo "Enabling system services..."
+
+# Paccache timer (cleans old packages)
+sudo systemctl enable --now paccache.timer
+
+# SSH agent
+systemctl --user enable --now ssh-agent.socket
+
+# Firmware updates
+sudo systemctl enable --now fwupd
+
+# Network
+sudo systemctl enable --now \
+    NetworkManager \
+    systemd-resolved \
+    tor
+
+# Bluetooth (disable auto-enable on startup)
+sudo sed -i.bak -E 's/^[#;\s]*AutoEnable\s*=.*/AutoEnable=false/' /etc/bluetooth/main.conf
+sudo systemctl enable --now bluetooth
+
+# Hyprland services
+systemctl --user enable --now \
+    hypridle \
+    hyprpaper \
+    hyprpolkitagent \
+    hyprsunset \
+    mako \
+    waybar
+
+# Docker
+sudo systemctl enable --now docker.socket
+sudo groupadd -f docker
+sudo usermod -aG docker "$USER"
+
+# Disable unneeded services
+sudo systemctl disable --now iwd || true
+sudo systemctl disable --now systemd-networkd || true
+
+echo "Services enabled"
+
+{{ end -}}

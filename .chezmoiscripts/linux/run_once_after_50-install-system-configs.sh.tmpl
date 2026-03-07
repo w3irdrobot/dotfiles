@@ -1,0 +1,17 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "linux" -}}
+
+echo "Installing system-level configurations..."
+
+# Clamshell mode (laptop lid behavior)
+sudo mkdir -p /etc/systemd/logind.conf.d
+sudo cp "{{ .chezmoi.sourceDir }}/system/linux/clamshell.conf" /etc/systemd/logind.conf.d/
+
+# Autologin configuration (templated with current username)
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+chezmoi execute-template < "{{ .chezmoi.sourceDir }}/system/linux/autologin.conf.tmpl" | \
+    sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
+
+echo "System configs installed. You may need to reboot for changes to take effect."
+
+{{ end -}}

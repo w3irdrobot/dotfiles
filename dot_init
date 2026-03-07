@@ -1,0 +1,5 @@
+# shellcheck shell=bash
+
+source "${HOME}/.variables"
+source "${HOME}/.aliases"
+source "${HOME}/.functions"

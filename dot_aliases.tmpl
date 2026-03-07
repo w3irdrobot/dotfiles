@@ -1,0 +1,17 @@
+# shellcheck shell=bash
+
+alias c="clear"
+alias ..="cd .."
+alias ls="eza"
+alias find="fd"
+alias ll="eza -alhF --group-directories-first --color"
+alias lg="lazygit"
+alias cat="bat"
+alias cd="z"
+
+# OS-specific clipboard
+{{ if eq .chezmoi.os "darwin" -}}
+alias clip="pbcopy"
+{{ else -}}
+alias clip="wl-copy"
+{{ end -}}

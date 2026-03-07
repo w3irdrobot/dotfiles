@@ -1,0 +1,44 @@
+[user]
+    name =
+    useConfigOnly = true
+    email =
+[alias]
+    aa = add --all
+    com = commit -m
+    p = push
+    pullr = pull --rebase
+    s = status --short --untracked-files --branch
+    co = checkout
+    br = branch -vv
+    b = branch -vv
+    f = fetch -v
+    l = log --oneline --graph
+    d = diff
+[ui]
+    colors = true
+[core]
+    fileMode = false
+    pager = delta
+    excludesfile = ~/.gitignore_global
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
+    dark = true
+    line-numbers = true
+    side-by-side = true
+    syntax-theme = Dracula
+[merge]
+    conflictStyle = zdiff3
+[color]
+    ui = true
+[fetch]
+    prune = true
+[include]
+    path = ./.gitconfig_local
+[pull]
+    rebase = true
+[init]
+    defaultBranch = master
+[credential]
+    helper = store

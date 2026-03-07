@@ -1,0 +1,113 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "linux" -}}
+
+echo "Installing packages..."
+
+# Base tools
+yay -Syu --needed --noconfirm \
+    bind \
+    fwupd \
+    hugo \
+    jq \
+    just \
+    man-db \
+    pacman-contrib \
+    unzip \
+    wl-clipboard \
+    zip
+
+# Network
+yay -Syu --needed --noconfirm \
+    mullvad-vpn-bin \
+    networkmanager \
+    tor
+
+# Git tools
+yay -Syu --needed --noconfirm \
+    git \
+    git-delta \
+    lazygit \
+    nodejs-commitizen
+
+# Bluetooth
+yay -Syu --needed --noconfirm \
+    bluez \
+    bluetui
+
+# Terminal and common tools
+yay -Syu --needed --noconfirm \
+    bash-completion \
+    bat \
+    eza \
+    fd \
+    fzf \
+    kitty \
+    ripgrep \
+    starship \
+    zoxide
+
+# Desktop environment (Hyprland)
+yay -Syu --needed --noconfirm \
+    brightnessctl \
+    grim \
+    hypridle \
+    hyprland \
+    hyprlock \
+    hyprpaper \
+    hyprpolkitagent \
+    hyprsunset \
+    mako \
+    slurp \
+    ttf-jetbrains-mono-nerd \
+    uwsm \
+    waybar \
+    xdg-desktop-portal-gtk \
+    xdg-desktop-portal-hyprland
+
+# File manager
+yay -Syu --needed --noconfirm \
+    yazi \
+    udisks2
+
+# Editors
+yay -Syu --needed --noconfirm \
+    vim \
+    vscodium-bin
+
+# Rust
+yay -Syu --needed --noconfirm \
+    rustup
+
+# Rust tooling (after rustup is available)
+if command -v rustup &> /dev/null; then
+    rustup install stable
+    yay -Syu --needed --noconfirm \
+        cargo-binstall \
+        cargo-generate \
+        cargo-outdated \
+        cargo-nextest \
+        cargo-release
+fi
+
+# Docker
+yay -Syu --needed --noconfirm \
+    docker \
+    docker-compose \
+    lazydocker
+
+# GUI apps
+yay -Syu --needed --noconfirm \
+    bitwarden-bin \
+    brave-bin \
+    chromium \
+    discord \
+    signal-desktop \
+    spotify-launcher \
+    standardnotes-bin \
+    telegram-desktop \
+    thunderbird \
+    torbrowser-launcher
+
+echo "Packages installed"
+
+{{ end -}}

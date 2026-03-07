@@ -1,0 +1,37 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "darwin" -}}
+
+if command -v codium &> /dev/null; then
+    echo "Installing VSCodium extensions..."
+
+    extensions=(
+        "adamhartford.vscode-base64"
+        "catppuccin.catppuccin-vsc"
+        "eamodio.gitlens"
+        "editorconfig.editorconfig"
+        "emmanuelbeziat.vscode-great-icons"
+        "hashicorp.terraform"
+        "ms-azuretools.vscode-containers"
+        "ms-azuretools.vscode-docker"
+        "ms-vscode.hexeditor"
+        "nefrob.vscode-just-syntax"
+        "redhat.vscode-yaml"
+        "rust-lang.rust-analyzer"
+        "silofy.hackthebox"
+        "tamasfe.even-better-toml"
+        "timonwong.shellcheck"
+        "usernamehw.errorlens"
+        "vadimcn.vscode-lldb"
+        "yzhang.markdown-all-in-one"
+    )
+
+    for extension in "${extensions[@]}"; do
+        codium --install-extension "$extension"
+    done
+
+    echo "VSCodium extensions installed"
+else
+    echo "VSCodium not found, skipping extension installation"
+fi
+
+{{ end -}}

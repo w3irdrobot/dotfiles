@@ -1,0 +1,21 @@
+#!/bin/bash
+{{ if eq .chezmoi.os "darwin" -}}
+
+BREW_BASH="/opt/homebrew/bin/bash"
+
+# Add Homebrew bash to allowed shells if not present
+if ! grep -q "$BREW_BASH" /etc/shells; then
+    echo "Adding Homebrew bash to allowed shells..."
+    echo "$BREW_BASH" | sudo tee -a /etc/shells
+fi
+
+# Set as default shell if not already
+if [ "$SHELL" != "$BREW_BASH" ]; then
+    echo "Setting Homebrew bash as default shell..."
+    chsh -s "$BREW_BASH"
+    echo "Default shell changed to $BREW_BASH"
+else
+    echo "Homebrew bash already set as default shell"
+fi
+
+{{ end -}}
