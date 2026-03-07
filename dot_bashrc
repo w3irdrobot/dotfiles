@@ -28,8 +28,9 @@ fi
 # initialize fzf
 eval "$(fzf --bash)"
 
-# initialize starship prompt
-eval "$(starship init bash)"
-
 # initialize zoxide
 eval "$(zoxide init bash)"
+
+# initialize custom prompt
+# shellcheck source=./.prompt
+source "${HOME}/.prompt"

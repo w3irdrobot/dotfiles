@@ -1,0 +1,63 @@
+# shellcheck shell=bash
+#
+# Custom PS1 prompt with Dracula colors
+# Displays: directory | git branch/status | k8s context (if KUBECONFIG set)
+# Two-line prompt with ₿ character (green=success, red=error)
+
+# Color palette (using true color)
+__prompt_green='\[\e[38;2;80;250;123m\]'
+__prompt_pink='\[\e[38;2;255;121;198m\]'
+__prompt_red='\[\e[38;2;255;85;85m\]'
+__prompt_purple='\[\e[38;2;189;147;249m\]'
+__prompt_orange='\[\e[38;2;247;147;26m\]'  # Bitcoin orange (#F7931A)
+__prompt_reset='\[\e[0m\]'
+
+# Directory relative to home, truncated to last 3 components
+__prompt_dir() {
+    local dir="${PWD/#$HOME/\~}"
+    local parts
+    IFS='/' read -ra parts <<< "$dir"
+    if (( ${#parts[@]} > 3 )); then
+        echo ".../${parts[-3]}/${parts[-2]}/${parts[-1]}"
+    else
+        echo "$dir"
+    fi
+}
+
+# Git info: branch + dirty/clean
+__prompt_git() {
+    local branch
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null) || return
+    local status="✓"
+    git diff --quiet 2>/dev/null || status="*"
+    git diff --cached --quiet 2>/dev/null || status="*"
+    echo "  ${branch} ${status}"
+}
+
+# Kubernetes context (only if KUBECONFIG is set)
+__prompt_k8s() {
+    [[ -n "$KUBECONFIG" ]] || return
+    command -v kubectl &>/dev/null || return
+    local ctx
+    ctx=$(kubectl config current-context 2>/dev/null) || return
+    echo "  ⎈ ${ctx}"
+}
+
+# Build prompt
+__prompt_command() {
+    local exit_code=$?
+    local prompt_char="₿"
+
+    if (( exit_code == 0 )); then
+        local char_color="$__prompt_orange"
+    else
+        local char_color="$__prompt_red"
+    fi
+
+    PS1="\n${__prompt_green}$(__prompt_dir)${__prompt_reset}"
+    PS1+="${__prompt_pink}$(__prompt_git)${__prompt_reset}"
+    PS1+="${__prompt_purple}$(__prompt_k8s)${__prompt_reset}"
+    PS1+="\n${char_color}${prompt_char}${__prompt_reset} "
+}
+
+PROMPT_COMMAND=__prompt_command
