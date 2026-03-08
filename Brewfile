@@ -22,7 +22,6 @@ brew "lazydocker"
 brew "lazygit"
 brew "ripgrep"
 brew "vim"
-brew "yazi"
 brew "zoxide"
 
 # Rust

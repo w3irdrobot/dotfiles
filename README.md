@@ -52,7 +52,6 @@ chezmoi init --apply w3irdrobot
 - `ripgrep` - better `grep`
 - `delta` - better git diffs (side-by-side, syntax highlighting)
 - `lazygit` - terminal UI for git
-- `yazi` - terminal file manager
 
 ### Editors
 - **Vim**
