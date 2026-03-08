@@ -1,17 +1,8 @@
-/* American Traditional Tattoo Theme for Waybar */
+/* Dracula Theme for Waybar */
+/* https://draculatheme.com/waybar */
 
-/* ===== COLORS ===== */
-@define-color primary-black #1a1a1a;
-@define-color bold-red #e74c3c;
-@define-color eagle-blue #3498db;
-@define-color leaf-green #2ecc71;
-@define-color mustard-yellow #f1c40f;
-@define-color off-white #f5f5f5;
-@define-color skin-tone #f7dcb4;
-@define-color bg-color #0a0a0a;
-@define-color bg-secondary #121212;
+@import url("./colors.css");
 
-/* ===== GLOBAL STYLES ===== */
 * {
     border: none;
     border-radius: 0;
@@ -21,164 +12,130 @@
 }
 
 window#waybar {
-    background: @bg-color;
-    color: @off-white;
-    border-bottom: 2px solid @primary-black;
-    padding: 0 4px;
+    opacity: 0.9;
+    background: @background-darker;
+    color: @foreground;
+    border-bottom: 2px solid @background;
 }
 
-/* Module containers */
-.modules-left,
-.modules-center,
-.modules-right {
-    margin: 0 4px;
-}
-
-/* Module base styles */
-#waybar>* {
-    padding: 0 6px;
-}
-
-/* Module states */
-.module {
-    padding: 0 12px;
-    margin: 0 1px;
-    color: @off-white;
-}
-
-.module.highlight {
-    color: @mustard-yellow;
-}
-
-.module.warning {
-    color: @mustard-yellow;
-}
-
-.module.critical {
-    color: @bold-red;
-}
-
-/* ===== MODULES - LEFT TO RIGHT ===== */
-
-/* 1. Workspaces */
+/* Workspaces */
 #workspaces button {
-    padding: 0 8px;
-    background: transparent;
-    color: @eagle-blue;
-    border: 2px solid @eagle-blue;
+    padding: 0 10px;
+    background: @background;
+    color: @foreground;
     margin: 4px 2px;
     border-radius: 4px;
-    /* Match system border radius */
+}
+
+#workspaces button:hover {
+    box-shadow: inherit;
+    text-shadow: inherit;
+    background-image: linear-gradient(0deg, @selection, @background-darker);
 }
 
 #workspaces button.active {
-    background: @eagle-blue;
-    color: @bg-color;
-    font-weight: bold;
+    background-image: linear-gradient(0deg, @purple, @selection);
 }
 
 #workspaces button.urgent {
-    background: @bold-red;
-    color: @off-white;
-    border-color: @bold-red;
+    background-image: linear-gradient(0deg, @red, @background-darker);
 }
 
-/* 2. Window Title */
+/* Window Title */
 #window {
-    color: @off-white;
+    color: @foreground;
     margin-left: 8px;
 }
 
-/* 3. Idle Inhibitor */
-#idle_inhibitor.activated {
-    color: @mustard-yellow;
+/* Clock */
+#clock {
+    padding: 0 12px;
+    background: @background;
+    color: @purple;
+    font-weight: bold;
 }
 
-/* 4. Weather */
-#custom-weather {}
+/* Idle Inhibitor */
+#idle_inhibitor {
+    color: @foreground;
+}
 
-/* 5. Network */
+#idle_inhibitor.activated {
+    color: @yellow;
+}
+
+/* Network */
 #network {
-    color: @eagle-blue;
+    color: @cyan;
 }
 
 #network.disconnected {
-    color: @bold-red;
+    color: @red;
 }
 
-/* 6. Bluetooth */
+/* Bluetooth */
 #bluetooth {
+    color: @foreground;
     padding-left: 12px;
-    padding-right: 0;
-}
-
-.bluetooth-active {
-    color: @mustard-yellow;
 }
 
 #bluetooth.connected {
-    color: @mustard-yellow;
+    color: @pink;
 }
 
-/* 7. Audio */
+/* Audio */
+#pulseaudio {
+    color: @foreground;
+}
+
 #pulseaudio.muted {
-    color: @bold-red;
+    color: @red;
 }
 
-/* 8. Battery */
+/* Battery */
 #battery {
-    color: @leaf-green;
+    color: @green;
 }
 
 #battery.warning:not(.charging) {
-    color: @mustard-yellow;
+    color: @orange;
 }
 
 #battery.critical:not(.charging) {
-    color: @bold-red;
+    color: @red;
     animation: blink 0.5s linear infinite alternate;
 }
 
-/* 9. Power Button */
-#custom-power {
-    color: @bold-red;
-    font-size: 16px;
-    padding: 0 16px 0 12px;
-    margin-left: 4px;
+/* Custom modules */
+#custom-weather {
+    color: @foreground;
 }
 
-/* 10. Clock (Center) */
-#clock {
-    color: @mustard-yellow;
-    font-weight: bold;
-    padding: 0 12px;
-    border-top: 2px solid @mustard-yellow;
-    border-bottom: 2px solid @mustard-yellow;
-}
-
-/* 11. Block Height */
 #custom-block-height {
-    color: @mustard-yellow;
+    color: @orange;
     font-weight: bold;
 }
 
-/* 12. Mullvad */
 #custom-mullvad {
-    color: @leaf-green;
+    color: @green;
 }
 
+/* Taskbar */
+#taskbar button.active {
+    background-image: linear-gradient(0deg, @selection, @background-darker);
+}
 
-/* ===== UTILITY CLASSES ===== */
+/* Tooltip */
 .tooltip {
-    background: @bg-secondary;
-    border: 2px solid @primary-black;
-    color: @off-white;
+    background: @background;
+    border: 2px solid @selection;
+    color: @foreground;
 }
 
-/* ===== ANIMATIONS ===== */
+/* Animations */
 @keyframes blink {
     to {
-        background-color: @bg-color;
-        color: @off-white;
+        background-color: @background;
+        color: @foreground;
     }
 }

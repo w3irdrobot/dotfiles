@@ -1,5 +1,5 @@
 {
-    "workbench.colorTheme": "Catppuccin Mocha",
+    "workbench.colorTheme": "Dracula",
     "editor.fontFamily": "'JetBrainsMono Nerd Font', 'FiraCode Nerd Font', 'monospace', monospace",
     "editor.wordWrap": "bounded",
     "telemetry.feedback.enabled": false,
