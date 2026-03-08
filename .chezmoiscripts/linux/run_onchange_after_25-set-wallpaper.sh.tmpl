@@ -1,0 +1,12 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+
+# Wallpaper hash: {{ include "dot_local/share/wallpapers/dracula-mnt-6272a4.png" | sha256sum }}
+
+echo "Reloading hyprpaper..."
+if pgrep -x "hyprpaper" > /dev/null; then
+    hyprctl hyprpaper reload
+fi
+echo "Wallpaper configured!"
+
+{{ end -}}

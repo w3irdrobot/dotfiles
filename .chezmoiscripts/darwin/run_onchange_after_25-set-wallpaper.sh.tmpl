@@ -1,0 +1,12 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+# Wallpaper hash: {{ include "dot_local/share/wallpapers/dracula-mnt-6272a4.png" | sha256sum }}
+
+WALLPAPER="${HOME}/.local/share/wallpapers/dracula-mnt-6272a4.png"
+
+echo "Setting wallpaper..."
+osascript -e "tell application \"System Events\" to tell every desktop to set picture to \"${WALLPAPER}\""
+echo "Wallpaper set!"
+
+{{ end -}}
