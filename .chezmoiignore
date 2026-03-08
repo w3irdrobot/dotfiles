@@ -2,6 +2,7 @@ README.md
 Brewfile
 install.sh
 LICENSE
+.bitcoin/
 
 # System configs are handled by scripts, not chezmoi's normal apply
 system/
@@ -9,9 +10,11 @@ system/
 # Linux-only configs (ignore on macOS)
 {{ if eq .chezmoi.os "darwin" }}
 .config/hypr/
+.config/mako/
 .config/waybar/
-.bitcoin/
-.local/
+.config/wofi/
+.local/bin/hyprland_clamshell
+.local/bin/wofi_launch
 {{ end }}
 
 # macOS-only configs (ignore on Linux)
