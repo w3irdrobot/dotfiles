@@ -18,16 +18,9 @@
     colors = true
 [core]
     fileMode = false
-    pager = delta
     excludesfile = ~/.gitignore_global
-[interactive]
-    diffFilter = delta --color-only
-[delta]
-    navigate = true
-    dark = true
-    line-numbers = true
-    side-by-side = true
-    syntax-theme = Dracula
+[diff]
+    external = difft
 [merge]
     conflictStyle = zdiff3
 [color]
