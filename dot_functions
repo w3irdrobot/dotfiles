@@ -13,6 +13,18 @@ function config_git() {
   set -o pipefail
 
   local name="${1}"
+  local awk_bin
+
+  if command -v gawk >/dev/null 2>&1; then
+    awk_bin="$(command -v gawk)"
+  else
+    awk_bin="$(command -v awk)"
+  fi
+
+  if [[ -z "${awk_bin}" ]]; then
+    echo "No awk interpreter found. Install gawk via Homebrew or ensure awk is available."
+    return 1
+  fi
 
   if [[ -z "${name}" ]]; then
     echo "Usage: config_git <name>"
@@ -23,7 +35,7 @@ function config_git() {
   # Format: email|keyid
   local selected
   selected=$(gpg --list-secret-keys --with-colons --fixed-list-mode | \
-    awk -F: '
+    "${awk_bin}" -F: '
       /^sec/ { key = $5 }
       /^uid/ && key {
         # Extract email from uid field (format: Name <email>)
@@ -83,4 +95,3 @@ function get_cert_info() {
 function clean_branches() {
     git br -vv | grep gone | awk '{print $1}' | xargs git br -D
 }
-
