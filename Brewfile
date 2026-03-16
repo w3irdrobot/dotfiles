@@ -1,8 +1,5 @@
 # Brewfile - macOS package declarations
 
-# Taps
-tap "homebrew/cask-fonts"
-
 # Modern shell
 brew "bash"
 brew "bash-completion@2"
@@ -29,6 +26,7 @@ brew "rustup"
 
 # Fonts
 cask "font-jetbrains-mono-nerd-font"
+cask "font-fira-code-nerd-font"
 
 # Terminal
 cask "kitty"
