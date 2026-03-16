@@ -99,6 +99,12 @@ defaults write com.apple.screensaver askForPasswordDelay -int 0
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
 # ======================
+# Menu Bar
+# ======================
+# Show battery percentage
+defaults -currentHost write com.apple.controlcenter BatteryShowPercentage -bool true
+
+# ======================
 # Desktop
 # ======================
 # Disable desktop widgets
