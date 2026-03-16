@@ -99,6 +99,13 @@ defaults write com.apple.screensaver askForPasswordDelay -int 0
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
 # ======================
+# Desktop
+# ======================
+# Disable desktop widgets
+defaults write com.apple.WindowManager StandardHideWidgets -bool true
+defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool false
+
+# ======================
 # Apply changes
 # ======================
 killall Finder
