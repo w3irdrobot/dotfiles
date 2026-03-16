@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+
+if xcode-select -p &> /dev/null; then
+    echo "Command Line Tools already installed"
+else
+    echo "Installing Command Line Tools..."
+    xcode-select --install
+    echo "Please wait for the Command Line Tools installation to complete, then re-run chezmoi apply."
+    exit 1
+fi
+
+{{ end -}}
