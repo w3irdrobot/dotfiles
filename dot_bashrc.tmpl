@@ -25,6 +25,16 @@ if [[ -a "${XDG_CONFIG_HOME}/bash/.functions" ]]; then
     source "${XDG_CONFIG_HOME}/bash/.functions"
 fi
 
+# initialize bash-completion
+{{ if eq .chezmoi.os "darwin" -}}
+if [[ -f /opt/homebrew/etc/profile.d/bash_completion.sh ]]; then
+    source /opt/homebrew/etc/profile.d/bash_completion.sh
+fi
+{{ else if eq .chezmoi.os "linux" -}}
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+    source /usr/share/bash-completion/bash_completion
+fi
+{{ end }}
 # initialize fzf
 eval "$(fzf --bash)"
 
