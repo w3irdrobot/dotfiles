@@ -28,9 +28,9 @@ fi
 # initialize fzf
 eval "$(fzf --bash)"
 
-# initialize zoxide
-eval "$(zoxide init bash)"
-
 # initialize custom prompt
 # shellcheck source=./.prompt
 source "${HOME}/.prompt"
+
+# initialize zoxide
+eval "$(zoxide init --cmd cd bash)"
