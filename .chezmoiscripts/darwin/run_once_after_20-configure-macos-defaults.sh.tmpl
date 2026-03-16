@@ -114,11 +114,18 @@ defaults write com.apple.WindowManager StandardHideWidgets -bool true
 defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool false
 
 # ======================
+# Notifications
+# ======================
+# Set all app notifications to banner style (auto-dismiss)
+defaults write com.apple.notificationcenterui bannerStyle -int 1
+
+# ======================
 # Apply changes
 # ======================
 killall Finder
 killall Dock
 killall SystemUIServer
+killall NotificationCenter 2>/dev/null
 
 echo "macOS defaults configured!"
 
