@@ -74,9 +74,16 @@ defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 # Disable natural scrolling (traditional direction)
 defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
 
-# Enable dragging with double-tap and drag
+# Enable double-tap and hold to drag (drag lock)
 defaults write com.apple.AppleMultitouchTrackpad Dragging -bool true
+defaults write com.apple.AppleMultitouchTrackpad DragLock -bool true
 defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Dragging -bool true
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad DragLock -bool true
+
+# Two-finger tap to right-click
+defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadRightClick -bool true
+defaults -currentHost write NSGlobalDomain com.apple.trackpad.enableSecondaryClick -bool true
 
 # ======================
 # Screenshots
