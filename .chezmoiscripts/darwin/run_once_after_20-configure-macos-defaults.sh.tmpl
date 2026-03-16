@@ -113,6 +113,27 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 # Show battery percentage
 defaults -currentHost write com.apple.controlcenter BatteryShowPercentage -bool true
 
+# Clock: 12-hour, show date, no seconds
+defaults write com.apple.menuextra.clock IsAnalog -bool false
+defaults write com.apple.menuextra.clock Show24Hour -bool false
+defaults write com.apple.menuextra.clock ShowDate -int 1
+defaults write com.apple.menuextra.clock ShowSeconds -bool false
+
+# Show Bluetooth icon
+defaults -currentHost write com.apple.controlcenter Bluetooth -int 18
+
+# Show Sound icon
+defaults -currentHost write com.apple.controlcenter Sound -int 18
+
+# Show Wi-Fi icon
+defaults -currentHost write com.apple.controlcenter WiFi -int 18
+
+# Hide Spotlight icon
+defaults -currentHost write com.apple.Spotlight MenuItemHidden -bool true
+
+# Hide Siri icon
+defaults write com.apple.Siri StatusMenuVisible -bool false
+
 # ======================
 # Desktop
 # ======================
