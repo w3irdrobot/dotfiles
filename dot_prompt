@@ -13,13 +13,32 @@ __prompt_orange='\[\e[38;2;247;147;26m\]'   # Bitcoin orange (#F7931A)
 __prompt_mustard='\[\e[38;2;225;219;88m\]'   # Classic mustard (#FFDB58)
 __prompt_reset='\[\e[0m\]'
 
-# Directory relative to home, truncated to last 3 components
+# Directory display:
+#   - In a git repo: repo name + path from repo root (no truncation)
+#   - In home (no repo): ~/path, truncated to ~/.../<last-2>/<last> if >3 components
+#   - Outside home (no repo): full absolute path
 __prompt_dir() {
-    local dir="${PWD/#$HOME/\~}"
-    local parts
-    IFS='/' read -ra parts <<< "$dir"
-    if (( ${#parts[@]} > 3 )); then
-        echo ".../${parts[-3]}/${parts[-2]}/${parts[-1]}"
+    local dir="$PWD"
+    local git_root
+    git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+    if [[ -n "$git_root" ]]; then
+        local repo_name
+        repo_name=$(basename "$git_root")
+        if [[ "$dir" == "$git_root" ]]; then
+            echo "$repo_name"
+        else
+            echo "$repo_name${dir#$git_root}"
+        fi
+    elif [[ "$dir" == "$HOME"* ]]; then
+        dir="${dir/#$HOME/\~}"
+        local parts
+        IFS='/' read -ra parts <<< "$dir"
+        if (( ${#parts[@]} > 3 )); then
+            echo "~/.../${parts[-2]}/${parts[-1]}"
+        else
+            echo "$dir"
+        fi
     else
         echo "$dir"
     fi
