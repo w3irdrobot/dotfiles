@@ -24,8 +24,6 @@ brew "ripgrep"
 brew "vim"
 brew "zoxide"
 
-# Rust
-brew "rustup"
 
 # Fonts
 cask "font-jetbrains-mono-nerd-font"

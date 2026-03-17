@@ -8,11 +8,20 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
 echo "Packages installed"
 
-# Install Rust stable toolchain
-if command -v rustup &> /dev/null; then
-    echo "Installing Rust stable toolchain..."
-    rustup install stable
-    echo "Rust stable toolchain installed"
+# Install Rust via rustup
+if ! command -v rustup &> /dev/null; then
+    echo "Installing rustup and Rust stable toolchain..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 fi
+source "${HOME}/.cargo/env"
+
+# Install Rust tooling
+echo "Installing Rust tooling..."
+cargo install cargo-binstall || true
+cargo binstall -y cargo-generate \
+    cargo-outdated \
+    cargo-nextest \
+    cargo-release
+echo "Rust tooling installed"
 
 {{ end -}}

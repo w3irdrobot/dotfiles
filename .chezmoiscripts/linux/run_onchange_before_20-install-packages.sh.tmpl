@@ -69,20 +69,21 @@ yay -Syu --needed --noconfirm \
     vim \
     vscodium-bin
 
-# Rust
-yay -Syu --needed --noconfirm \
-    rustup
-
-# Rust tooling (after rustup is available)
-if command -v rustup &> /dev/null; then
-    rustup install stable
-    yay -Syu --needed --noconfirm \
-        cargo-binstall \
-        cargo-generate \
-        cargo-outdated \
-        cargo-nextest \
-        cargo-release
+# Install Rust via rustup
+if ! command -v rustup &> /dev/null; then
+    echo "Installing rustup and Rust stable toolchain..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
 fi
+source "${HOME}/.cargo/env"
+
+# Install Rust tooling
+echo "Installing Rust tooling..."
+cargo install cargo-binstall || true
+cargo binstall -y cargo-generate \
+    cargo-outdated \
+    cargo-nextest \
+    cargo-release
+echo "Rust tooling installed"
 
 # Docker
 yay -Syu --needed --noconfirm \
