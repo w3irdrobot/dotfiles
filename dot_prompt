@@ -49,8 +49,8 @@ __prompt_git() {
     local branch
     branch=$(git symbolic-ref --short HEAD 2>/dev/null) || return
     local status="✓"
-    git diff --quiet 2>/dev/null || status="*"
-    git diff --cached --quiet 2>/dev/null || status="*"
+    git diff --quiet 2>/dev/null || status="✗"
+    git diff --cached --quiet 2>/dev/null || status="✗"
     echo "  ${branch} ${status}"
 }
 
