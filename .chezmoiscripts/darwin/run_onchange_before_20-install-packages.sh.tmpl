@@ -8,4 +8,11 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
 echo "Packages installed"
 
+# Install Rust stable toolchain
+if command -v rustup &> /dev/null; then
+    echo "Installing Rust stable toolchain..."
+    rustup install stable
+    echo "Rust stable toolchain installed"
+fi
+
 {{ end -}}
