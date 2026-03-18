@@ -1,6 +1,7 @@
 [data]
     email = {{ promptStringOnce . "email" "Git email address" | quote }}
     install_slack = {{ promptBoolOnce . "install_slack" "Install Slack?" true }}
+    install_gcloud = {{ promptBoolOnce . "install_gcloud" "Install Google Cloud SDK?" false }}
 
 [diff]
     command = "difft"

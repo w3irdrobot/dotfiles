@@ -91,6 +91,18 @@ yay -Syu --needed --noconfirm \
     docker-compose \
     lazydocker
 
+{{ if .install_gcloud -}}
+# Google Cloud SDK
+if ! command -v gcloud &> /dev/null; then
+    echo "Installing Google Cloud SDK..."
+    curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz
+    tar -xf google-cloud-cli-linux-x86_64.tar.gz -C "${HOME}"
+    "${HOME}/google-cloud-sdk/install.sh" --quiet --path-update false --command-completion false
+    rm -f google-cloud-cli-linux-x86_64.tar.gz
+    echo "Google Cloud SDK installed"
+fi
+{{ end -}}
+
 # GUI apps
 yay -Syu --needed --noconfirm \
     bitwarden-bin \

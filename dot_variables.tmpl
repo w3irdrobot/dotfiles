@@ -43,6 +43,13 @@ export npm_config_prefix="$HOME/.local"
 # Docker
 export DOCKER_BUILDKIT=1
 
+{{ if and (eq .chezmoi.os "linux") .install_gcloud -}}
+# Google Cloud SDK
+if [[ -d "${HOME}/google-cloud-sdk/bin" ]]; then
+    export PATH="${HOME}/google-cloud-sdk/bin:${PATH}"
+fi
+{{ end -}}
+
 # Custom scripts and such
 export PATH="${HOME}/.local/bin:${PATH}"
 

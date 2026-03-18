@@ -41,6 +41,9 @@ cask "brave-browser"
 cask "discord"
 cask "google-chrome"
 cask "docker-desktop"
+{{- if .install_gcloud }}
+cask "gcloud-cli"
+{{- end }}
 cask "mullvad-vpn"
 {{- if .install_slack }}
 cask "slack"
