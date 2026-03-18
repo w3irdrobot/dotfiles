@@ -1,5 +1,4 @@
 README.md
-Brewfile
 install.sh
 LICENSE
 .bitcoin/
@@ -20,4 +19,5 @@ system/
 # macOS-only configs (ignore on Linux)
 {{ if eq .chezmoi.os "linux" }}
 Library/
+.config/brewfile/
 {{ end }}

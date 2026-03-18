@@ -1,4 +1,4 @@
-# Brewfile - macOS package declarations
+{{- /* Brewfile - macOS package declarations */ -}}
 
 # Modern shell
 brew "bash"
@@ -24,7 +24,6 @@ brew "ripgrep"
 brew "vim"
 brew "zoxide"
 
-
 # Fonts
 cask "font-jetbrains-mono-nerd-font"
 cask "font-fira-code-nerd-font"
@@ -36,12 +35,16 @@ cask "kitty"
 cask "vscodium"
 
 # GUI Apps
+cask "1password"
 cask "bitwarden"
 cask "brave-browser"
 cask "discord"
 cask "google-chrome"
 cask "docker-desktop"
 cask "mullvad-vpn"
+{{- if .install_slack }}
+cask "slack"
+{{- end }}
 cask "signal"
 cask "spotify"
 cask "standard-notes"

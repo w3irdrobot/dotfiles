@@ -1,11 +1,11 @@
 {{ if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
 
-# Brewfile hash: {{ include "Brewfile" | sha256sum }}
+# Brewfile hash: {{ include ".chezmoitemplates/Brewfile" | sha256sum }}
 
 echo "Installing packages from Brewfile..."
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
+brew bundle --file="{{ joinPath .chezmoi.homeDir ".config/brewfile/Brewfile" }}"
 echo "Packages installed"
 
 
