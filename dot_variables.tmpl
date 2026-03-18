@@ -40,6 +40,11 @@ export PATH="${HOME}/.cargo/bin:${PATH}"
 # nodejs / npm
 export npm_config_prefix="$HOME/.local"
 
+{{ if .install_nvm -}}
+# nvm
+export NVM_DIR="${HOME}/.nvm"
+{{ end -}}
+
 # Docker
 export DOCKER_BUILDKIT=1
 

@@ -2,6 +2,7 @@
     email = {{ promptStringOnce . "email" "Git email address" | quote }}
     install_slack = {{ promptBoolOnce . "install_slack" "Install Slack?" true }}
     install_gcloud = {{ promptBoolOnce . "install_gcloud" "Install Google Cloud SDK?" false }}
+    install_nvm = {{ promptBoolOnce . "install_nvm" "Install nvm (Node Version Manager)?" false }}
 
 [diff]
     command = "difft"

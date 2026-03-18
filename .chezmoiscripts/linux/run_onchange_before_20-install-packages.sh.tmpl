@@ -85,6 +85,17 @@ cargo binstall -y cargo-generate \
     cargo-release
 echo "Rust tooling installed"
 
+{{ if .install_nvm -}}
+# Install nvm
+if [[ ! -d "${HOME}/.nvm" ]]; then
+    echo "Installing nvm..."
+    mkdir -p "${HOME}/.nvm"
+    NVM_VERSION=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": *"//;s/".*//')
+    curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | PROFILE=/dev/null bash
+    echo "nvm ${NVM_VERSION} installed"
+fi
+{{ end -}}
+
 # Docker
 yay -Syu --needed --noconfirm \
     docker \
