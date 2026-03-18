@@ -38,7 +38,6 @@ cask "vscodium"
 # GUI Apps
 cask "bitwarden"
 cask "brave-browser"
-cask "chromium"
 cask "discord"
 cask "google-chrome"
 cask "docker-desktop"

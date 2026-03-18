@@ -8,11 +8,6 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
 echo "Packages installed"
 
-# Remove quarantine flag from Chromium
-if [[ -d "/Applications/Chromium.app" ]]; then
-    echo "Removing quarantine flag from Chromium..."
-    sudo xattr -cr /Applications/Chromium.app
-fi
 
 # Install Rust via rustup
 if ! command -v rustup &> /dev/null; then
