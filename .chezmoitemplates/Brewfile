@@ -23,6 +23,8 @@ brew "anomalyco/tap/opencode"
 brew "ripgrep"
 brew "vim"
 brew "zoxide"
+brew "watch"
+brew "mprocs"
 
 # Fonts
 cask "font-jetbrains-mono-nerd-font"
