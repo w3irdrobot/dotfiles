@@ -104,6 +104,13 @@ yay -Syu --needed --noconfirm \
     docker-compose \
     lazydocker
 
+{{ if .install_kubernetes_tools -}}
+# Kubernetes tools
+yay -Syu --needed --noconfirm \
+    kubectl \
+    k9s
+{{ end -}}
+
 {{ if .install_gcloud -}}
 # Google Cloud SDK
 if ! command -v gcloud &> /dev/null; then

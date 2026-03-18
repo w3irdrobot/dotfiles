@@ -25,6 +25,10 @@ brew "vim"
 brew "zoxide"
 brew "watch"
 brew "mprocs"
+{{ if .install_kubernetes_tools }}
+brew "kubectl"
+brew "k9s"
+{{ end }}
 
 # Fonts
 cask "font-jetbrains-mono-nerd-font"

@@ -3,6 +3,7 @@
     install_slack = {{ promptBoolOnce . "install_slack" "Install Slack?" true }}
     install_gcloud = {{ promptBoolOnce . "install_gcloud" "Install Google Cloud SDK?" false }}
     install_nvm = {{ promptBoolOnce . "install_nvm" "Install nvm (Node Version Manager)?" false }}
+    install_kubernetes_tools = {{ promptBoolOnce . "install_kubernetes_tools" "Install Kubernetes tools (kubectl, k9s)?" true }}
 
 [diff]
     command = "difft"
