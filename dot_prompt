@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 #
 # Custom PS1 prompt with Dracula colors
-# Displays: directory | git branch/status | k8s context (if KUBECONFIG set)
+# Displays: directory | git branch/status | AWS profile | gcloud project | k8s context (if KUBECONFIG set)
 # Two-line prompt with ₿ character (green=success, red=error)
 
 # Color palette (using true color)
@@ -9,6 +9,7 @@ __prompt_green='\[\e[38;2;80;250;123m\]'
 __prompt_pink='\[\e[38;2;255;121;198m\]'
 __prompt_red='\[\e[38;2;255;85;85m\]'
 __prompt_purple='\[\e[38;2;189;147;249m\]'
+__prompt_blue='\[\e[38;2;139;233;253m\]'
 __prompt_orange='\[\e[38;2;247;147;26m\]'   # Bitcoin orange (#F7931A)
 __prompt_mustard='\[\e[38;2;225;219;88m\]'   # Classic mustard (#FFDB58)
 __prompt_reset='\[\e[0m\]'
@@ -61,6 +62,17 @@ __prompt_aws() {
     echo "  ${profile}"
 }
 
+# Google Cloud project (prefers env vars, falls back to gcloud CLI)
+__prompt_gcloud() {
+    local project="${CLOUDSDK_CORE_PROJECT:-${GCLOUD_PROJECT:-${GOOGLE_CLOUD_PROJECT:-}}}"
+    if [[ -z "$project" ]]; then
+        command -v gcloud &>/dev/null || return
+        project=$(gcloud config get-value project 2>/dev/null) || return
+    fi
+    [[ -n "$project" && "$project" != "(unset)" ]] || return
+    echo "  ☁ ${project}"
+}
+
 # Kubernetes context (only if KUBECONFIG is set)
 __prompt_k8s() {
     [[ -n "$KUBECONFIG" ]] || return
@@ -84,6 +96,7 @@ __prompt_command() {
     PS1="\n${__prompt_green}$(__prompt_dir)${__prompt_reset}"
     PS1+="${__prompt_pink}$(__prompt_git)${__prompt_reset}"
     PS1+="${__prompt_mustard}$(__prompt_aws)${__prompt_reset}"
+    PS1+="${__prompt_blue}$(__prompt_gcloud)${__prompt_reset}"
     PS1+="${__prompt_purple}$(__prompt_k8s)${__prompt_reset}"
     PS1+="\n${char_color}${prompt_char}${__prompt_reset} "
 }
