@@ -13,6 +13,6 @@
     "editor.wrapOnEscapedLineFeeds": true,
     "editor.formatOnSave": true,
     "editor.minimap.showSlider": "always",
-    "editor.fontSize": 15,
+    "editor.fontSize": 13,
     "workbench.editor.enablePreview": false
 }
