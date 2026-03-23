@@ -62,13 +62,25 @@ __prompt_aws() {
     echo "  ${profile}"
 }
 
-# Google Cloud project (prefers env vars, falls back to gcloud CLI)
+# Google Cloud project (only show if GSHELL_ACTIVE is set, read from config file - no gcloud CLI calls)
 __prompt_gcloud() {
+    # Only show gcloud info if gshell is active
+    [[ -n "${GSHELL_ACTIVE:-}" ]] || return
+    
+    # Try env vars first
     local project="${CLOUDSDK_CORE_PROJECT:-${GCLOUD_PROJECT:-${GOOGLE_CLOUD_PROJECT:-}}}"
-    if [[ -z "$project" ]]; then
-        command -v gcloud &>/dev/null || return
-        project=$(gcloud config get-value project 2>/dev/null) || return
+    
+    # If no env var, read from gcloud config file
+    if [[ -z "$project" && -n "${CLOUDSDK_CONFIG:-}" ]]; then
+        # Read active config name
+        local active_config
+        active_config=$(cat "$CLOUDSDK_CONFIG/active_config" 2>/dev/null)
+        if [[ -n "$active_config" ]]; then
+            # Read project from the active configuration file
+            project=$(grep -E '^project\s*=' "$CLOUDSDK_CONFIG/configurations/config_$active_config" 2>/dev/null | sed -E 's/^[^=]+=\s*//' | tr -d '[:space:]')
+        fi
     fi
+    
     [[ -n "$project" && "$project" != "(unset)" ]] || return
     echo "  ☁ ${project}"
 }
