@@ -25,4 +25,5 @@ Library/
 
 {{ if not .install_kubernetes_tools }}
 .config/k9s/
+.kube/
 {{ end }}
