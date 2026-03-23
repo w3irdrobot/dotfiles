@@ -103,41 +103,49 @@ function clean_branches() {
 
 {{- if eq .chezmoi.os "darwin" }}
 _gshell_mktemp_dir() {
-  # Use GNU mktemp (gmktemp) installed via coreutils
+  local prefix="$1"
+
   if ! command -v gmktemp >/dev/null 2>&1; then
-    echo "❌ gmktemp not found. Install coreutils via brew." >&2
+    echo "gmktemp not found. Install coreutils via brew." >&2
     return 1
   fi
 
-  local prefix="$1"
   gmktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
 }
 {{- else if eq .chezmoi.os "linux" }}
 _gshell_mktemp_dir() {
-  # Linux mktemp is already GNU mktemp
   local prefix="$1"
   mktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
 }
 {{- end }}
 
 # ----------------------------------------
-# Utility: check if we're already in gshell
+# Utility: are we already inside gshell?
 # ----------------------------------------
 
 _gshell_is_active() {
   local default_config_dir="$HOME/.config/gcloud"
 
-  # Case 1: explicit marker
   if [ -n "${GSHELL_ACTIVE:-}" ]; then
     return 0
   fi
 
-  # Case 2: CLOUDSDK_CONFIG points somewhere non-default
   if [ -n "${CLOUDSDK_CONFIG:-}" ] && [ "$CLOUDSDK_CONFIG" != "$default_config_dir" ]; then
     return 0
   fi
 
   return 1
+}
+
+# ----------------------------------------
+# Utility: list available gcloud configs
+# ----------------------------------------
+
+_gshell_list_configs() {
+  local config_dir="$HOME/.config/gcloud"
+
+  CLOUDSDK_CONFIG="$config_dir" \
+    gcloud config configurations list --format="value(name)" | grep -v '^default$'
 }
 
 # ----------------------------------------
@@ -153,14 +161,43 @@ _gshell_config_exists() {
 }
 
 # ----------------------------------------
-# Utility: list configs (for error messages)
+# Utility: choose a config
+# - if an argument was provided, use it
+# - otherwise, use fzf if available
+# - otherwise, fail with a helpful message
 # ----------------------------------------
 
-_gshell_list_configs() {
-  local config_dir="$HOME/.config/gcloud"
+_gshell_choose_config() {
+  local requested_cfg="$1"
+  local chosen_cfg
 
-  CLOUDSDK_CONFIG="$config_dir" \
-    gcloud config configurations list --format="value(name)"
+  if [ -n "$requested_cfg" ]; then
+    printf '%s\n' "$requested_cfg"
+    return 0
+  fi
+
+  if command -v fzf >/dev/null 2>&1; then
+    chosen_cfg="$(
+      _gshell_list_configs | fzf \
+        --prompt="gcloud config > " \
+        --height=40% \
+        --reverse \
+        --border \
+        --exit-0
+    )"
+
+    if [ -z "$chosen_cfg" ]; then
+      return 1
+    fi
+
+    printf '%s\n' "$chosen_cfg"
+    return 0
+  fi
+
+  echo "usage: gshell <config-name>" >&2
+  echo "Available configs:" >&2
+  _gshell_list_configs >&2
+  return 1
 }
 
 # ----------------------------------------
@@ -168,30 +205,37 @@ _gshell_list_configs() {
 # ----------------------------------------
 
 gshell() {
-  local cfg="${1:?usage: gshell <config-name>}"
+  local requested_cfg="$1"
+  local cfg
   local source_config_dir="$HOME/.config/gcloud"
   local temp_config_dir
 
   # --- sanity checks ---
 
   if ! command -v gcloud >/dev/null 2>&1; then
-    echo "❌ gcloud not found in PATH" >&2
+    echo "gcloud not found in PATH" >&2
     return 1
   fi
 
   if [ ! -d "$source_config_dir" ]; then
-    echo "❌ gcloud config directory not found: $source_config_dir" >&2
+    echo "gcloud config directory not found: $source_config_dir" >&2
     return 1
   fi
 
   if _gshell_is_active; then
-    echo "❌ already inside gshell (CLOUDSDK_CONFIG=$CLOUDSDK_CONFIG)" >&2
-    echo "   exit this shell before starting another session" >&2
+    echo "already inside gshell (CLOUDSDK_CONFIG=$CLOUDSDK_CONFIG)" >&2
+    echo "exit this shell before starting another gshell session" >&2
     return 1
   fi
 
+  # --- choose config ---
+
+  cfg="$(_gshell_choose_config "$requested_cfg")" || return 1
+
+  # --- verify config exists ---
+
   if ! _gshell_config_exists "$cfg"; then
-    echo "❌ gcloud config '$cfg' not found" >&2
+    echo "gcloud config '$cfg' not found" >&2
     echo "Available configs:" >&2
     _gshell_list_configs >&2
     return 1
@@ -200,17 +244,16 @@ gshell() {
   # --- create isolated config directory ---
 
   temp_config_dir="$(_gshell_mktemp_dir "gcloud-${cfg}")" || {
-    echo "❌ failed to create temp directory" >&2
+    echo "failed to create temp directory" >&2
     return 1
   }
 
-  # Ensure cleanup when function exits
   trap 'rm -rf "$temp_config_dir"' RETURN
 
   # --- copy existing gcloud state ---
 
   if ! cp -a "$source_config_dir/." "$temp_config_dir/"; then
-    echo "❌ failed to copy gcloud config" >&2
+    echo "failed to copy gcloud config" >&2
     return 1
   fi
 
@@ -221,14 +264,14 @@ gshell() {
     export GSHELL_ACTIVE=1
 
     if ! gcloud config configurations activate "$cfg" >/dev/null; then
-      echo "❌ failed to activate config: $cfg" >&2
+      echo "failed to activate config: $cfg" >&2
       exit 1
     fi
 
-    echo "🔹 gshell started"
-    echo "   config: $cfg"
-    echo "   CLOUDSDK_CONFIG: $CLOUDSDK_CONFIG"
-    echo "   exit to return to normal shell"
+    echo "gshell started"
+    echo "  config: $cfg"
+    echo "  CLOUDSDK_CONFIG: $CLOUDSDK_CONFIG"
+    echo "  exit to return to normal shell"
 
     exec "${SHELL:-/bin/bash}" -i
   )
