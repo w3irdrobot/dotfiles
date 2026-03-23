@@ -22,3 +22,7 @@ system/
 Library/
 .config/brewfile/
 {{ end }}
+
+{{ if not .install_kubernetes_tools }}
+.config/k9s/
+{{ end }}
