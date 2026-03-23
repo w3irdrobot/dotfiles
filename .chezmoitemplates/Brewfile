@@ -28,8 +28,9 @@ brew "zoxide"
 brew "watch"
 brew "mprocs"
 {{ if .install_kubernetes_tools }}
-brew "kubectl"
 brew "k9s"
+brew "kubectl"
+brew "kubie"
 {{ end }}
 
 # Fonts
