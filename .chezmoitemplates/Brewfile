@@ -6,6 +6,7 @@ brew "bash-completion@2"
 
 # Core CLI tools
 brew "bat"
+brew "coreutils"
 brew "chezmoi"
 brew "eza"
 brew "fd"

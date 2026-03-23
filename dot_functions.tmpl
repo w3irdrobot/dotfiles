@@ -1,0 +1,236 @@
+# shellcheck shell=bash
+
+function take() {
+  mkdir -p "${1}"
+  cd "${1}" || return
+}
+
+function myip() {
+    curl --silent ipinfo.io | jq .
+}
+
+function config_git() {
+  set -o pipefail
+
+  local name="${1}"
+  local awk_bin
+
+  if command -v gawk >/dev/null 2>&1; then
+    awk_bin="$(command -v gawk)"
+  else
+    awk_bin="$(command -v awk)"
+  fi
+
+  if [[ -z "${awk_bin}" ]]; then
+    echo "No awk interpreter found. Install gawk via Homebrew or ensure awk is available."
+    return 1
+  fi
+
+  if [[ -z "${name}" ]]; then
+    echo "Usage: config_git <name>"
+    return 1
+  fi
+
+  # Get list of GPG keys with their emails and key IDs
+  # Format: email|keyid
+  local selected
+  selected=$(gpg --list-secret-keys --with-colons --fixed-list-mode | \
+    "${awk_bin}" -F: '
+      /^sec/ { key = $5 }
+      /^uid/ && key {
+        # Extract email from uid field (format: Name <email>)
+        match($10, /<([^>]+)>/, arr)
+        if (arr[1]) {
+          print arr[1] "|" key
+          key = ""
+        }
+      }
+    ' | \
+    sort -u | \
+    fzf --prompt="Select GPG key: " --height=40% --reverse --header="Select email/key for git config")
+
+  if [[ -z "${selected}" ]]; then
+    echo "No key selected. Aborting."
+    return 1
+  fi
+
+  # Parse selected email and key
+  local email key
+  email=$(echo "${selected}" | cut -d'|' -f1)
+  key=$(echo "${selected}" | cut -d'|' -f2)
+
+  # Configure git
+  git config user.name "${name}"
+  git config user.email "${email}"
+  git config commit.gpgSign "true"
+  git config user.signingKey "${key}"
+  git config tag.forceSignAnnotated true
+
+  echo "Git configured:"
+  echo "  Name: ${name}"
+  echo "  Email: ${email}"
+  echo "  Signing Key: ${key}"
+}
+
+function remove_git_submodule() {
+    git submodule deinit -f -- "$1"
+    rm -rf .git/modules/"$1"
+    git rm -f "$1"
+}
+
+function clear_history() {
+    history -c
+    history -w
+}
+
+function scratch() {
+    directory=$(mktemp --directory -t scratch_XXXXXX)
+    cd "$directory" || return
+}
+
+function get_cert_info() {
+    echo | openssl s_client -showcerts -servername "${1}" -connect "${1}":443 2>/dev/null | openssl x509 -inform pem -noout -text
+}
+
+function clean_branches() {
+    git br -vv | grep gone | awk '{print $1}' | xargs git br -D
+}
+
+{{ if .install_gcloud -}}
+# ----------------------------------------
+# Platform-specific mktemp wrapper
+# ----------------------------------------
+
+{{- if eq .chezmoi.os "darwin" }}
+_gshell_mktemp_dir() {
+  # Use GNU mktemp (gmktemp) installed via coreutils
+  if ! command -v gmktemp >/dev/null 2>&1; then
+    echo "❌ gmktemp not found. Install coreutils via brew." >&2
+    return 1
+  fi
+
+  local prefix="$1"
+  gmktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
+}
+{{- else if eq .chezmoi.os "linux" }}
+_gshell_mktemp_dir() {
+  # Linux mktemp is already GNU mktemp
+  local prefix="$1"
+  mktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
+}
+{{- end }}
+
+# ----------------------------------------
+# Utility: check if we're already in gshell
+# ----------------------------------------
+
+_gshell_is_active() {
+  local default_config_dir="$HOME/.config/gcloud"
+
+  # Case 1: explicit marker
+  if [ -n "${GSHELL_ACTIVE:-}" ]; then
+    return 0
+  fi
+
+  # Case 2: CLOUDSDK_CONFIG points somewhere non-default
+  if [ -n "${CLOUDSDK_CONFIG:-}" ] && [ "$CLOUDSDK_CONFIG" != "$default_config_dir" ]; then
+    return 0
+  fi
+
+  return 1
+}
+
+# ----------------------------------------
+# Utility: verify config exists
+# ----------------------------------------
+
+_gshell_config_exists() {
+  local cfg="$1"
+  local config_dir="$HOME/.config/gcloud"
+
+  CLOUDSDK_CONFIG="$config_dir" \
+    gcloud config configurations describe "$cfg" >/dev/null 2>&1
+}
+
+# ----------------------------------------
+# Utility: list configs (for error messages)
+# ----------------------------------------
+
+_gshell_list_configs() {
+  local config_dir="$HOME/.config/gcloud"
+
+  CLOUDSDK_CONFIG="$config_dir" \
+    gcloud config configurations list --format="value(name)"
+}
+
+# ----------------------------------------
+# Main entrypoint
+# ----------------------------------------
+
+gshell() {
+  local cfg="${1:?usage: gshell <config-name>}"
+  local source_config_dir="$HOME/.config/gcloud"
+  local temp_config_dir
+
+  # --- sanity checks ---
+
+  if ! command -v gcloud >/dev/null 2>&1; then
+    echo "❌ gcloud not found in PATH" >&2
+    return 1
+  fi
+
+  if [ ! -d "$source_config_dir" ]; then
+    echo "❌ gcloud config directory not found: $source_config_dir" >&2
+    return 1
+  fi
+
+  if _gshell_is_active; then
+    echo "❌ already inside gshell (CLOUDSDK_CONFIG=$CLOUDSDK_CONFIG)" >&2
+    echo "   exit this shell before starting another session" >&2
+    return 1
+  fi
+
+  if ! _gshell_config_exists "$cfg"; then
+    echo "❌ gcloud config '$cfg' not found" >&2
+    echo "Available configs:" >&2
+    _gshell_list_configs >&2
+    return 1
+  fi
+
+  # --- create isolated config directory ---
+
+  temp_config_dir="$(_gshell_mktemp_dir "gcloud-${cfg}")" || {
+    echo "❌ failed to create temp directory" >&2
+    return 1
+  }
+
+  # Ensure cleanup when function exits
+  trap 'rm -rf "$temp_config_dir"' RETURN
+
+  # --- copy existing gcloud state ---
+
+  if ! cp -a "$source_config_dir/." "$temp_config_dir/"; then
+    echo "❌ failed to copy gcloud config" >&2
+    return 1
+  fi
+
+  # --- launch isolated subshell ---
+
+  (
+    export CLOUDSDK_CONFIG="$temp_config_dir"
+    export GSHELL_ACTIVE=1
+
+    if ! gcloud config configurations activate "$cfg" >/dev/null; then
+      echo "❌ failed to activate config: $cfg" >&2
+      exit 1
+    fi
+
+    echo "🔹 gshell started"
+    echo "   config: $cfg"
+    echo "   CLOUDSDK_CONFIG: $CLOUDSDK_CONFIG"
+    echo "   exit to return to normal shell"
+
+    exec "${SHELL:-/bin/bash}" -i
+  )
+}
+{{ end }}
