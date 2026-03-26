@@ -262,6 +262,7 @@ gshell() {
   (
     export CLOUDSDK_CONFIG="$temp_config_dir"
     export GSHELL_ACTIVE=1
+    export GOOGLE_APPLICATION_CREDENTIALS="$temp_config_dir/application_default_credentials.json"
 
     if ! gcloud config configurations activate "$cfg" >/dev/null; then
       echo "failed to activate config: $cfg" >&2
