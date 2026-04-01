@@ -4,6 +4,9 @@
     install_gcloud = {{ promptBoolOnce . "install_gcloud" "Install Google Cloud SDK?" false }}
     install_nvm = {{ promptBoolOnce . "install_nvm" "Install nvm (Node Version Manager)?" false }}
     install_kubernetes_tools = {{ promptBoolOnce . "install_kubernetes_tools" "Install Kubernetes tools (kubectl, k9s, helm)?" true }}
+    {{- $mounts := output "sh" "-c" "df -P | tail -n +2 | awk '{print $NF}' | grep -vE '^/(boot|dev|proc|sys|run|snap|tmp)?$' | sort -u" | trim | splitList "\n" }}
+    {{- $mount := promptChoiceOnce . "bitcoin_datadir" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    bitcoin_datadir = {{ printf "%s/bitcoin" $mount | quote }}
 
 [diff]
     command = "difft"
