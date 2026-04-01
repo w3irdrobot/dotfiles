@@ -14,5 +14,6 @@
     "editor.formatOnSave": true,
     "editor.minimap.showSlider": "always",
     "editor.fontSize": 13,
-    "workbench.editor.enablePreview": false
+    "workbench.editor.enablePreview": false,
+    "explorer.confirmDragAndDrop": false
 }
