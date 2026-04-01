@@ -8,6 +8,7 @@ system/
 # Linux-only configs (ignore on macOS)
 {{ if eq .chezmoi.os "darwin" }}
 .hushlogin
+.bitcoin/
 .config/hypr/
 .config/mako/
 .config/waybar/
