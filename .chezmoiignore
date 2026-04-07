@@ -1,6 +1,7 @@
 README.md
 install.sh
 LICENSE
+justfile
 
 # System configs are handled by scripts, not chezmoi's normal apply
 system/
