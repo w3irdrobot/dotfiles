@@ -39,7 +39,7 @@ cask "font-jetbrains-mono-nerd-font"
 cask "font-fira-code-nerd-font"
 
 # Terminal
-cask "kitty"
+cask "ghostty"
 
 # Editors
 cask "vscodium"
