@@ -10,6 +10,7 @@ system/
 {{ if eq .chezmoi.os "darwin" }}
 .hushlogin
 .bitcoin/
+.config/ghostty/
 .config/hypr/
 .config/mako/
 .config/waybar/

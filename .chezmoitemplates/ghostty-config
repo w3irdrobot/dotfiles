@@ -1,3 +1,4 @@
 {{- define "ghostty-config" -}}
 theme = Dracula
+window-padding-x = 10
 {{- end -}}
