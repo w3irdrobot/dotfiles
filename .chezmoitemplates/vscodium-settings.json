@@ -15,5 +15,6 @@
     "editor.minimap.showSlider": "always",
     "editor.fontSize": 13,
     "workbench.editor.enablePreview": false,
-    "explorer.confirmDragAndDrop": false
+    "explorer.confirmDragAndDrop": false,
+    "security.workspace.trust.untrustedFiles": "open"
 }
