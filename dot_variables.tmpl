@@ -45,11 +45,17 @@ export NVM_DIR="${HOME}/.nvm"
 # Docker
 export DOCKER_BUILDKIT=1
 
-{{ if and (eq .chezmoi.os "linux") .install_gcloud -}}
+{{ if .install_gcloud -}}
 # Google Cloud SDK
+{{ if eq .chezmoi.os "linux" -}}
 if [[ -d "${HOME}/google-cloud-sdk/bin" ]]; then
     export PATH="${HOME}/google-cloud-sdk/bin:${PATH}"
 fi
+{{ else if eq .chezmoi.os "darwin" -}}
+if [[ -d "/opt/homebrew/share/google-cloud-sdk/bin" ]]; then
+    export PATH="/opt/homebrew/share/google-cloud-sdk/bin:${PATH}"
+fi
+{{ end }}
 {{ end -}}
 
 # Custom scripts and such

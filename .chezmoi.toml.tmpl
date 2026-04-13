@@ -8,5 +8,8 @@
     {{- $mount := promptChoiceOnce . "bitcoin_datadir" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
     bitcoin_datadir = {{ printf "%s/bitcoin" $mount | quote }}
 
+    {{- $mount := promptChoiceOnce . "electrs_datadir" (printf "Select mount point for Electrs data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    electrs_datadir = {{ printf "%s/electrs" $mount | quote }}
+
 [diff]
     command = "difft"
