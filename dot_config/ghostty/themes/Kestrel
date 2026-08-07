@@ -1,0 +1,32 @@
+# Kestrel Bright
+
+background = 1a2028
+foreground = f8f4ec
+
+cursor-color = e5bf8d
+
+selection-background = 384454
+selection-foreground = f8f4ec
+
+# Normal colors
+palette = 0=#1a2028
+palette = 1=#6f92b5
+palette = 2=#9c968a
+palette = 3=#d8c3a0
+palette = 4=#93b1cc
+palette = 5=#b48ead
+palette = 6=#9bb7d2
+palette = 7=#f4eee5
+
+# Bright colors
+palette = 8=#384454
+palette = 9=#8fb3d7
+palette = 10=#b3aea4
+palette = 11=#e5d1af
+palette = 12=#bdd2e4
+palette = 13=#c39cc9
+palette = 14=#bdd2e4
+palette = 15=#fffaf0
+
+split-divider-color = #384454
+#split-divider-active-color = #C86B34

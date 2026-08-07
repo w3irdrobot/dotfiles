@@ -1,0 +1,22 @@
+{
+  "name": "kestrel-theme",
+  "displayName": "Kestrel Theme",
+  "description": "A blue-dominant, cream-warmed, rust-accented VS Code theme inspired by the American kestrel.",
+  "version": "0.0.1",
+  "publisher": "w3irdrobot",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Kestrel",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kestrel-color-theme.json"
+      }
+    ]
+  }
+}

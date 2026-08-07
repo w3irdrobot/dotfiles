@@ -5,32 +5,32 @@ customCommands:
     context: "files"
     loadingText: "opening commitizen commit tool"
     output: terminal
-# DRACULA
+# Kestrel
 gui:
   theme:
-    activeBorderColor:
-      - "#FF79C6"
-      - bold
     inactiveBorderColor:
-      - "#BD93F9"
-    searchingActiveBorderColor:
-      - "#8BE9FD"
-      - bold
+      - "#384454"
     optionsTextColor:
-      - "#6272A4"
-    selectedLineBgColor:
-      - "#6272A4"
+      - "#93B1CC"
     inactiveViewSelectedLineBgColor:
-      - bold
+      - "#202834"
     cherryPickedCommitFgColor:
-      - "#6272A4"
+      - "#F8F4EC"
     cherryPickedCommitBgColor:
-      - "#8BE9FD"
+      - "#384454"
     markedBaseCommitFgColor:
-      - "#8BE9FD"
+      - "#1A2028"
     markedBaseCommitBgColor:
-      - "#F1FA8C"
-    unstagedChangesColor:
-      - "#FF5555"
+      - "#E5BF8D"
     defaultFgColor:
-      - "#F8F8F2"
+      - "#F8F4EC"
+    unstagedChangesColor:
+      - "#E78A50"
+    selectedLineBgColor:
+      - "#384454"
+    activeBorderColor:
+      - "#BDD2E4"
+      - bold
+    searchingActiveBorderColor:
+      - "#C86B34"
+      - bold

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://opencode.ai/theme.json",
+  "defs": {
+    "bg": "#1A2028",
+    "bgPanel": "#202834",
+    "bgElement": "#263241",
+    "selection": "#384454",
+
+    "fg": "#F8F4EC",
+    "muted": "#9C968A",
+    "mutedBlue": "#6F8EAD",
+
+    "blue": "#8AA8C5",
+    "blue2": "#93B1CC",
+    "blue3": "#BDD2E4",
+
+    "cream": "#E5BF8D",
+    "cream2": "#D8C3A0",
+
+    "rust": "#C86B34",
+    "rust2": "#D9753A",
+    "rust3": "#E78A50"
+  },
+  "theme": {
+    "primary": "blue",
+    "secondary": "blue2",
+    "accent": "rust",
+    "error": "rust2",
+    "warning": "rust3",
+    "success": "cream",
+    "info": "blue3",
+
+    "text": "fg",
+    "textMuted": "muted",
+    "background": "bg",
+    "backgroundPanel": "bgPanel",
+    "backgroundElement": "bgElement",
+
+    "border": "selection",
+    "borderActive": "blue",
+    "borderSubtle": "bgElement",
+
+    "diffAdded": "cream",
+    "diffRemoved": "rust2",
+    "diffContext": "mutedBlue",
+    "diffHunkHeader": "blue2",
+    "diffHighlightAdded": "cream2",
+    "diffHighlightRemoved": "rust3",
+    "diffAddedBg": "bgPanel",
+    "diffRemovedBg": "bgPanel",
+    "diffContextBg": "bg",
+    "diffLineNumber": "muted",
+    "diffAddedLineNumberBg": "bgElement",
+    "diffRemovedLineNumberBg": "bgElement",
+
+    "markdownText": "fg",
+    "markdownHeading": "rust",
+    "markdownLink": "blue2",
+    "markdownLinkText": "blue3",
+    "markdownCode": "blue",
+    "markdownBlockQuote": "mutedBlue",
+    "markdownEmph": "cream2",
+    "markdownStrong": "cream",
+    "markdownHorizontalRule": "selection",
+    "markdownListItem": "muted",
+    "markdownListEnumeration": "muted",
+    "markdownImage": "blue2",
+    "markdownImageText": "blue3",
+    "markdownCodeBlock": "fg",
+
+    "syntaxComment": "mutedBlue",
+    "syntaxKeyword": "blue3",
+    "syntaxFunction": "blue",
+    "syntaxVariable": "fg",
+    "syntaxString": "cream",
+    "syntaxNumber": "rust3",
+    "syntaxType": "cream2",
+    "syntaxOperator": "blue2",
+    "syntaxPunctuation": "fg"
+  }
+}

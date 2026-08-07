@@ -2,7 +2,7 @@
 ## Mission Profile
 - These dotfiles bootstrap macOS and Arch/Hyprland machines via `chezmoi`, so edits must stay idempotent and cross-platform aware.
 - Treat every change as infrastructure code; prefer observing current behavior before rewriting defaults.
-- Keep the Dracula-inspired visual identity (terminal, Waybar, Ghostty, VSCodium, prompt) intact unless the user explicitly requests otherwise.
+- Keep the Kestrel visual identity (terminal, shell, Ghostty, VSCodium, prompt) intact unless the user explicitly requests otherwise.
 - Assume contributors launch commands from the repository root (run `pwd` if unsure) unless a section states otherwise.
 - Goal: high-signal diffs agents can execute quickly without guesswork.
 ## Layout Cheat Sheet
@@ -39,7 +39,7 @@
 - Store long-lived secrets or host-specific overrides in `.gitconfig_local`, `.config/bash/.variables`, or other ignored files; never bake them into templates.
 - When touching Git settings remember diffs run through `difft` (Rust-based), so avoid adding features incompatible with that workflow.
 - Document new binaries inside Brewfile templates (macOS) or `.chezmoiscripts/linux/*` (Arch) instead of ad-hoc commands elsewhere.
-- Keep Dracula color constants synchronized across CSS, Hyprland, Ghostty, and Waybar; reuse `dot_config/waybar/colors.css` values when adding modules.
+- Keep Kestrel color constants synchronized across shell and application themes; use the canonical palette in `~/projects/github.com/w3irdrobot/kestreltheme/docs/kestrel-theme-design-system.html` when adding integrations.
 - Respect the repo’s 100-column editing preference (see VSCodium template) for JSON, YAML, and CSS modifications.
 - Use `chezmoi cd` to enter the managed worktree if you need to inspect rendered files relative to `$HOME` paths.
 ## Shell & Script Style
@@ -58,7 +58,7 @@
 - Always close template conditionals with `{{ end -}}` to avoid stray whitespace that might break INI or YAML consumers.
 - JSON/JSONC files (Waybar, VSCodium, Opencode TUI) use double quotes, 4-space indent, trailing newline, and inline comments only where the format supports them (Waybar uses JSONC, so `//` comments are fine).
 - YAML/Git config entries align with 2-space indent per level; follow `dot_config/lazygit/config.yml` for hex color quoting.
-- CSS keeps `Dracula` palette centralized through `@define-color` tokens; new selectors should reference `@background`, `@foreground`, etc., rather than raw hex codes.
+- CSS palettes stay centralized through `@define-color` tokens; new selectors should reference `@background`, `@foreground`, etc., rather than raw hex codes.
 - Hyprland configs favor block sections (`monitorv2 { ... }`) with lowercase keywords and inline comments referencing the official docs; keep autostart commands grouped by function.
 - tmux settings stay minimalistic: prefer descriptive comments and align binds (`bind-key -T copy-mode-vi ...`) with the style already present.
 - Lazygit custom commands live under `customCommands`; bind new hotkeys with the same uppercase single-letter notation and provide `loadingText` copy.
@@ -71,9 +71,9 @@
 - CSS animations like `@keyframes blink` must remain lightweight to avoid GPU spikes on laptops; add new animations sparingly.
 - Terminal font stack is JetBrainsMono Nerd Font; if you modify fonts, update both Ghostty (once configured) and the VSCodium `editor.fontFamily` array to prevent mismatched glyphs.
 - Prompt (`dot_prompt`) shows Git, AWS, GCloud, and Kubernetes info; keep new environment indicators optional and behind quick exit checks to avoid blocking the shell.
-- K9s and Lazygit share the Dracula palette; use the same hex codes defined in `waybar/colors.css` when theming other CLI tools to maintain consistency.
+- K9s and Lazygit share the Kestrel palette; use the canonical Kestrel design-system values when theming other CLI tools.
 - tmux copy bindings rely on `xclip`; if adding macOS-specific overrides, gate them with template conditionals so Linux clipboard commands stay intact.
-- Opencode `tui.json` fixes the Dracula theme; if the CLI adds theme selection later, expose it as a template toggle consistent with other `install_*` prompts.
+- Opencode `tui.json` selects the managed Kestrel theme under `dot_config/opencode/themes/`.
 - Hypridle, Hyprlock, Hyprpaper, and Hyprsunset configs live beside `hyprland.conf`; keep power-management bindings synchronized (idle inhibitors rely on these files).
 - Waybar module names follow `custom/<id>` conventions mirrored in `style.css`; keep class names synced when adding CSS selectors.
 - Wallpapers and branding assets reside under `dot_local/share/wallpapers`; reference them with `${HOME}` paths so symlinks survive `chezmoi apply`.

@@ -97,128 +97,121 @@ function clean_branches() {
 }
 
 {{ if .install_gcloud -}}
-# ----------------------------------------
-# Platform-specific mktemp wrapper
-# ----------------------------------------
-
-{{- if eq .chezmoi.os "darwin" }}
-_gshell_mktemp_dir() {
-  local prefix="$1"
-
-  if ! command -v gmktemp >/dev/null 2>&1; then
-    echo "gmktemp not found. Install coreutils via brew." >&2
-    return 1
-  fi
-
-  gmktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
-}
-{{- else if eq .chezmoi.os "linux" }}
-_gshell_mktemp_dir() {
-  local prefix="$1"
-  mktemp -d --tmpdir="${TMPDIR:-/tmp}" "${prefix}.XXXXXX"
-}
-{{- end }}
-
-# ----------------------------------------
-# Utility: are we already inside gshell?
-# ----------------------------------------
-
+# Are we already inside a gshell session?
 _gshell_is_active() {
-  local default_config_dir="$HOME/.config/gcloud"
+  [ -n "${GSHELL_ACTIVE:-}" ]
+}
 
-  if [ -n "${GSHELL_ACTIVE:-}" ]; then
-    return 0
-  fi
-
-  if [ -n "${CLOUDSDK_CONFIG:-}" ] && [ "$CLOUDSDK_CONFIG" != "$default_config_dir" ]; then
-    return 0
-  fi
-
+# Subcommand guard: bail with a helpful message if not inside gshell.
+_gshell_require_active() {
+  if _gshell_is_active; then return 0; fi
+  echo "$1: must be run inside a gshell session" >&2
+  echo "start one with: gshell <profile>" >&2
   return 1
 }
 
-# ----------------------------------------
-# Utility: list available gcloud configs
-# ----------------------------------------
-
+# List gcloud configs from the host (excluding 'default').
 _gshell_list_configs() {
-  local config_dir="$HOME/.config/gcloud"
-
-  CLOUDSDK_CONFIG="$config_dir" \
+  CLOUDSDK_CONFIG="$HOME/.config/gcloud" \
     gcloud config configurations list --format="value(name)" | grep -v '^default$'
 }
 
-# ----------------------------------------
-# Utility: verify config exists
-# ----------------------------------------
-
+# Verify a named gcloud config exists on the host.
 _gshell_config_exists() {
-  local cfg="$1"
-  local config_dir="$HOME/.config/gcloud"
-
-  CLOUDSDK_CONFIG="$config_dir" \
-    gcloud config configurations describe "$cfg" >/dev/null 2>&1
+  CLOUDSDK_CONFIG="$HOME/.config/gcloud" \
+    gcloud config configurations describe "$1" >/dev/null 2>&1
 }
 
-# ----------------------------------------
-# Utility: choose a config
-# - if an argument was provided, use it
-# - otherwise, use fzf if available
-# - otherwise, fail with a helpful message
-# ----------------------------------------
-
+# Pick a config, validating it exists. Uses fzf when no arg is supplied.
 _gshell_choose_config() {
   local requested_cfg="$1"
   local chosen_cfg
 
   if [ -n "$requested_cfg" ]; then
+    if ! _gshell_config_exists "$requested_cfg"; then
+      echo "gcloud config '$requested_cfg' not found" >&2
+      echo "Available configs:" >&2
+      _gshell_list_configs >&2
+      return 1
+    fi
     printf '%s\n' "$requested_cfg"
     return 0
   fi
 
-  if command -v fzf >/dev/null 2>&1; then
-    chosen_cfg="$(
-      _gshell_list_configs | fzf \
-        --prompt="gcloud config > " \
-        --height=40% \
-        --reverse \
-        --border \
-        --exit-0
-    )"
-
-    if [ -z "$chosen_cfg" ]; then
-      return 1
-    fi
-
-    printf '%s\n' "$chosen_cfg"
-    return 0
+  if ! command -v fzf >/dev/null 2>&1; then
+    echo "usage: gshell <config-name>" >&2
+    echo "Available configs:" >&2
+    _gshell_list_configs >&2
+    return 1
   fi
 
-  echo "usage: gshell <config-name>" >&2
-  echo "Available configs:" >&2
-  _gshell_list_configs >&2
-  return 1
+  local configs
+  configs="$(_gshell_list_configs)"
+  if [ -z "$configs" ]; then
+    echo "no gcloud configurations available" >&2
+    echo "create one: gcloud config configurations create <name>" >&2
+    return 1
+  fi
+
+  chosen_cfg="$(printf '%s\n' "$configs" | fzf \
+    --prompt="gcloud config > " \
+    --height=40% \
+    --reverse \
+    --border \
+    --exit-0)"
+
+  if [ -z "$chosen_cfg" ]; then
+    return 1
+  fi
+
+  printf '%s\n' "$chosen_cfg"
 }
 
-# ----------------------------------------
-# Main entrypoint
-# ----------------------------------------
+# Prepare the persistent per-profile sandbox. Shared gcloud state is linked
+# from the host while each profile keeps independent ADC credentials.
+_gshell_ensure_sandbox() {
+  local cfg="$1"
+  local host="$HOME/.config/gcloud"
+  local sandbox="$HOME/.config/gshell/$cfg"
+  local share
 
-gshell() {
-  local requested_cfg="$1"
+  if ! mkdir -p "$sandbox"; then
+    echo "failed to create sandbox: $sandbox" >&2
+    return 1
+  fi
+
+  for share in configurations credentials.db access_tokens.db legacy_credentials; do
+    if [ ! -e "$host/$share" ] && [ ! -L "$host/$share" ]; then
+      continue
+    fi
+    if [ -L "$sandbox/$share" ]; then
+      continue
+    fi
+    if [ -e "$sandbox/$share" ]; then
+      echo "warning: $sandbox/$share is not a symlink; leaving as-is" >&2
+      continue
+    fi
+    if ! ln -s "$host/$share" "$sandbox/$share"; then
+      echo "failed to symlink $sandbox/$share" >&2
+      return 1
+    fi
+  done
+
+  printf '%s\n' "$sandbox"
+}
+
+# Activate a profile when no subcommand is given.
+_gshell_cmd_activate() {
   local cfg
-  local source_config_dir="$HOME/.config/gcloud"
-  local temp_config_dir
-
-  # --- sanity checks ---
+  local sandbox_dir
 
   if ! command -v gcloud >/dev/null 2>&1; then
     echo "gcloud not found in PATH" >&2
     return 1
   fi
 
-  if [ ! -d "$source_config_dir" ]; then
-    echo "gcloud config directory not found: $source_config_dir" >&2
+  if [ ! -d "$HOME/.config/gcloud" ]; then
+    echo "gcloud config directory not found: $HOME/.config/gcloud" >&2
     return 1
   fi
 
@@ -228,53 +221,97 @@ gshell() {
     return 1
   fi
 
-  # --- choose config ---
+  cfg="$(_gshell_choose_config "${1:-}")" || return 1
 
-  cfg="$(_gshell_choose_config "$requested_cfg")" || return 1
-
-  # --- verify config exists ---
-
-  if ! _gshell_config_exists "$cfg"; then
-    echo "gcloud config '$cfg' not found" >&2
-    echo "Available configs:" >&2
-    _gshell_list_configs >&2
-    return 1
-  fi
-
-  # --- create isolated config directory ---
-
-  temp_config_dir="$(_gshell_mktemp_dir "gcloud-${cfg}")" || {
-    echo "failed to create temp directory" >&2
+  sandbox_dir="$(_gshell_ensure_sandbox "$cfg")" || {
+    echo "failed to prepare sandbox for $cfg" >&2
     return 1
   }
 
-  trap 'rm -rf "$temp_config_dir"' RETURN
-
-  # --- copy existing gcloud state ---
-
-  if ! cp -a "$source_config_dir/." "$temp_config_dir/"; then
-    echo "failed to copy gcloud config" >&2
-    return 1
-  fi
-
-  # --- launch isolated subshell ---
-
   (
-    export CLOUDSDK_CONFIG="$temp_config_dir"
+    export CLOUDSDK_CONFIG="$sandbox_dir"
+    export CLOUDSDK_ACTIVE_CONFIG_NAME="$cfg"
     export GSHELL_ACTIVE=1
-    export GOOGLE_APPLICATION_CREDENTIALS="$temp_config_dir/application_default_credentials.json"
-
-    if ! gcloud config configurations activate "$cfg" >/dev/null; then
-      echo "failed to activate config: $cfg" >&2
-      exit 1
+    if [ -f "$sandbox_dir/application_default_credentials.json" ]; then
+      export GOOGLE_APPLICATION_CREDENTIALS="$sandbox_dir/application_default_credentials.json"
     fi
 
     echo "gshell started"
-    echo "  config: $cfg"
-    echo "  CLOUDSDK_CONFIG: $CLOUDSDK_CONFIG"
+    echo "  profile: $cfg"
+    echo "  sandbox: $sandbox_dir"
+
+    if ! gcloud auth print-access-token >/dev/null 2>&1; then
+      echo "  user auth not valid; running gshell login..."
+      gcloud auth login --no-launch-browser
+    fi
+
+    if [ ! -f "$sandbox_dir/application_default_credentials.json" ]; then
+      echo "  note: no ADC yet for this profile. run: gshell app-login"
+    elif ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+      echo "  note: ADC is not valid. run: gshell app-login"
+    fi
+
     echo "  exit to return to normal shell"
 
     exec "${SHELL:-/bin/bash}" -i
   )
+}
+
+# Run gcloud user login inside an active profile.
+_gshell_cmd_login() {
+  _gshell_require_active "gshell login" || return 1
+  gcloud auth login --no-launch-browser "$@"
+}
+
+# Run application-default login, inheriting the profile's impersonation config.
+_gshell_cmd_app_login() {
+  _gshell_require_active "gshell app-login" || return 1
+
+  local user_override=0
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --impersonate-service-account|--impersonate-service-account=*)
+        user_override=1
+        break
+        ;;
+    esac
+  done
+
+  local -a app_login_cmd
+  app_login_cmd=(gcloud auth application-default login --no-launch-browser)
+  if [ "$user_override" -eq 0 ]; then
+    local impersonate
+    impersonate="$(gcloud config get-value auth/impersonate_service_account 2>/dev/null)"
+    if [ -n "$impersonate" ] && [ "$impersonate" != "(unset)" ]; then
+      app_login_cmd+=(--impersonate-service-account="$impersonate")
+    fi
+  fi
+
+  "${app_login_cmd[@]}" "$@"
+  local rc=$?
+
+  if [ "$rc" -eq 0 ] && [ -f "$CLOUDSDK_CONFIG/application_default_credentials.json" ]; then
+    export GOOGLE_APPLICATION_CREDENTIALS="$CLOUDSDK_CONFIG/application_default_credentials.json"
+  fi
+  return "$rc"
+}
+
+# Main entrypoint.
+gshell() {
+  local subcommand="${1:-}"
+  case "$subcommand" in
+    login)
+      shift
+      _gshell_cmd_login "$@"
+      ;;
+    app-login)
+      shift
+      _gshell_cmd_app_login "$@"
+      ;;
+    *)
+      _gshell_cmd_activate "$@"
+      ;;
+  esac
 }
 {{ end }}

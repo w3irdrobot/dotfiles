@@ -1,17 +1,18 @@
 # shellcheck shell=bash
 #
-# Custom PS1 prompt with Dracula colors
-# Displays: directory | git branch/status | AWS profile | gcloud project | k8s context (if KUBECONFIG set)
-# Two-line prompt with ₿ character (green=success, red=error)
+# Custom PS1 prompt with Kestrel colors
+# Displays: directory | git branch/status | AWS profile | gcloud profile |
+# k8s context (if KUBECONFIG set)
+# Two-line prompt with ₿ character (rust=success, bright rust=error)
 
 # Color palette (using true color)
-__prompt_green='\[\e[38;2;80;250;123m\]'
-__prompt_pink='\[\e[38;2;255;121;198m\]'
-__prompt_red='\[\e[38;2;255;85;85m\]'
-__prompt_purple='\[\e[38;2;189;147;249m\]'
-__prompt_blue='\[\e[38;2;139;233;253m\]'
-__prompt_orange='\[\e[38;2;247;147;26m\]'   # Bitcoin orange (#F7931A)
-__prompt_mustard='\[\e[38;2;225;219;88m\]'   # Classic mustard (#FFDB58)
+__prompt_green='\[\e[38;2;229;191;141m\]'    # #E5BF8D gold success
+__prompt_pink='\[\e[38;2;200;107;52m\]'      # #C86B34 git branch
+__prompt_red='\[\e[38;2;217;117;58m\]'       # #D9753A errors
+__prompt_purple='\[\e[38;2;176;199;221m\]'   # #B0C7DD bright wing blue
+__prompt_blue='\[\e[38;2;138;168;197m\]'     # #8AA8C5 wing blue
+__prompt_orange='\[\e[38;2;229;191;141m\]'  # #E5BF8D bitcoin prompt
+__prompt_mustard='\[\e[38;2;156;150;138m\]'  # #9C968A muted feather
 __prompt_reset='\[\e[0m\]'
 
 # Directory display:
@@ -29,14 +30,14 @@ __prompt_dir() {
         if [[ "$dir" == "$git_root" ]]; then
             echo "$repo_name"
         else
-            echo "$repo_name${dir#$git_root}"
+            echo "$repo_name${dir#"$git_root"}"
         fi
     elif [[ "$dir" == "$HOME"* ]]; then
         dir="${dir/#$HOME/\~}"
         local parts
         IFS='/' read -ra parts <<< "$dir"
         if (( ${#parts[@]} > 3 )); then
-            echo "~/.../${parts[-2]}/${parts[-1]}"
+            printf '%c/.../%s/%s\n' '~' "${parts[-2]}" "${parts[-1]}"
         else
             echo "$dir"
         fi
@@ -62,27 +63,17 @@ __prompt_aws() {
     echo "  ${profile}"
 }
 
-# Google Cloud project (only show if GSHELL_ACTIVE is set, read from config file - no gcloud CLI calls)
+# Google Cloud profile (only show if GSHELL_ACTIVE is set, read from env/config file)
 __prompt_gcloud() {
-    # Only show gcloud info if gshell is active
     [[ -n "${GSHELL_ACTIVE:-}" ]] || return
-    
-    # Try env vars first
-    local project="${CLOUDSDK_CORE_PROJECT:-${GCLOUD_PROJECT:-${GOOGLE_CLOUD_PROJECT:-}}}"
-    
-    # If no env var, read from gcloud config file
-    if [[ -z "$project" && -n "${CLOUDSDK_CONFIG:-}" ]]; then
-        # Read active config name
-        local active_config
-        active_config=$(cat "$CLOUDSDK_CONFIG/active_config" 2>/dev/null)
-        if [[ -n "$active_config" ]]; then
-            # Read project from the active configuration file
-            project=$(grep -E '^project\s*=' "$CLOUDSDK_CONFIG/configurations/config_$active_config" 2>/dev/null | sed -E 's/^[^=]+=\s*//' | tr -d '[:space:]')
-        fi
+
+    local profile="${CLOUDSDK_ACTIVE_CONFIG_NAME:-}"
+    if [[ -z "$profile" && -n "${CLOUDSDK_CONFIG:-}" ]]; then
+        profile=$(cat "$CLOUDSDK_CONFIG/active_config" 2>/dev/null)
     fi
-    
-    [[ -n "$project" && "$project" != "(unset)" ]] || return
-    echo "  ☁ ${project}"
+
+    [[ -n "$profile" ]] || return
+    echo "  ☁ ${profile}"
 }
 
 # Kubernetes context (only if KUBECONFIG is set)

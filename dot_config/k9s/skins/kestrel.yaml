@@ -1,20 +1,20 @@
 # -----------------------------------------------------------------------------
-# Dracula skin
+# Kestrel skin
 # -----------------------------------------------------------------------------
 
 # Styles...
-foreground: &foreground "#f8f8f2"
-background: &background "#282a36"
-current_line: &current_line "#44475a"
-selection: &selection "#44475a"
-comment: &comment "#6272a4"
-cyan: &cyan "#8be9fd"
-green: &green "#50fa7b"
-orange: &orange "#ffb86c"
-pink: &pink "#ff79c6"
-purple: &purple "#bd93f9"
-red: &red "#ff5555"
-yellow: &yellow "#f1fa8c"
+foreground: &foreground "#F8F4EC"
+background: &background "#1A2028"
+current_line: &current_line "#202834"
+selection: &selection "#384454"
+comment: &comment "#6F8EAD"
+cyan: &cyan "#BDD2E4"
+green: &green "#E5BF8D"
+orange: &orange "#E78A50"
+pink: &pink "#C86B34"
+purple: &purple "#8AA8C5"
+red: &red "#D9753A"
+yellow: &yellow "#D8C3A0"
 
 # Skin...
 k9s:
