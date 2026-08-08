@@ -1,0 +1,17 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+printf 'Installing Pop!_OS archive packages...\n'
+sudo apt-get update
+packages=(
+{{ include ".chezmoitemplates/pop-apt-packages" -}}
+)
+sudo apt-get install --yes --no-install-recommends "${packages[@]}"
+
+mkdir -p "${HOME}/.local/bin"
+ln -sfn /usr/bin/batcat "${HOME}/.local/bin/bat"
+ln -sfn /usr/bin/fdfind "${HOME}/.local/bin/fd"
+{{ end -}}

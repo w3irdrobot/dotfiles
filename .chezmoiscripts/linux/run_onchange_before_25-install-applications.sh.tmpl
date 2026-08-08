@@ -1,0 +1,33 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+flatpak_apps=()
+{{ if .install_telegram -}}
+flatpak_apps+=(org.telegram.desktop)
+{{ end -}}
+{{ if .install_thunderbird -}}
+flatpak_apps+=(org.mozilla.thunderbird)
+{{ end -}}
+{{ if .install_bitwarden -}}
+flatpak_apps+=(com.bitwarden.desktop)
+{{ end -}}
+{{ if .install_discord -}}
+flatpak_apps+=(com.discordapp.Discord)
+{{ end -}}
+{{ if .install_spotify -}}
+flatpak_apps+=(com.spotify.Client)
+{{ end -}}
+{{ if .install_slack -}}
+flatpak_apps+=(com.slack.Slack)
+{{ end -}}
+{{ if .install_tor_browser -}}
+flatpak_apps+=(org.torproject.torbrowser-launcher)
+{{ end -}}
+
+if [[ ${#flatpak_apps[@]} -gt 0 ]]; then
+    flatpak remote-add --user --if-not-exists \
+        flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+    flatpak install --user --noninteractive --or-update flathub "${flatpak_apps[@]}"
+fi
+{{ end -}}

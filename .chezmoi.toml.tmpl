@@ -1,9 +1,26 @@
 [data]
     email = {{ promptStringOnce . "email" "Git email address" | quote }}
-    install_slack = {{ promptBoolOnce . "install_slack" "Install Slack?" true }}
+    install_slack = {{ promptBoolOnce . "install_slack" "Install Slack?" false }}
     install_gcloud = {{ promptBoolOnce . "install_gcloud" "Install Google Cloud SDK?" false }}
     install_nvm = {{ promptBoolOnce . "install_nvm" "Install nvm (Node Version Manager)?" false }}
     install_kubernetes_tools = {{ promptBoolOnce . "install_kubernetes_tools" "Install Kubernetes tools (kubectl, k9s, helm)?" true }}
+{{ if eq .chezmoi.os "linux" -}}
+    linux_distribution = {{ output "sh" "-c" ". /etc/os-release && printf %s \"$ID\"" | quote }}
+    linux_version = {{ output "sh" "-c" ". /etc/os-release && printf %s \"$VERSION_ID\"" | quote }}
+    linux_codename = {{ output "sh" "-c" ". /etc/os-release && printf %s \"${VERSION_CODENAME:-}\"" | quote }}
+    linux_architecture = {{ output "uname" "-m" | trim | quote }}
+    install_brave = {{ promptBoolOnce . "install_brave" "Install Brave?" true }}
+    install_vscodium = {{ promptBoolOnce . "install_vscodium" "Install VSCodium?" true }}
+    install_mullvad = {{ promptBoolOnce . "install_mullvad" "Install Mullvad VPN?" true }}
+    install_signal = {{ promptBoolOnce . "install_signal" "Install Signal?" true }}
+    install_bitwarden = {{ promptBoolOnce . "install_bitwarden" "Install Bitwarden?" true }}
+    install_discord = {{ promptBoolOnce . "install_discord" "Install Discord?" true }}
+    install_spotify = {{ promptBoolOnce . "install_spotify" "Install Spotify?" true }}
+    install_telegram = {{ promptBoolOnce . "install_telegram" "Install Telegram?" true }}
+    install_thunderbird = {{ promptBoolOnce . "install_thunderbird" "Install Thunderbird?" true }}
+    install_1password = {{ promptBoolOnce . "install_1password" "Install 1Password?" false }}
+    install_tor_browser = {{ promptBoolOnce . "install_tor_browser" "Install Tor Browser?" false }}
+{{ end -}}
     {{- $mounts := output "sh" "-c" "df -P | tail -n +2 | awk '{print $NF}' | grep -vE '^/(boot|dev|proc|sys|run|snap|tmp)?$' | sort -u" | trim | splitList "\n" }}
     {{- $mount := promptChoiceOnce . "bitcoin_datadir" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
     bitcoin_datadir = {{ printf "%s/bitcoin" $mount | quote }}

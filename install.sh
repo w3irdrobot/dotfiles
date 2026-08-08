@@ -20,13 +20,31 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 detect_os() {
     case "$(uname -s)" in
         Darwin*) OS="darwin" ;;
-        Linux*)  OS="linux" ;;
+        Linux*)
+            if [[ ! -r /etc/os-release ]]; then
+                log_error "Cannot identify this Linux distribution: /etc/os-release is missing"
+                exit 1
+            fi
+
+            # shellcheck source=/dev/null
+            source /etc/os-release
+            if [[ "${ID:-}" != "pop" || "${VERSION_ID:-}" != "24.04" ]]; then
+                log_error "Unsupported Linux distribution: ${PRETTY_NAME:-unknown}"
+                log_error "This installer supports Pop!_OS 24.04 LTS only."
+                exit 1
+            fi
+            if [[ "$(uname -m)" != "x86_64" ]]; then
+                log_error "Unsupported architecture: $(uname -m) (x86_64 required)"
+                exit 1
+            fi
+            OS="linux"
+            ;;
         *)
             log_error "Unsupported operating system: $(uname -s)"
             exit 1
             ;;
     esac
-    log_info "Detected OS: $OS"
+    log_info "Detected OS: ${PRETTY_NAME:-$OS} ($(uname -m))"
 }
 
 install_chezmoi() {

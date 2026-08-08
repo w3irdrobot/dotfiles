@@ -1,0 +1,42 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+packages=(
+    containerd.io
+    docker-buildx-plugin
+    docker-ce
+    docker-ce-cli
+    docker-compose-plugin
+    gh
+)
+
+{{ if .install_brave -}}
+packages+=(brave-browser)
+{{ end -}}
+{{ if .install_vscodium -}}
+packages+=(codium)
+{{ end -}}
+{{ if .install_mullvad -}}
+packages+=(mullvad-vpn)
+{{ end -}}
+{{ if .install_signal -}}
+packages+=(signal-desktop)
+{{ end -}}
+{{ if .install_1password -}}
+packages+=(1password)
+{{ end -}}
+{{ if .install_gcloud -}}
+packages+=(google-cloud-cli)
+{{ if .install_kubernetes_tools -}}
+packages+=(google-cloud-cli-gke-gcloud-auth-plugin)
+{{ end -}}
+{{ end -}}
+{{ if .install_kubernetes_tools -}}
+packages+=(kubectl)
+{{ end -}}
+
+printf 'Installing official vendor packages...\n'
+sudo apt-get install --yes --no-install-recommends "${packages[@]}"
+{{ end -}}

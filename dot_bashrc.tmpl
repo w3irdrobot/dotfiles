@@ -5,22 +5,22 @@
 source "${HOME}/.init"
 
 # initialize local specific environment
-if [[ -a "${XDG_CONFIG_HOME}/bash/.init" ]]; then
+if [[ -e "${XDG_CONFIG_HOME}/bash/.init" ]]; then
     # shellcheck source=../.config/bash/.init
     source "${XDG_CONFIG_HOME}/bash/.init"
 fi
 
-if [[ -a "${XDG_CONFIG_HOME}/bash/.variables" ]]; then
+if [[ -e "${XDG_CONFIG_HOME}/bash/.variables" ]]; then
     # shellcheck source=../.config/bash/.variables
     source "${XDG_CONFIG_HOME}/bash/.variables"
 fi
 
-if [[ -a "${XDG_CONFIG_HOME}/bash/.aliases" ]]; then
+if [[ -e "${XDG_CONFIG_HOME}/bash/.aliases" ]]; then
     # shellcheck source=../.config/bash/.aliases
     source "${XDG_CONFIG_HOME}/bash/.aliases"
 fi
 
-if [[ -a "${XDG_CONFIG_HOME}/bash/.functions" ]]; then
+if [[ -e "${XDG_CONFIG_HOME}/bash/.functions" ]]; then
     # shellcheck source=../.config/bash/.functions
     source "${XDG_CONFIG_HOME}/bash/.functions"
 fi
@@ -43,14 +43,20 @@ fi
 {{ end }}
 
 # rustup
-source "$HOME/.cargo/env"
+if [[ -f "$HOME/.cargo/env" ]]; then
+    source "$HOME/.cargo/env"
+fi
 
 # initialize fzf
-eval "$(fzf --bash)"
+if command -v fzf >/dev/null 2>&1; then
+    eval "$(fzf --bash)"
+fi
 
 # initialize custom prompt
 # shellcheck source=./.prompt
 source "${HOME}/.prompt"
 
 # initialize zoxide
-eval "$(zoxide init bash)"
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init bash)"
+fi

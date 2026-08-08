@@ -1,0 +1,21 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+distribution="{{ .linux_distribution }}"
+version="{{ .linux_version }}"
+architecture="{{ .linux_architecture }}"
+
+if [[ "$distribution" != "pop" || "$version" != "24.04" ]]; then
+    printf 'Unsupported Linux target: %s %s\n' \
+        "$distribution" "$version" >&2
+    printf 'These dotfiles support Pop!_OS 24.04 LTS only.\n' >&2
+    exit 1
+fi
+
+if [[ "$architecture" != "x86_64" ]]; then
+    printf 'Unsupported architecture: %s (x86_64 required)\n' \
+        "$architecture" >&2
+    exit 1
+fi
+{{ end -}}

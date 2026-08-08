@@ -1,0 +1,218 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+temp_dir="$(mktemp -d)"
+trap 'rm -rf "$temp_dir"' EXIT
+
+install_key() {
+    local url="$1"
+    local destination="$2"
+    local expected_fingerprint="$3"
+    local downloaded="${temp_dir}/key"
+    local dearmored="${temp_dir}/key.gpg"
+    local actual_fingerprint
+
+    curl --proto '=https' --tlsv1.2 -fsSL "$url" -o "$downloaded"
+    actual_fingerprint="$(
+        gpg --batch --show-keys --with-colons "$downloaded" | \
+            awk -F: '$1 == "fpr" { print $10; exit }'
+    )"
+    if [[ "$actual_fingerprint" != "$expected_fingerprint" ]]; then
+        printf 'Unexpected signing key fingerprint from %s: %s\n' \
+            "$url" "$actual_fingerprint" >&2
+        exit 1
+    fi
+    gpg --batch --yes --dearmor --output "$dearmored" "$downloaded"
+    sudo install -Dm0644 "$dearmored" "$destination"
+}
+
+install_source() {
+    local destination="$1"
+    local source_file
+    source_file="${temp_dir}/$(basename "$destination")"
+
+    cat > "$source_file"
+    sudo install -Dm0644 "$source_file" "$destination"
+}
+
+remove_repository() {
+    sudo rm -f "$1" "$2"
+}
+
+printf 'Configuring official vendor repositories...\n'
+
+install_key \
+    "https://download.docker.com/linux/ubuntu/gpg" \
+    "/etc/apt/keyrings/docker.gpg" \
+    "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+install_source "/etc/apt/sources.list.d/docker.sources" <<'EOF'
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: noble
+Components: stable
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/docker.gpg
+EOF
+
+install_key \
+    "https://cli.github.com/packages/githubcli-archive-keyring.gpg" \
+    "/etc/apt/keyrings/github-cli.gpg" \
+    "2C6106201985B60E6C7AC87323F3D4EA75716059"
+install_source "/etc/apt/sources.list.d/github-cli.sources" <<'EOF'
+Types: deb
+URIs: https://cli.github.com/packages
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/github-cli.gpg
+EOF
+
+{{ if .install_brave -}}
+install_key \
+    "https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg" \
+    "/etc/apt/keyrings/brave-browser.gpg" \
+    "DBF1A116C220B8C7164F98230686B78420038257"
+install_source "/etc/apt/sources.list.d/brave-browser.sources" <<'EOF'
+Types: deb
+URIs: https://brave-browser-apt-release.s3.brave.com/
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/brave-browser.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/brave-browser.sources" \
+    "/etc/apt/keyrings/brave-browser.gpg"
+{{ end -}}
+
+{{ if .install_vscodium -}}
+install_key \
+    "https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg" \
+    "/etc/apt/keyrings/vscodium.gpg" \
+    "1302DE60231889FE1EBACADC54678CF75A278D9C"
+install_source "/etc/apt/sources.list.d/vscodium.sources" <<'EOF'
+Types: deb
+URIs: https://download.vscodium.com/debs
+Suites: vscodium
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/vscodium.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/vscodium.sources" \
+    "/etc/apt/keyrings/vscodium.gpg"
+{{ end -}}
+
+{{ if .install_mullvad -}}
+install_key \
+    "https://repository.mullvad.net/deb/mullvad-keyring.asc" \
+    "/etc/apt/keyrings/mullvad.gpg" \
+    "A1198702FC3E0A09A9AE5B75D5A1D4F266DE8DDF"
+install_source "/etc/apt/sources.list.d/mullvad.sources" <<'EOF'
+Types: deb
+URIs: https://repository.mullvad.net/deb/stable
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/mullvad.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/mullvad.sources" \
+    "/etc/apt/keyrings/mullvad.gpg"
+{{ end -}}
+
+{{ if .install_signal -}}
+install_key \
+    "https://updates.signal.org/desktop/apt/keys.asc" \
+    "/etc/apt/keyrings/signal-desktop.gpg" \
+    "DBA36B5181D0C816F630E889D980A17457F6FB06"
+install_source "/etc/apt/sources.list.d/signal-desktop.sources" <<'EOF'
+Types: deb
+URIs: https://updates.signal.org/desktop/apt
+Suites: xenial
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/signal-desktop.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/signal-desktop.sources" \
+    "/etc/apt/keyrings/signal-desktop.gpg"
+{{ end -}}
+
+{{ if .install_1password -}}
+install_key \
+    "https://downloads.1password.com/linux/keys/1password.asc" \
+    "/etc/apt/keyrings/1password.gpg" \
+    "3FEF9748469ADBE15DA7CA80AC2D62742012EA22"
+install_source "/etc/apt/sources.list.d/1password.sources" <<'EOF'
+Types: deb
+URIs: https://downloads.1password.com/linux/debian/amd64
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/1password.gpg
+EOF
+downloaded_policy="${temp_dir}/1password.pol"
+curl --proto '=https' --tlsv1.2 -fsSL \
+    "https://downloads.1password.com/linux/debian/debsig/1password.pol" \
+    -o "$downloaded_policy"
+sudo install -Dm0644 \
+    "$downloaded_policy" \
+    "/etc/debsig/policies/AC2D62742012EA22/1password.pol"
+sudo install -Dm0644 \
+    "/etc/apt/keyrings/1password.gpg" \
+    "/usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg"
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/1password.sources" \
+    "/etc/apt/keyrings/1password.gpg"
+sudo rm -rf \
+    "/etc/debsig/policies/AC2D62742012EA22" \
+    "/usr/share/debsig/keyrings/AC2D62742012EA22"
+{{ end -}}
+
+{{ if .install_gcloud -}}
+install_key \
+    "https://packages.cloud.google.com/apt/doc/apt-key.gpg" \
+    "/etc/apt/keyrings/google-cloud.gpg" \
+    "35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3"
+install_source "/etc/apt/sources.list.d/google-cloud-sdk.sources" <<'EOF'
+Types: deb
+URIs: https://packages.cloud.google.com/apt
+Suites: cloud-sdk
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/google-cloud.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/google-cloud-sdk.sources" \
+    "/etc/apt/keyrings/google-cloud.gpg"
+{{ end -}}
+
+{{ if .install_kubernetes_tools -}}
+install_key \
+    "https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key" \
+    "/etc/apt/keyrings/kubernetes.gpg" \
+    "DE15B14486CD377B9E876E1A234654DA9A296436"
+install_source "/etc/apt/sources.list.d/kubernetes.sources" <<'EOF'
+Types: deb
+URIs: https://pkgs.k8s.io/core:/stable:/v1.36/deb/
+Suites: /
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/kubernetes.gpg
+EOF
+{{ else -}}
+remove_repository \
+    "/etc/apt/sources.list.d/kubernetes.sources" \
+    "/etc/apt/keyrings/kubernetes.gpg"
+{{ end -}}
+
+sudo apt-get update
+{{ end -}}

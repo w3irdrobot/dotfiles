@@ -1,0 +1,31 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'Installing language-owned development tools...\n'
+rustup default stable
+
+# shellcheck source=/dev/null
+source "${HOME}/.cargo/env"
+cargo install --locked \
+    cargo-binstall@1.21.1 \
+    cargo-generate@0.23.14 \
+    cargo-nextest@0.9.143 \
+    cargo-outdated@0.19.0 \
+    cargo-release@1.1.4
+
+{{ if .install_nvm -}}
+nvm_version="v0.40.6"
+nvm_commit="b6cf55f6adf3b953d0e5e00a4049444e300e3af8"
+if [[ ! -d "${HOME}/.nvm/.git" ]]; then
+    if [[ -e "${HOME}/.nvm" ]]; then
+        printf '%s\n' "Cannot install NVM: ${HOME}/.nvm exists and is not a Git checkout." >&2
+        exit 1
+    fi
+    git clone --filter=blob:none https://github.com/nvm-sh/nvm.git "${HOME}/.nvm"
+fi
+
+git -C "${HOME}/.nvm" fetch --depth=1 origin "refs/tags/${nvm_version}"
+git -C "${HOME}/.nvm" checkout --detach "$nvm_commit"
+{{ end -}}
+{{ end -}}

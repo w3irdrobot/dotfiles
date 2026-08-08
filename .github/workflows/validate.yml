@@ -1,0 +1,93 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  templates:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+          go install github.com/twpayne/chezmoi/v2@v2.70.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Render Pop scripts
+        env:
+          POP_DATA_ENABLED: >-
+            {"chezmoi":{"os":"linux"},"linux_distribution":"pop",
+            "linux_version":"24.04","linux_architecture":"x86_64",
+            "install_gcloud":true,"install_kubernetes_tools":true,
+            "install_nvm":true,"install_slack":true,"install_brave":true,
+            "install_vscodium":true,"install_mullvad":true,
+            "install_signal":true,"install_bitwarden":true,
+            "install_discord":true,"install_spotify":true,
+            "install_telegram":true,"install_thunderbird":true,
+            "install_1password":true,"install_tor_browser":true}
+          POP_DATA_DISABLED: >-
+            {"chezmoi":{"os":"linux"},"linux_distribution":"pop",
+            "linux_version":"24.04","linux_architecture":"x86_64",
+            "install_gcloud":false,"install_kubernetes_tools":false,
+            "install_nvm":false,"install_slack":false,"install_brave":false,
+            "install_vscodium":false,"install_mullvad":false,
+            "install_signal":false,"install_bitwarden":false,
+            "install_discord":false,"install_spotify":false,
+            "install_telegram":false,"install_thunderbird":false,
+            "install_1password":false,"install_tor_browser":false}
+          MAC_DATA: >-
+            {"chezmoi":{"os":"darwin"},"install_gcloud":true,
+            "install_kubernetes_tools":true,"install_nvm":true,
+            "install_slack":true}
+        run: |
+          mkdir -p /tmp/pop-render
+          for profile in ENABLED DISABLED; do
+              data_variable="POP_DATA_${profile}"
+              for template in .chezmoiscripts/linux/*.tmpl; do
+                  output="/tmp/pop-render/${profile}-$(basename "${template%.tmpl}")"
+                  chezmoi execute-template \
+                      --override-data "${!data_variable}" \
+                      --file "$template" \
+                  --output "$output"
+              done
+          done
+          mkdir -p /tmp/mac-render
+          for template in \
+              dot_aliases.tmpl \
+              dot_bash_profile.tmpl \
+              dot_bashrc.tmpl \
+              dot_variables.tmpl; do
+              output="/tmp/mac-render/$(basename "${template%.tmpl}")"
+              chezmoi execute-template \
+                  --override-data "$MAC_DATA" \
+                  --file "$template" \
+                  --output "$output"
+          done
+
+      - name: Resolve Noble archive packages
+        run: |
+          sudo apt-get update
+          while read -r package; do
+              apt-cache show "$package" >/dev/null
+          done < .chezmoitemplates/pop-apt-packages
+
+      - name: Validate shell and platform policy
+        run: |
+          shellcheck --exclude=SC1091 \
+              install.sh \
+              /tmp/mac-render/* \
+              /tmp/pop-render/*
+          if rg --line-number \
+              'yay|pacman|makepkg|paccache|AUR|hypr|waybar|wofi|mako' \
+              /tmp/pop-render; then
+              exit 1
+          fi

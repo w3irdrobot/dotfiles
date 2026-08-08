@@ -1,0 +1,12 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'Configuring Docker access...\n'
+sudo groupadd -f docker
+sudo usermod -aG docker "$USER"
+sudo systemctl enable --now docker.service
+
+printf 'Docker configured; log out once for group membership to take effect.\n'
+
+{{ end -}}

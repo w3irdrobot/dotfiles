@@ -2,21 +2,13 @@ README.md
 install.sh
 LICENSE
 justfile
-
-# System configs are handled by scripts, not chezmoi's normal apply
-system/
+docs/
 
 # Linux-only configs (ignore on macOS)
 {{ if eq .chezmoi.os "darwin" }}
 .hushlogin
 .bitcoin/
 .config/ghostty/config.ghostty
-.config/hypr/
-.config/mako/
-.config/waybar/
-.config/wofi/
-.local/bin/hyprland_clamshell
-.local/bin/wofi_launch
 {{ end }}
 
 # macOS-only configs (ignore on Linux)

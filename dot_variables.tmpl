@@ -42,7 +42,11 @@ export LANG="en_US.UTF-8"
 export HISTCONTROL=ignoreboth
 
 # terminal editor and configs
-export EDITOR="codium --wait"
+if command -v codium >/dev/null 2>&1; then
+    export EDITOR="codium --wait"
+else
+    export EDITOR="vim"
+fi
 export XDG_CONFIG_HOME="${HOME}/.config"
 
 {{ if eq .chezmoi.os "darwin" -}}
@@ -61,11 +65,6 @@ export PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 # Gnupg
 GPG_TTY=$(tty)
 export GPG_TTY
-
-{{ if eq .chezmoi.os "linux" -}}
-# OpenSSH (Linux)
-export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
-{{ end -}}
 
 # rust / cargo
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
@@ -99,5 +98,9 @@ export PATH="${HOME}/.local/bin:${PATH}"
 {{ if eq .chezmoi.os "darwin" -}}
 export BROWSER="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
 {{ else -}}
-export BROWSER="/usr/bin/brave"
+if command -v brave-browser >/dev/null 2>&1; then
+    export BROWSER="brave-browser"
+elif command -v xdg-open >/dev/null 2>&1; then
+    export BROWSER="xdg-open"
+fi
 {{ end -}}
