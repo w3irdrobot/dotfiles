@@ -19,8 +19,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck
-          go install github.com/twpayne/chezmoi/v2@v2.70.0
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.local/bin"
+          curl --proto '=https' --tlsv1.2 -fsSL \
+              https://github.com/twpayne/chezmoi/releases/download/v2.70.0/chezmoi_2.70.0_linux_amd64.tar.gz \
+              -o /tmp/chezmoi.tar.gz
+          printf '%s  %s\n' \
+              '32dbc87a4db7163d0f8c3156b631e3ee1cc6fed400f43ff467eca4211f2905e7' \
+              '/tmp/chezmoi.tar.gz' | sha256sum --check
+          tar -xzf /tmp/chezmoi.tar.gz -C "$HOME/.local/bin" chezmoi
+          rm -f /tmp/chezmoi.tar.gz
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Render Pop scripts
         env:
