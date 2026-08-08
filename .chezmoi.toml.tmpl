@@ -22,11 +22,13 @@
     install_tor_browser = {{ promptBoolOnce . "install_tor_browser" "Install Tor Browser?" false }}
 {{ end -}}
     {{- $mounts := output "sh" "-c" "df -P | tail -n +2 | awk '{print $NF}' | grep -vE '^/(boot|dev|proc|sys|run|snap|tmp)?$' | sort -u" | trim | splitList "\n" }}
-    {{- $mount := promptChoiceOnce . "bitcoin_datadir" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
-    bitcoin_datadir = {{ printf "%s/bitcoin" $mount | quote }}
+    {{- $mount := promptChoiceOnce . "bitcoin_mount" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    bitcoin_mount = {{ $mount | quote }}
+    bitcoin_datadir = {{ joinPath $mount "bitcoin" | quote }}
 
-    {{- $mount := promptChoiceOnce . "electrs_datadir" (printf "Select mount point for Electrs data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
-    electrs_datadir = {{ printf "%s/electrs" $mount | quote }}
+    {{- $mount := promptChoiceOnce . "electrs_mount" (printf "Select mount point for Electrs data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    electrs_mount = {{ $mount | quote }}
+    electrs_datadir = {{ joinPath $mount "electrs" | quote }}
 
 [diff]
     command = "difft"

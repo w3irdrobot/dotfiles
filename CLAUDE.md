@@ -99,14 +99,14 @@
 - Missing fonts/themes: the repo never bundles proprietary assets; document manual download links inside commit descriptions instead.
 - Template rendering errors: `chezmoi cat --template=path/to/file` shows the fully rendered output without touching the filesystem.
 ## Data & Mocking Guidelines
-- Template prompts rely on `chezmoi` data keys (`data.email`, `bitcoin_datadir`); provide safe defaults in tests but never commit personal info.
+- Template prompts rely on `chezmoi` data keys such as `email` and `bitcoin_mount`; provide safe defaults in tests but never commit personal info.
 - When mocking installation commands, guard them with `command -v` checks like the existing scripts to avoid re-install loops during CI.
 - `install.sh` expects to run via `curl | bash`; test modifications locally with `bash install.sh` and capture logs for regression notes.
 - Custom API endpoints (weather, Mullvad, mempool) should be parameterized via environment variables or script flags before adding secrets.
 - For COSMIC changes that cannot be exercised on macOS, mention the limitation and list the Pop VM checks still required.
 ## System & Secrets
 - `.chezmoiignore` purposefully skips platform-specific configs; mention these exclusions in PR descriptions if you change them.
-- The Bitcoin datadir prompt uses mounted volumes discovered via `df`; preserve that logic (lines 7-9 in `.chezmoi.toml.tmpl`) when editing prompts.
+- The Bitcoin and Electrs prompts use mounted volumes discovered via `df`; preserve that logic when editing prompts.
 - Secrets such as `machine_export`, `dracula-pro`, or `become_pass` must never leave the ignore list; double-check before committing assets referencing them.
 - Use `.gitconfig_local` for user-specific overrides, `.config/bash/.variables` for environment secrets, and `.config/bash/.aliases` for personal tweaks.
 - When editing `.local/bin` scripts referenced in configs, ensure file paths remain `${HOME}`-relative.

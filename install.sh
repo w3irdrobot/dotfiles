@@ -65,14 +65,51 @@ install_chezmoi() {
     log_success "chezmoi installed"
 }
 
+chezmoi_is_initialized() {
+    local required_data='
+{{ .email }}
+{{ .install_slack }}
+{{ .install_gcloud }}
+{{ .install_nvm }}
+{{ .install_kubernetes_tools }}
+{{ .bitcoin_mount }}
+{{ .bitcoin_datadir }}
+{{ .electrs_mount }}
+{{ .electrs_datadir }}'
+
+    if [[ "$OS" == "linux" ]]; then
+        required_data+='
+{{ .linux_distribution }}
+{{ .linux_version }}
+{{ .linux_codename }}
+{{ .linux_architecture }}
+{{ .install_brave }}
+{{ .install_vscodium }}
+{{ .install_mullvad }}
+{{ .install_signal }}
+{{ .install_bitwarden }}
+{{ .install_discord }}
+{{ .install_spotify }}
+{{ .install_telegram }}
+{{ .install_thunderbird }}
+{{ .install_1password }}
+{{ .install_tor_browser }}'
+    fi
+
+    chezmoi execute-template "$required_data" >/dev/null 2>&1
+}
+
 apply_dotfiles() {
     log_info "Initializing dotfiles with chezmoi..."
     log_info "This will install packages and configure your system..."
 
-    if [ -d "$HOME/.local/share/chezmoi" ]; then
+    if [[ -d "$HOME/.local/share/chezmoi" ]] && chezmoi_is_initialized; then
         log_info "Dotfiles already initialized, updating..."
         chezmoi update
     else
+        if [[ -d "$HOME/.local/share/chezmoi" ]]; then
+            log_info "Previous initialization is incomplete, resuming prompts..."
+        fi
         chezmoi init --apply "$DOTFILES_REPO"
     fi
 
