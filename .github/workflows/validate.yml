@@ -63,9 +63,10 @@ jobs:
               for template in .chezmoiscripts/linux/*.tmpl; do
                   output="/tmp/pop-render/${profile}-$(basename "${template%.tmpl}")"
                   chezmoi execute-template \
+                      --source "$GITHUB_WORKSPACE" \
                       --override-data "${!data_variable}" \
                       --file "$template" \
-                  --output "$output"
+                      --output "$output"
               done
           done
           mkdir -p /tmp/mac-render
@@ -76,6 +77,7 @@ jobs:
               dot_variables.tmpl; do
               output="/tmp/mac-render/$(basename "${template%.tmpl}")"
               chezmoi execute-template \
+                  --source "$GITHUB_WORKSPACE" \
                   --override-data "$MAC_DATA" \
                   --file "$template" \
                   --output "$output"
