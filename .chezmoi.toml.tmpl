@@ -21,12 +21,21 @@
     install_1password = {{ promptBoolOnce . "install_1password" "Install 1Password?" false }}
     install_tor_browser = {{ promptBoolOnce . "install_tor_browser" "Install Tor Browser?" false }}
 {{ end -}}
-    {{- $mounts := output "sh" "-c" "df -P | tail -n +2 | awk '{print $NF}' | grep -vE '^/(boot|dev|proc|sys|run|snap|tmp)?$' | sort -u" | trim | splitList "\n" }}
-    {{- $mount := promptChoiceOnce . "bitcoin_mount" (printf "Select mount point for Bitcoin data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    {{- $mounts := output "sh" "-c" "df -P | awk 'NR > 1 { mount = $6; for (i = 7; i <= NF; i++) mount = mount \" \" $i; if (mount !~ /[[:space:]]/ && ($1 ~ /^\\/dev\\// || mount == \"/\") && (mount == \"/\" || mount ~ /^\\/Volumes\\// || mount ~ /^\\/media\\// || mount ~ /^\\/run\\/media\\// || mount ~ /^\\/mnt\\//)) print mount }' | sort -u" | trim | splitList "\n" }}
+    {{- $numberedMounts := list }}
+    {{- range $index, $mount := $mounts }}
+        {{- $numberedMounts = append $numberedMounts (printf "%d. %s" (add $index 1) $mount) }}
+    {{- end }}
+    {{- $choicePrompt := printf "Select storage from this list:\n%s\nUse arrow keys and Enter, or type a number and press Enter" (join "\n" $numberedMounts) }}
+    {{- $choice := promptChoiceOnce . "bitcoin_mount_choice" (printf "Bitcoin data\n%s" $choicePrompt) $numberedMounts }}
+    {{- $mount := regexReplaceAll "^[0-9]+\\. " $choice "" }}
+    bitcoin_mount_choice = {{ $choice | quote }}
     bitcoin_mount = {{ $mount | quote }}
     bitcoin_datadir = {{ joinPath $mount "bitcoin" | quote }}
 
-    {{- $mount := promptChoiceOnce . "electrs_mount" (printf "Select mount point for Electrs data:\n%s\nMount point" (join "\n" $mounts)) $mounts }}
+    {{- $choice := promptChoiceOnce . "electrs_mount_choice" (printf "Electrs data\n%s" $choicePrompt) $numberedMounts }}
+    {{- $mount := regexReplaceAll "^[0-9]+\\. " $choice "" }}
+    electrs_mount_choice = {{ $choice | quote }}
     electrs_mount = {{ $mount | quote }}
     electrs_datadir = {{ joinPath $mount "electrs" | quote }}
 

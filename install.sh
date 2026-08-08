@@ -72,8 +72,10 @@ chezmoi_is_initialized() {
 {{ .install_gcloud }}
 {{ .install_nvm }}
 {{ .install_kubernetes_tools }}
+{{ .bitcoin_mount_choice }}
 {{ .bitcoin_mount }}
 {{ .bitcoin_datadir }}
+{{ .electrs_mount_choice }}
 {{ .electrs_mount }}
 {{ .electrs_datadir }}'
 
