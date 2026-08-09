@@ -24,6 +24,7 @@
     man-db
     minisign
     openssh-client
+    patchelf
     pinentry-gnome3
     pkg-config
     procps

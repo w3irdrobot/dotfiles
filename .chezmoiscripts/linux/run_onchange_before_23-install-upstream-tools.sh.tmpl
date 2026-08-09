@@ -128,6 +128,17 @@ if [[ ! -f "${font_dir}/.nerd-font-version" ]] || \
 fi
 
 ghostty_version="1.3.1"
+ghostty_bin="${HOME}/.local/bin/ghostty"
+ghostty_layer_shell="${HOME}/.local/lib/libgtk4-layer-shell.so"
+
+patch_ghostty_rpath() {
+    if [[ -x "$ghostty_bin" && -f "$ghostty_layer_shell" ]]; then
+        # shellcheck disable=SC2016 # The dynamic loader expands $ORIGIN.
+        patchelf --set-rpath '$ORIGIN/../lib' "$ghostty_bin"
+    fi
+}
+
+patch_ghostty_rpath
 if ! command -v ghostty >/dev/null 2>&1 || \
     ! ghostty --version 2>&1 | grep -Fq "$ghostty_version"; then
     printf 'Building Ghostty %s...\n' "$ghostty_version"
@@ -163,5 +174,11 @@ if ! command -v ghostty >/dev/null 2>&1 || \
             -Doptimize=ReleaseFast \
             -fno-sys=gtk4-layer-shell
     )
+    patch_ghostty_rpath
+fi
+
+if ldd "$ghostty_bin" | grep -F 'not found'; then
+    printf 'Ghostty has unresolved runtime libraries.\n' >&2
+    exit 1
 fi
 {{ end -}}
