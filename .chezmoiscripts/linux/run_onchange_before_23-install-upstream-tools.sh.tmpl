@@ -72,6 +72,26 @@ install_tar_binary \
     "d842e0e8c622c672a481b7dc6f0329009b64db96b2ba6041e56f4f93f0293b1c" \
     opencode
 
+bitcoin_version="31.1"
+if command -v bitcoind >/dev/null 2>&1 && \
+    bitcoind --version 2>&1 | grep -Fq "$bitcoin_version"; then
+    printf 'Bitcoin Core %s already installed.\n' "$bitcoin_version"
+else
+    printf 'Installing Bitcoin Core %s...\n' "$bitcoin_version"
+    bitcoin_archive="${temp_dir}/bitcoin-${bitcoin_version}.tar.gz"
+    bitcoin_extract_dir="${temp_dir}/bitcoin-${bitcoin_version}"
+    download \
+        "https://bitcoincore.org/bin/bitcoin-core-${bitcoin_version}/bitcoin-${bitcoin_version}-x86_64-linux-gnu.tar.gz" \
+        "$bitcoin_archive"
+    verify_sha256 \
+        "$bitcoin_archive" \
+        "b80d9c3e04da78fb6f0569685673418cf686fadba9042d926d13fb87ff503f9e"
+    mkdir -p "$bitcoin_extract_dir"
+    tar -xzf "$bitcoin_archive" --strip-components=1 -C "$bitcoin_extract_dir"
+    install -m0755 "${bitcoin_extract_dir}/bin/bitcoind" "${install_root}/bitcoind"
+    install -m0755 "${bitcoin_extract_dir}/bin/bitcoin-cli" "${install_root}/bitcoin-cli"
+fi
+
 {{ if .install_kubernetes_tools -}}
 install_tar_binary \
     k9s \
