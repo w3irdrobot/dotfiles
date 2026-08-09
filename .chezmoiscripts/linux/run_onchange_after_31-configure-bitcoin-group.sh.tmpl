@@ -1,0 +1,30 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+bitcoin_group="bitcoin"
+bitcoin_gid="30001"
+named_entry="$(getent group "$bitcoin_group" || true)"
+gid_entry="$(getent group "$bitcoin_gid" || true)"
+
+if [[ -n "$named_entry" ]]; then
+    IFS=: read -r _ _ existing_gid _ <<< "$named_entry"
+    if [[ "$existing_gid" != "$bitcoin_gid" ]]; then
+        printf 'Group %s already exists with GID %s; expected %s.\n' \
+            "$bitcoin_group" "$existing_gid" "$bitcoin_gid" >&2
+        exit 1
+    fi
+elif [[ -n "$gid_entry" ]]; then
+    IFS=: read -r existing_group _ _ _ <<< "$gid_entry"
+    printf 'GID %s already belongs to group %s; expected %s.\n' \
+        "$bitcoin_gid" "$existing_group" "$bitcoin_group" >&2
+    exit 1
+else
+    printf 'Creating group %s with GID %s...\n' "$bitcoin_group" "$bitcoin_gid"
+    sudo groupadd --gid "$bitcoin_gid" "$bitcoin_group"
+fi
+
+sudo usermod --append --groups "$bitcoin_group" "$USER"
+printf 'Added %s to %s; log out once for membership to take effect.\n' \
+    "$USER" "$bitcoin_group"
+{{ end -}}
