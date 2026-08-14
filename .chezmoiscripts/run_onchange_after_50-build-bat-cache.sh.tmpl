@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Kestrel theme hash: {{ include "dot_config/bat/themes/Kestrel.tmTheme" | sha256sum }}
+
+if command -v bat &>/dev/null; then
+    bat cache --build
+elif command -v batcat &>/dev/null; then
+    batcat cache --build
+else
+    printf 'Warning: bat is not installed; skipping theme cache build.\n' >&2
+fi
