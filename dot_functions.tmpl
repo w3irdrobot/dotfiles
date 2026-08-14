@@ -47,11 +47,12 @@ function config_git() {
       }
     ' | \
     sort -u | \
-    fzf --prompt="Select GPG key: " --height=40% --reverse --header="Select email/key for git config")
+    fzf --prompt="Select GPG key: " --height=40% --reverse --header="Select email/key for git config") || \
+    selected=""
 
   if [[ -z "${selected}" ]]; then
-    echo "No key selected. Aborting."
-    return 1
+    echo "No key selected. Skipping Git configuration."
+    return 0
   fi
 
   # Parse selected email and key
