@@ -8,6 +8,7 @@ docs/
 {{ if eq .chezmoi.os "darwin" }}
 .hushlogin
 .bitcoin/
+.config/cosmic/
 .config/ghostty/config.ghostty
 {{ end }}
 
