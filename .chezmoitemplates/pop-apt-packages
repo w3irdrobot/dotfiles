@@ -30,6 +30,7 @@
     procps
     ripgrep
     rustup
+    shellcheck
     unzip
     vim
     wl-clipboard

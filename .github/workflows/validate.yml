@@ -90,6 +90,11 @@ jobs:
               apt-cache show "$package" >/dev/null
           done < .chezmoitemplates/pop-apt-packages
 
+      - name: Validate upstream tool metadata
+        run: |
+          bash -n scripts/update-upstream-tools
+          shellcheck scripts/update-upstream-tools .chezmoitemplates/upstream-tools.sh
+
       - name: Validate shell and platform policy
         run: |
           shellcheck --exclude=SC1091 \

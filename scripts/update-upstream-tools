@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+manifest=".chezmoitemplates/upstream-tools.sh"
+
+usage() {
+    printf 'Usage: %s [--check]\n' "$0"
+}
+
+latest_github_version() {
+    local repository="$1"
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://api.github.com/repos/${repository}/releases/latest" |
+        jq -er '.tag_name | sub("^v"; "")'
+}
+
+latest_zig_version() {
+    curl --proto '=https' --tlsv1.2 -fsSL https://ziglang.org/download/index.json |
+        jq -er '[keys[] | select(test("^[0-9]+[.][0-9]+[.][0-9]+$"))] |
+            sort_by(split(".") | map(tonumber)) | last'
+}
+
+latest_bitcoin_version() {
+    local versions
+
+    versions="$(
+        curl --proto '=https' --tlsv1.2 -fsSL https://bitcoincore.org/bin/ |
+            perl -nle 'print $1 while /bitcoin-core-([0-9][0-9.]*)\//g'
+    )"
+    sort -Vu <<< "$versions" | tail -n 1
+}
+
+declare -A versions=(
+    [fzf]="$(latest_github_version junegunn/fzf)"
+    [difft]="$(latest_github_version Wilfred/difftastic)"
+    [lazygit]="$(latest_github_version jesseduffield/lazygit)"
+    [opencode]="$(latest_github_version anomalyco/opencode)"
+    [nono]="$(latest_github_version nolabs-ai/nono)"
+    [sparrow]="$(latest_github_version sparrowwallet/sparrow)"
+    [bitcoin]="$(latest_bitcoin_version)"
+    [k9s]="$(latest_github_version derailed/k9s)"
+    [helm]="$(latest_github_version helm/helm)"
+    [font]="$(latest_github_version ryanoasis/nerd-fonts)"
+    [ghostty]="$(latest_github_version ghostty-org/ghostty)"
+    [zig]="$(latest_zig_version)"
+)
+
+if [[ "${1:-}" == "--check" ]]; then
+    status=0
+    while IFS='=' read -r name value; do
+        [[ "$name" == *_version ]] || continue
+        tool="${name%_version}"
+        current="${value#\"}"
+        current="${current%\"}"
+        if [[ "$current" != "${versions[$tool]}" ]]; then
+            printf '%s: %s -> %s\n' "$tool" "$current" "${versions[$tool]}"
+            status=1
+        fi
+    done < "$manifest"
+    exit "$status"
+elif (( $# != 0 )); then
+    usage >&2
+    exit 2
+fi
+
+updated="$(mktemp)"
+trap 'rm -f "$updated" "${difft_archive:-}"' EXIT
+while IFS= read -r line; do
+    if [[ "$line" =~ ^([a-z]+)_version= ]]; then
+        tool="${BASH_REMATCH[1]}"
+        printf '%s_version="%s"\n' "$tool" "${versions[$tool]}"
+    else
+        printf '%s\n' "$line"
+    fi
+done < "$manifest" > "$updated"
+install -m0644 "$updated" "$manifest"
+
+difft_archive="$(mktemp)"
+curl --proto '=https' --tlsv1.2 -fsSL \
+    "https://github.com/Wilfred/difftastic/releases/download/${versions[difft]}/difft-x86_64-unknown-linux-gnu.tar.gz" \
+    -o "$difft_archive"
+difft_sha256="$(sha256sum "$difft_archive" | cut -d ' ' -f 1)"
+opencode_sha256="$(
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://api.github.com/repos/anomalyco/opencode/releases/tags/v${versions[opencode]}" |
+        jq -er '.assets[] | select(.name == "opencode-linux-x64.tar.gz") | .digest |
+            sub("^sha256:"; "")'
+)"
+while IFS= read -r line; do
+    if [[ "$line" == difft_sha256=* ]]; then
+        printf 'difft_sha256="%s"\n' "$difft_sha256"
+    elif [[ "$line" == opencode_sha256=* ]]; then
+        printf 'opencode_sha256="%s"\n' "$opencode_sha256"
+    else
+        printf '%s\n' "$line"
+    fi
+done < "$manifest" > "$updated"
+install -m0644 "$updated" "$manifest"
+
+printf 'Updated %s. Review release notes and run the validation workflow.\n' "$manifest"

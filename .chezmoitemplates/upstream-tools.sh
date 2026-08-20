@@ -1,0 +1,16 @@
+# shellcheck shell=bash
+# Versions and fallback digests for artifacts without signed upstream metadata.
+fzf_version="0.74.2"
+difft_version="0.70.0"
+difft_sha256="2997d2bbe620534edbd79b0049f00ce84eef3fedb15c7822456d58e38d8b05c9"
+lazygit_version="0.64.0"
+opencode_version="1.18.15"
+opencode_sha256="d842e0e8c622c672a481b7dc6f0329009b64db96b2ba6041e56f4f93f0293b1c"
+nono_version="0.73.0"
+sparrow_version="2.5.3"
+bitcoin_version="31.1"
+k9s_version="0.51.0"
+helm_version="4.2.3"
+font_version="3.5.0"
+ghostty_version="1.3.1"
+zig_version="0.15.2"
