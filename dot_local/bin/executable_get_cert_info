@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() {
+	if [[ $# != 1 || -z "$1" ]]; then
+		printf 'Usage: get_cert_info <hostname>\n' >&2
+		return 1
+	fi
+	openssl s_client -showcerts -servername "$1" -connect "$1:443" \
+		</dev/null | openssl x509 -inform pem -noout -text
+}
+
+main "$@"

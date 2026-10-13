@@ -1,0 +1,11 @@
+{
+  "extends": "opencode-base",
+  "meta": {
+    "name": "opencode-dev",
+    "version": "1.0.0",
+    "description": "Day-to-day development in the current working directory"
+  },
+  "workdir": {
+    "access": "readwrite"
+  }
+}

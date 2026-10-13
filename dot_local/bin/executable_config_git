@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() {
+	local name="${1:-}" email="${2:-}"
+	local keys signing_key key_type key_body _comment
+
+	if [[ -z "$name" || $# -gt 2 ]]; then
+		printf 'Usage: config_git <name> [email]\n' >&2
+		return 1
+	fi
+
+	git rev-parse --git-dir >/dev/null
+	keys="$(ssh-add -L)" || {
+		printf 'Could not list Bitwarden keys. Unlock the desktop vault and try again.\n' >&2
+		return 1
+	}
+
+	signing_key="$(printf '%s\n' "$keys" | fzf \
+		--prompt="Git signing key: " --height=40% --reverse \
+		--header="Select the key registered on GitHub as a Signing key")" || return 1
+	[[ -n "$signing_key" ]] || return 1
+
+	if [[ -z "$email" ]]; then
+		local default_email reply status
+		if default_email="$(git config --get user.email)"; then
+			:
+		else
+			status=$?
+			[[ "$status" == 1 ]] || return "$status"
+		fi
+		read -r -p "Commit email${default_email:+ [$default_email]}: " reply || return 1
+		email="${reply:-$default_email}"
+	fi
+	if [[ -z "$email" || "$email" == *[[:space:]]* ]]; then
+		printf 'Provide a nonempty commit email without whitespace.\n' >&2
+		return 1
+	fi
+
+	read -r key_type key_body _comment <<<"$signing_key"
+	# ssh-add includes a comment; Git's key:: form needs only the public key.
+	signing_key="$key_type $key_body"
+
+	git config --local user.name "$name"
+	git config --local user.email "$email"
+	git config --local gpg.format ssh
+	git config --local gpg.ssh.program ssh-keygen
+	git config --local user.signingkey "key::$signing_key"
+	git config --local commit.gpgsign true
+	git config --local tag.forceSignAnnotated true
+
+	printf 'Git configured for %s <%s> with SSH signing.\n' "$name" "$email"
+}
+
+main "$@"

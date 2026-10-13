@@ -16,5 +16,6 @@
     "editor.fontSize": 13,
     "workbench.editor.enablePreview": false,
     "explorer.confirmDragAndDrop": false,
-    "security.workspace.trust.untrustedFiles": "open"
+    "security.workspace.trust.untrustedFiles": "open"{{ if .rust_analyzer_all_features }},
+    "rust-analyzer.cargo.features": "all"{{ end }}
 }

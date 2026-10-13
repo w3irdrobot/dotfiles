@@ -1,0 +1,54 @@
+{
+  "extends": "opencode-base",
+  "meta": {
+    "name": "opencode-setup",
+    "version": "1.0.5",
+    "description": "Maintain local shell configuration and developer tooling"
+  },
+  "filesystem": {
+    "allow": [
+      "$HOME/projects/github.com/w3irdrobot",
+      "$HOME/.local/share/chezmoi",
+      "$HOME/.local/bin"
+    ],
+    "read": [
+      "$HOME/.config/chezmoi",
+      "$HOME/.config/VSCodium/User",
+      "$HOME/.config/bat",
+      "$HOME/.config/brewfile",
+      "$HOME/.config/ghostty",
+      "$HOME/.config/k9s",
+      "$HOME/.config/lazygit",
+      "$HOME/.vscode-oss/extensions/w3irdrobot.kestrel-theme-0.0.1",
+      "$HOME/Library/Application Support/VSCodium/User"
+    ],
+    "read_file": [
+      "$HOME/.aliases",
+      "$HOME/.bash_profile",
+      "$HOME/.variables",
+      "$HOME/.vimrc",
+      "$HOME/CLAUDE.md",
+      "$HOME/.electrs/config.toml",
+      "$HOME/.kube/kubie.yaml",
+      "$HOME/.local/share/wallpapers/dracula-mnt-6272a4.png",
+      "$HOME/Library/Application Support/Bitcoin/bitcoin.conf",
+      "$HOME/Library/Application Support/com.mitchellh.ghostty/config.ghostty"
+    ],
+    "allow_file": [
+      "$HOME/.bashrc",
+      "$HOME/.profile",
+      "$HOME/.init",
+      "$HOME/.functions",
+      "$HOME/.prompt"
+    ],
+    "bypass_protection": [
+      "$HOME/.bashrc",
+      "$HOME/.bash_profile",
+      "$HOME/.profile",
+      "$HOME/.init",
+      "$HOME/.functions",
+      "$HOME/.prompt",
+      "$HOME/.kube/kubie.yaml"
+    ]
+  }
+}

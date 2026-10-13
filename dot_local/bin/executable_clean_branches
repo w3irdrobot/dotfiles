@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() {
+	local refs branch tracking
+	local -a branches=()
+	git rev-parse --git-dir >/dev/null
+	refs="$(git for-each-ref --format='%(refname:short)%09%(upstream:track)' refs/heads)"
+	while IFS=$'\t' read -r branch tracking; do
+		if [[ "$tracking" == '[gone]' ]]; then
+			branches+=("$branch")
+		fi
+	done <<<"$refs"
+	if [[ ${#branches[@]} -gt 0 ]]; then
+		git branch -D -- "${branches[@]}"
+	fi
+}
+
+main "$@"

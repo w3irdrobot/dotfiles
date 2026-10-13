@@ -3,6 +3,7 @@ install.sh
 LICENSE
 justfile
 docs/
+scripts/
 
 # Linux-only configs (ignore on macOS)
 {{ if eq .chezmoi.os "darwin" }}

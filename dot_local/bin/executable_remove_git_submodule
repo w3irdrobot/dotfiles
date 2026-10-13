@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() {
+	local path="${1:-}" root entry key value module_name="" cache_dir
+	if [[ $# != 1 || -z "$path" || "$path" == /* ]]; then
+		printf 'Usage: remove_git_submodule <repository-relative-path>\n' >&2
+		return 1
+	fi
+	path="${path%/}"
+	case "/$path/" in
+	*/../* | */./*)
+		printf 'Use a repository-relative submodule path without . or .. components.\n' >&2
+		return 1
+		;;
+	esac
+
+	root="$(git rev-parse --show-toplevel)"
+	[[ -f "$root/.gitmodules" ]] || {
+		printf 'No .gitmodules file found.\n' >&2
+		return 1
+	}
+	git config --file "$root/.gitmodules" --list >/dev/null
+	# The submodule's Git name need not match its worktree path.
+	while IFS= read -r -d '' entry; do
+		key="${entry%%$'\n'*}"
+		value="${entry#*$'\n'}"
+		if [[ "$value" == "$path" ]]; then
+			module_name="${key#submodule.}"
+			module_name="${module_name%.path}"
+			break
+		fi
+	done < <(git config --null --file "$root/.gitmodules" --get-regexp '^submodule\..*\.path$')
+	if [[ -z "$module_name" || "$module_name" == /* ]]; then
+		printf 'No valid submodule found at %s.\n' "$path" >&2
+		return 1
+	fi
+	case "/$module_name/" in
+	*/../* | */./*)
+		printf 'Invalid submodule Git name: %s\n' "$module_name" >&2
+		return 1
+		;;
+	esac
+
+	cache_dir="$(git -C "$root" rev-parse --path-format=absolute --git-path "modules/$module_name")"
+	git -C "$root" submodule deinit -f -- "$path"
+	git -C "$root" rm -f -- "$path"
+	rm -rf -- "$cache_dir"
+}
+
+main "$@"

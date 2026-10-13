@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() {
+	curl --fail --silent --show-error https://ipinfo.io | jq .
+}
+
+main "$@"

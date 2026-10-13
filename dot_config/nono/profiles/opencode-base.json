@@ -1,0 +1,37 @@
+{
+  "extends": "nolabs-ai/opencode",
+  "meta": {
+    "name": "opencode-base",
+    "version": "1.0.0",
+    "description": "Shared OpenCode runtime, SSH agent access, and development caches"
+  },
+  "workdir": {
+    "access": "none"
+  },
+  "environment": {
+    "set_vars": {
+      "OPENCODE_CONFIG": "$HOME/.config/opencode/nono-opencode.json"
+    }
+  },
+  "filesystem": {
+    "allow": [
+      "$HOME/.cargo/registry"
+    ],
+    "read": [
+      "$HOME/.ssh/*.pub",
+      "$HOME/projects/github.com/w3irdrobot/knowledge-base"
+    ],
+    "read_file": [
+      "$HOME/.ssh/config",
+      "$HOME/.ssh/known_hosts"
+    ],
+    "bypass_protection": [
+      "$HOME/.ssh/config",
+      "$HOME/.ssh/known_hosts",
+      "$HOME/.ssh/*.pub"
+    ],
+    "unix_socket": [
+      "$SSH_AUTH_SOCK"
+    ]
+  }
+}

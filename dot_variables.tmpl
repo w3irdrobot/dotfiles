@@ -66,6 +66,11 @@ export PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 GPG_TTY=$(tty)
 export GPG_TTY
 
+{{ if eq .chezmoi.os "darwin" -}}
+# SSH
+export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+
+{{ end -}}
 # rust / cargo
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 export PATH="${HOME}/.cargo/bin:${PATH}"
