@@ -74,6 +74,7 @@ jobs:
               dot_aliases.tmpl \
               dot_bash_profile.tmpl \
               dot_bashrc.tmpl \
+              dot_functions.tmpl \
               dot_variables.tmpl; do
               output="/tmp/mac-render/$(basename "${template%.tmpl}")"
               chezmoi execute-template \
@@ -81,6 +82,14 @@ jobs:
                   --override-data "$MAC_DATA" \
                   --file "$template" \
                   --output "$output"
+          done
+          for profile in ENABLED DISABLED; do
+              data_variable="POP_DATA_${profile}"
+              for template in dot_functions.tmpl dot_variables.tmpl dot_bashrc.tmpl; do
+                  chezmoi execute-template --source "$GITHUB_WORKSPACE" \
+                      --override-data "${!data_variable}" --file "$template" \
+                      --output "/tmp/pop-render/${profile}-$(basename "${template%.tmpl}")"
+              done
           done
 
       - name: Resolve Noble archive packages
@@ -93,14 +102,33 @@ jobs:
       - name: Validate upstream tool metadata
         run: |
           bash -n scripts/update-upstream-tools
-          shellcheck scripts/update-upstream-tools .chezmoitemplates/upstream-tools.sh
+          shellcheck scripts/update-upstream-tools
+          # The manifest is data; its assignments are used by the rendered installer.
+          shellcheck --exclude=SC2034 .chezmoitemplates/upstream-tools.sh
+
+      - name: Check Linux setup follow-ups and wallet restoration
+        run: python3 scripts/test-linux-setup.py
 
       - name: Validate shell and platform policy
         run: |
           shellcheck --exclude=SC1091 \
               install.sh \
-              /tmp/mac-render/* \
-              /tmp/pop-render/*
+              dot_local/bin/executable_myip \
+              dot_local/bin/executable_config_git \
+              dot_local/bin/executable_clean_branches \
+              dot_local/bin/executable_get_cert_info \
+              dot_local/bin/executable_generate_local_cert \
+              dot_local/bin/executable_remove_git_submodule \
+              dot_local/bin/executable_secrets_import
+          for script in /tmp/mac-render/* /tmp/pop-render/*; do
+              case "$script" in
+                  *dot_functions)
+                      # gshell intentionally exports into its child subshell.
+                      shellcheck --severity=warning "$script"
+                      ;;
+                  *) shellcheck --exclude=SC1091 "$script" ;;
+              esac
+          done
           if rg --line-number \
               'yay|pacman|makepkg|paccache|AUR|hypr|waybar|wofi|mako' \
               /tmp/pop-render; then

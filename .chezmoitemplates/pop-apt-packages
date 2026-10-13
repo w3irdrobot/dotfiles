@@ -18,6 +18,7 @@
     jq
     just
     libadwaita-1-dev
+    libccid
     libgtk-4-dev
     libssl-dev
     libxml2-utils
@@ -25,14 +26,17 @@
     minisign
     openssh-client
     patchelf
+    pcscd
     pinentry-gnome3
     pkg-config
     procps
     ripgrep
     rustup
+    scdaemon
     shellcheck
     unzip
     vim
     wl-clipboard
+    yubikey-manager
     zip
     zoxide

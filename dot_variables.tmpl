@@ -70,6 +70,10 @@ export GPG_TTY
 # SSH
 export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
 
+{{ else if and (eq .chezmoi.os "linux") .install_bitwarden -}}
+# Bitwarden is installed as a Flatpak on Linux.
+export SSH_AUTH_SOCK="$HOME/.var/app/com.bitwarden.desktop/data/.bitwarden-ssh-agent.sock"
+
 {{ end -}}
 # rust / cargo
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${DEBUG:-0}" == "1" ]]; then
+    set -x
+fi
+
 manifest=".chezmoitemplates/upstream-tools.sh"
 
 usage() {
@@ -12,6 +16,12 @@ latest_github_version() {
     curl --proto '=https' --tlsv1.2 -fsSL \
         "https://api.github.com/repos/${repository}/releases/latest" |
         jq -er '.tag_name | sub("^v"; "")'
+}
+
+latest_opencode_version() {
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        https://registry.npmjs.org/@opencode%2fcli/latest |
+        jq -er '.version'
 }
 
 latest_zig_version() {
@@ -34,7 +44,7 @@ declare -A versions=(
     [fzf]="$(latest_github_version junegunn/fzf)"
     [difft]="$(latest_github_version Wilfred/difftastic)"
     [lazygit]="$(latest_github_version jesseduffield/lazygit)"
-    [opencode]="$(latest_github_version anomalyco/opencode)"
+    [opencode]="$(latest_opencode_version)"
     [nono]="$(latest_github_version nolabs-ai/nono)"
     [sparrow]="$(latest_github_version sparrowwallet/sparrow)"
     [bitcoin]="$(latest_bitcoin_version)"
@@ -49,6 +59,7 @@ if [[ "${1:-}" == "--check" ]]; then
     status=0
     while IFS='=' read -r name value; do
         [[ "$name" == *_version ]] || continue
+        [[ "$name" != nono_opencode_pack_version ]] || continue
         tool="${name%_version}"
         current="${value#\"}"
         current="${current%\"}"
@@ -64,7 +75,7 @@ elif (( $# != 0 )); then
 fi
 
 updated="$(mktemp)"
-trap 'rm -f "$updated" "${difft_archive:-}"' EXIT
+trap 'rm -f "$updated" "${updated}.final" "${difft_archive:-}"' EXIT
 while IFS= read -r line; do
     if [[ "$line" =~ ^([a-z]+)_version= ]]; then
         tool="${BASH_REMATCH[1]}"
@@ -73,28 +84,27 @@ while IFS= read -r line; do
         printf '%s\n' "$line"
     fi
 done < "$manifest" > "$updated"
-install -m0644 "$updated" "$manifest"
 
 difft_archive="$(mktemp)"
 curl --proto '=https' --tlsv1.2 -fsSL \
     "https://github.com/Wilfred/difftastic/releases/download/${versions[difft]}/difft-x86_64-unknown-linux-gnu.tar.gz" \
     -o "$difft_archive"
 difft_sha256="$(sha256sum "$difft_archive" | cut -d ' ' -f 1)"
-opencode_sha256="$(
+opencode_sha512="$(
     curl --proto '=https' --tlsv1.2 -fsSL \
-        "https://api.github.com/repos/anomalyco/opencode/releases/tags/v${versions[opencode]}" |
-        jq -er '.assets[] | select(.name == "opencode-linux-x64.tar.gz") | .digest |
-            sub("^sha256:"; "")'
+        "https://registry.npmjs.org/@opencode%2fcli-linux-x64-baseline/${versions[opencode]}" |
+        jq -er '.dist.integrity | select(startswith("sha512-")) | sub("^sha512-"; "")' |
+        base64 --decode | od -An -tx1 | tr -d ' \n'
 )"
 while IFS= read -r line; do
     if [[ "$line" == difft_sha256=* ]]; then
         printf 'difft_sha256="%s"\n' "$difft_sha256"
-    elif [[ "$line" == opencode_sha256=* ]]; then
-        printf 'opencode_sha256="%s"\n' "$opencode_sha256"
+    elif [[ "$line" == opencode_sha512=* ]]; then
+        printf 'opencode_sha512="%s"\n' "$opencode_sha512"
     else
         printf '%s\n' "$line"
     fi
-done < "$manifest" > "$updated"
-install -m0644 "$updated" "$manifest"
+done < "$updated" > "${updated}.final"
+install -m0644 "${updated}.final" "$manifest"
 
 printf 'Updated %s. Review release notes and run the validation workflow.\n' "$manifest"

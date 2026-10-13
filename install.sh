@@ -6,6 +6,10 @@
 
 set -euo pipefail
 
+if [[ "${DEBUG:-0}" == "1" ]]; then
+    set -x
+fi
+
 DOTFILES_REPO="w3irdrobot"
 
 RED='\033[0;31m'
@@ -132,7 +136,63 @@ main() {
     echo ""
     log_success "Bootstrap complete!"
     log_info "Please restart your terminal to use the new shell configuration."
+    print_followups
     echo ""
+}
+
+print_followups() {
+    cat <<'EOF'
+
+Manual follow-ups (no keys or wallet data are stored in dotfiles):
+
+1. Open Bitwarden, sign in, unlock, and enable its SSH agent.
+   On Linux the installer uses the Flatpak agent socket. If you install another
+   build, override SSH_AUTH_SOCK in ~/.config/bash/.variables.
+   Restore/import the SSH keys needed for this next machine; long term keep them
+   in Bitwarden. ~/.ssh/config contains aliases, not private keys. Export the
+   GitHub authentication key's public half to ~/.ssh/github_auth.pub, then check
+   ssh-add -L and ssh -T git@github.com after opening a new terminal.
+
+2. Obtain your API keys/tokens manually. Put their exports in the machine-local
+   ~/.config/bash/.variables (already sourced by ~/.bashrc), not the managed
+   ~/.variables or the dotfiles repository. Keep that local file mode 600:
+     mkdir -p ~/.config/bash
+     (umask 077; touch ~/.config/bash/.variables)
+     chmod 600 ~/.config/bash/.variables
+     EXA_API_KEY        https://dashboard.exa.ai/
+     GITHUB_MCP_TOKEN   GitHub token settings (a token, without "Bearer ")
+     MAPLE_API_KEY      Your Maple Local endpoint credential
+   Export only the variables you need. Disable unused MCP servers/providers in
+   ~/.config/opencode/opencode.jsonc rather than inventing credentials.
+
+3. Close Sparrow before exporting or restoring wallet files. Before leaving the
+   old computer, run secrets_export to create a passphrase-
+   encrypted archive of the GPG/SSH keys you still need and your Sparrow wallets.
+   Keep the archive/passphrase outside Git. After installation, run
+   secrets_import manually to restore it; existing differing keys/wallets are
+   not overwritten. Then open Sparrow and confirm the restored wallets.
+
+4. GPG/YubiKey signing is a manual transition: until the YubiKey is provisioned,
+   transfer the GPG keys you need. Once ready, use its signing subkey and import
+   the public certificate on new machines; do not automatically run keytocard or
+   copy hardware-held private keys. Linux installs GnuPG, scdaemon, PC/SC, and
+   ykman tooling. Check gpg --card-status and choose the signing key per repo.
+   config_git currently configures SSH signing, not YubiKey/OpenPGP signing.
+   For YubiKey signing in a repository, set gpg.format to openpgp,
+   user.signingkey to your signing-subkey fingerprint followed by !, and
+   commit.gpgsign to true. Keep an offline recovery backup of the OpenPGP key.
+
+5. After SSH works, restore the knowledge-base checkout if missing:
+     git clone git@github.com:w3irdrobot/knowledge-base.git \
+       ~/projects/github.com/w3irdrobot/knowledge-base
+   Reuse an existing checkout. Start ai from a repository after completing the
+   Bitwarden/API-key steps. OpenCode uses a private server under nono, and new
+   worktrees live in that repository's ignored .worktrees directory.
+
+Cloud configs, kubeconfigs, and OAuth sessions are not part of this migration.
+No VM rehearsal is required. This installer still targets macOS/Pop!_OS 24.04;
+the separate Arch Linux/Bash rewrite has not started.
+EOF
 }
 
 main "$@"

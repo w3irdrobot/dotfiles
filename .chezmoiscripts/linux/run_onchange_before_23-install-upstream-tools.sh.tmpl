@@ -2,6 +2,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${DEBUG:-0}" == "1" ]]; then
+    set -x
+fi
+
 install_root="${HOME}/.local/bin"
 temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
@@ -35,7 +39,8 @@ verify_manifest() {
 verify_upstream_manifest() {
     local archive="$1"
     local manifest_url="$2"
-    local manifest="${temp_dir}/$(basename "$manifest_url")"
+    local manifest
+    manifest="${temp_dir}/$(basename "$manifest_url")"
 
     download "$manifest_url" "$manifest"
     verify_manifest "$archive" "$manifest"
@@ -95,17 +100,20 @@ install_tar_binary \
     "https://github.com/jesseduffield/lazygit/releases/download/v${lazygit_version}/checksums.txt" \
     lazygit
 
-opencode_archive="${temp_dir}/opencode-linux-x64.tar.gz"
-if command -v opencode >/dev/null 2>&1 && opencode --version 2>&1 | grep -Fq "$opencode_version"; then
+opencode_archive="${temp_dir}/cli-linux-x64-baseline-${opencode_version}.tgz"
+if [[ -x "${install_root}/opencode" ]] && \
+    [[ "$("${install_root}/opencode" --version)" == "opencode v${opencode_version}" ]]; then
     printf 'opencode %s already installed.\n' "$opencode_version"
 else
     printf 'Installing opencode %s...\n' "$opencode_version"
     download \
-        "https://github.com/anomalyco/opencode/releases/download/v${opencode_version}/$(basename "$opencode_archive")" \
+        "https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/-/$(basename "$opencode_archive")" \
         "$opencode_archive"
-    verify_sha256 "$opencode_archive" "$opencode_sha256"
-    tar -xzf "$opencode_archive" -C "$temp_dir"
-    install -m0755 "${temp_dir}/opencode" "${install_root}/opencode"
+    printf '%s  %s\n' "$opencode_sha512" "$opencode_archive" | sha512sum --check
+    opencode_extract_dir="${temp_dir}/opencode"
+    mkdir -p "$opencode_extract_dir"
+    tar -xzf "$opencode_archive" -C "$opencode_extract_dir"
+    install -m0755 "${opencode_extract_dir}/package/bin/opencode" "${install_root}/opencode"
 fi
 
 if command -v nono >/dev/null 2>&1 && \
@@ -122,6 +130,9 @@ else
         "https://github.com/nolabs-ai/nono/releases/download/v${nono_version}/SHA256SUMS.txt"
     sudo apt-get install --yes --no-install-recommends "$nono_package"
 fi
+
+# Registry-owned runtime profile, plugin, and skill; never overwrite conflicts.
+nono pull "nolabs-ai/opencode@${nono_opencode_pack_version}"
 
 if dpkg-query -W -f='${Version}' sparrowwallet 2>/dev/null |
     grep -Fq "${sparrow_version}-1"; then

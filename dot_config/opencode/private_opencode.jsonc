@@ -5,7 +5,7 @@
   },
   "references": {
     "knowledge": {
-      "path": "~/projects/github.com/w3irdrobot/knowledge-base",
+      "path": "{env:HOME}/projects/github.com/w3irdrobot/knowledge-base",
       "description": "Personal developer decisions, verified workflows, research, and session handoffs. Consult relevant notes for environment setup and recurring workflows."
     }
   },

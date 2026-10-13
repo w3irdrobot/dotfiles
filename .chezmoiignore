@@ -5,6 +5,9 @@ justfile
 docs/
 scripts/
 
+# Machine-local environment/credentials are maintained manually.
+.config/bash/.variables
+
 # Generated skill validation/test artifacts
 .config/opencode/skills/**/__pycache__/
 .config/opencode/skills/**/*.pyc
