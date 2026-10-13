@@ -2,17 +2,17 @@
   "extends": "opencode-base",
   "meta": {
     "name": "opencode-setup",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "description": "Maintain local shell configuration and developer tooling"
   },
   "filesystem": {
     "allow": [
       "$HOME/projects/github.com/w3irdrobot",
       "$HOME/.local/share/chezmoi",
+      "$HOME/.config/chezmoi",
       "$HOME/.local/bin"
     ],
     "read": [
-      "$HOME/.config/chezmoi",
       "$HOME/.config/VSCodium/User",
       "$HOME/.config/bat",
       "$HOME/.config/brewfile",

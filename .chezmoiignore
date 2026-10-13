@@ -5,6 +5,10 @@ justfile
 docs/
 scripts/
 
+# Generated skill validation/test artifacts
+.config/opencode/skills/**/__pycache__/
+.config/opencode/skills/**/*.pyc
+
 # Linux-only configs (ignore on macOS)
 {{ if eq .chezmoi.os "darwin" }}
 .hushlogin
