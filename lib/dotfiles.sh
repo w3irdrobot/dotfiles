@@ -290,7 +290,7 @@ install_packages() {
 		if pacman -Si -- paru >/dev/null 2>&1; then
 			official+=(paru)
 		else
-			official+=(base-devel)
+			official+=(base-devel openssl)
 			need_nix=1
 		fi
 	fi
@@ -375,68 +375,8 @@ preflight_native_opencode_paths() {
 	[[ $actual == "$native" ]] || die "Local OpenCode shadows the native package: $shadow; inspect and move it manually."
 }
 
-ensure_paru() {
-	if command -v paru >/dev/null; then
-		validate_existing_paru
-		log 'Using the existing paru helper.'
-		return 0
-	fi
-	if ((DRY_RUN)); then
-		log 'Would clone https://aur.archlinux.org/paru.git, review PKGBUILD, and build as the current user.'
-		return
-	fi
-	if pacman -Si -- paru >/dev/null 2>&1; then die 'Repository paru was selected for the full upgrade but is not runnable; repair the helper before continuing.'; fi
-	(
-		local scratch
-		scratch=$(mktemp -d)
-		trap 'rm -rf -- "$scratch"' EXIT
-		git clone https://aur.archlinux.org/paru.git "$scratch/paru"
-		cd "$scratch/paru" || exit
-		cat PKGBUILD
-		[[ -t 0 || -t 1 || -t 2 ]] || die 'Review paru PKGBUILD interactively; then rerun from a terminal.'
-		local answer
-		read -r -p 'Build this official AUR paru PKGBUILD? [y/N] ' answer </dev/tty || die 'A controlling terminal is required for PKGBUILD approval.'
-		[[ $answer == y || $answer == Y ]] || die 'paru build cancelled.'
-		# Stop if upstream adds build dependencies; --nodeps must stay narrowly scoped.
-		local dependency key value
-		local -a runtime_dependencies=()
-		local -A expected_dependencies=()
-		while IFS='=' read -r key value; do
-			key=${key//[[:space:]]/}
-			value=${value//[[:space:]]/}
-			case $key in
-			makedepends*)
-				[[ $key == makedepends && $value == cargo ]] || die "paru build dependency changed ($key=$value); review bootstrap support."
-				expected_dependencies[cargo]=1
-				;;
-			depends*)
-				[[ $key == depends ]] || die "Unexpected architecture-specific paru dependency: $key"
-				case $value in
-				git | pacman) expected_dependencies[$value]=1 ;;
-				*)
-					[[ $value =~ ^libalpm\.so\>=[1-9][0-9]*$ ]] || die "paru runtime dependency changed ($value); review bootstrap support."
-					expected_dependencies[libalpm]=1
-					;;
-				esac
-				runtime_dependencies+=("$value")
-				;;
-			checkdepends*) die "paru check dependency changed ($key=$value); review bootstrap support." ;;
-			esac
-		done <.SRCINFO
-		for dependency in cargo git pacman libalpm; do
-			[[ -v expected_dependencies[$dependency] ]] || die "Expected paru dependency missing: $dependency"
-		done
-		for dependency in "${runtime_dependencies[@]}"; do
-			pacman -T "$dependency" || die "Missing paru runtime dependency: $dependency"
-		done
-		# Build-only Rust lives in a temporary Nix shell, not the workstation profile.
-		setup_nix --bootstrap
-		/usr/bin/nix --extra-experimental-features 'nix-command flakes' \
-			shell 'github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0#rustc' \
-			'github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0#cargo' \
-			--command makepkg --nodeps --install
-	)
-}
+# shellcheck source=modules/paru.sh
+source "$ROOT/modules/paru.sh"
 
 validate_existing_paru() {
 	command -v paru >/dev/null || return 0
@@ -506,7 +446,9 @@ update_system() {
 	install_packages
 	if command -v paru >/dev/null; then
 		phase 'AUR update: upgrading installed AUR packages'
-		run paru -Sua
+		# Native paru is upgraded by the full pacman transaction above. Foreign
+		# paru must never rebuild from a mutable AUR recipe; review a frozen pin.
+		run paru -Sua --ignore paru
 	fi
 	setup_modules
 	log 'Nix and native applications are repository-managed; project flake.lock updates remain project-owned.'

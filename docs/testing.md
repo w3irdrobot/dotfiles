@@ -66,6 +66,34 @@ machine for that final rehearsal.
 Keep the VM until review is complete. Do not automatically destroy it or treat a
 passing container test as equivalent to this rehearsal.
 
+## Observed Arch rehearsal (2026-10-14)
+
+The isolated `dotfiles-arch` guest booted as x86_64 Arch with systemd running,
+passwordless guest sudo, and no shared host mounts. Published commit
+`7fd2b09e2dde6166ab87138407351cba8960bc8c` was used for these checks:
+
+- Public bootstrap dry-run passed without cloning or installing packages.
+- Real bootstrap completed its official-repository Git prerequisite full upgrade
+  and cloned the migration branch. It then exited 1 at the unmanaged `.bashrc`
+  preflight, before workstation provisioning or config linking.
+- The refused `.bashrc` still matched `/etc/skel/.bashrc`. It was manually moved
+  to `~/.dotfiles-rehearsal-backup/bashrc` in the guest, preserving SHA256
+  `959bc596166c9758fdd68836581f6b8f1d6fdb947d580bf24dce607998a077b8`.
+- The subsequent full core installation dry-run passed. It resolved 47 official
+  targets and `vscodium-bin` from AUR, but installed none of them or their links.
+
+The VM-only `tests/vm/run-bootstrap.py --expect-conflict` driver was used for the
+Git bootstrap confirmations. It verifies the isolated guest and bootstrap hash,
+answers each of the two known pacman prompts once, and refuses other questions.
+It is not a general installer approval driver. Noninteractive SSH and pre-fed
+answers stopped at pacman prompts; those aborted attempts were not successes.
+
+Full installation, the revised frozen paru build, native Nix daemon/flakes,
+OpenCode V2, repeat runs, Manjaro, and XFCE GUI behavior remain unverified.
+The guest's separate review-only VSCodium checkout matched audited AUR commit
+`d04471d2fba90dc9fc16d52be8e6f957061b5ab3`; its binary-package VM test was
+explicitly approved. This checkout has not built or installed the package.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

@@ -16,7 +16,8 @@ class ShellStartup(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="shell-startup-tests-")
         self.addCleanup(self.temp.cleanup)
-        self.base = Path(self.temp.name)
+        # Match startup's physical-path resolution (macOS /var -> /private/var).
+        self.base = Path(self.temp.name).resolve()
         # Exercise both linked-worktree layout and spaces without any Git state.
         self.repo = self.base / "primary checkout/.worktrees/custom checkout"
         self.repo.mkdir(parents=True)

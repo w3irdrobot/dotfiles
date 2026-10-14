@@ -126,6 +126,17 @@ commands; avoid it around credentials and redact traces before sharing them.
 
 ## Updates
 
+When no native paru package is available, bootstrap uses the reviewed local
+`modules/paru-recipe/PKGBUILD`, not the mutable AUR recipe. Its upstream source
+and committed `Cargo.lock` are checksum-pinned: fetching uses `--locked`, building
+uses `--frozen`, and lockfile changes stop the build. Rust/Cargo are build-only
+Nix tools; paru links against native libraries. The fallback currently requires
+libalpm 16. Supporting another ABI requires a reviewed source/lock pin change,
+not an installation-time dependency update.
+Installer AUR upgrades exclude paru; native repository upgrades still include
+it. See [the frozen fallback notes](modules/paru-recipe/README.md) for the
+explicitly reviewed helper replacement workflow.
+
 Symlinks reflect your **local checkout**, not new GitHub commits. Config updates
 must fetch a clean, non-diverged checkout and link any new configs; system updates
 run a full pacman/AUR upgrade through paru. Neither action should run unattended

@@ -1,6 +1,11 @@
 # Validation boundaries
 
 Run `just validate` (Bash syntax, ShellCheck, shfmt, and Python stdlib tests).
+CI pins shfmt 3.14.1 from the official mvdan/sh release and verifies its SHA256
+before execution. Use that version when reproducing formatter differences;
+older versions can disagree on default-style spacing. Native checks do not
+require an exact formatter version. CI's Arch test dependencies include
+diffutils (`cmp`), also declared by the core, nono, and GnuPG module metadata.
 Tests use temporary homes/repositories and an allowlisted command PATH. Package
 managers, sudo, network clients, and Git network operations are mocked. Fixed
 Linux host paths in **fixture copies only** are redirected to fixture os-release,

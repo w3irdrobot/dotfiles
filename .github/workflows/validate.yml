@@ -19,11 +19,25 @@ jobs:
       - name: Install lint tools (CI runner only)
         run: |
           sudo apt-get update
-          sudo apt-get install --yes shellcheck shfmt stow
+          sudo apt-get install --yes shellcheck stow
+      - name: Install pinned shfmt (CI runner only)
+        run: |
+          set -euo pipefail
+          tool_dir=$(mktemp -d "$RUNNER_TEMP/shfmt.XXXXXX")
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64 \
+            --output "$tool_dir/shfmt"
+          # Official release API asset digest for shfmt_v3.14.1_linux_amd64.
+          printf '%s  %s\n' \
+            76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf \
+            "$tool_dir/shfmt" | sha256sum --check --strict -
+          chmod +x "$tool_dir/shfmt"
+          "$tool_dir/shfmt" --version
+          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
       - name: Bash syntax, ShellCheck, and shfmt
         run: python3 scripts/check-shell.py
       - name: Fixture-only safety tests with real GNU Stow
-        run: python3 -m unittest discover -s tests -v
+        run: python3 -B -m unittest discover -s tests -v
       - name: Package metadata syntax (offline)
         run: python3 scripts/check-packages.py
 
@@ -38,7 +52,7 @@ jobs:
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
             --workdir /src archlinux:base \
-            bash -c 'pacman -Syu --noconfirm --needed python stow git && useradd --create-home tester && runuser -u tester -- python -m unittest discover -s tests -v'
+            bash -c 'pacman -Syu --noconfirm --needed python stow git diffutils && useradd --create-home tester && runuser -u tester -- python -B -m unittest discover -s tests -v'
 
   package-existence:
     # Explicit network validation only on trusted master pushes, not PR code.
