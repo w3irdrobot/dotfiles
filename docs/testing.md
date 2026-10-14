@@ -119,6 +119,21 @@ was package-owned, version 2.35.3. Global Rust/Rustup/Cargo/Node/npm packages we
 absent, and neither `.bashrc` nor user `nix.conf` had been linked. Full installation
 and repeated runs remain pending the bounded readiness fix and retry.
 
+The next `dbebbda` run correctly treated both native package transactions as
+no-ops and reached the owned paru recipe. Archive and committed-lock checks
+passed, but `prepare()` stopped at an incorrect Cargo version expectation, before
+fetching dependencies or compiling. The unchanged pinned Nix bundle actually
+reports Rust 1.98.1 and Cargo 1.98.0, despite both derivation names ending in
+1.98.1. Published `7949583` corrects the exact executable-version guard; no lock
+update or alternate toolchain was used. Its frozen-build retry is in progress.
+
+A cold-daemon test of published readiness code `09179cd` exposed a second
+startup state: the socket existed before it accepted connections, and the first
+probe returned `Connection refused`. The helper stopped rather than retrying that
+known transient failure. A later regular-user daemon ping succeeded. Readiness
+validation remains pending a narrowly scoped retry for this exact native socket
+error; unrelated configuration/permission errors must still stop promptly.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

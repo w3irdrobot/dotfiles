@@ -61,7 +61,7 @@ wait_nix_daemon_ready() {
 	# Type=simple can report active before the daemon binds its socket. Use one
 	# elapsed-time budget, not an attempt count: slow pings consume the same budget.
 	# timeout's kill grace and SECONDS' resolution allow at most 32 seconds total.
-	local deadline=$((SECONDS + 30)) remaining ping_limit status
+	local deadline=$((SECONDS + 30)) remaining ping_limit status response='' line transient unexpected
 	while ((SECONDS < deadline)); do
 		timeout --kill-after=1s 1s systemctl is-active --quiet nix-daemon.service || die 'Native Nix daemon service is not active (inactive/failed) or its state check timed out; repair it before continuing.'
 		remaining=$((deadline - SECONDS))
@@ -69,19 +69,30 @@ wait_nix_daemon_ready() {
 		if [[ -S /nix/var/nix/daemon-socket/socket ]]; then
 			ping_limit=$remaining
 			((ping_limit <= 5)) || ping_limit=5
-			if timeout --kill-after=1s "${ping_limit}s" /usr/bin/nix --extra-experimental-features 'nix-command flakes' store ping --store daemon >/dev/null; then
+			if response=$(LC_ALL=C timeout --kill-after=1s "${ping_limit}s" /usr/bin/nix --extra-experimental-features 'nix-command flakes' store ping --store daemon 2>&1); then
 				((SECONDS < deadline)) && return 0
 				break
 			else
 				status=$?
-				# Only a bounded probe timeout is retryable; preserve Nix's stderr
-				# and stop on configuration, permissions, or other unexpected errors.
-				[[ $status == 124 || $status == 137 ]] || die "Native Nix daemon is not responding: store ping failed (exit $status); repair it before continuing."
+				# A stale socket may exist before bind. Only these exact native
+				# connection errors (exit 1) and bounded probe timeouts are retryable.
+				transient=0 unexpected=0
+				while IFS= read -r line; do
+					case $line in
+					"error: cannot connect to socket at '/nix/var/nix/daemon-socket/socket': Connection refused" | "error: cannot connect to socket at '/nix/var/nix/daemon-socket/socket': No such file or directory") transient=1 ;;
+					error:*) unexpected=1 ;;
+					esac
+				done <<<"$response"
+				if ! [[ $status == 124 || $status == 137 || ($status == 1 && $transient == 1 && $unexpected == 0) ]]; then
+					[[ -z $response ]] || printf '%s\n' "$response" >&2
+					die "Native Nix daemon is not responding: store ping failed (exit $status); repair it before continuing."
+				fi
 			fi
 		fi
 		((SECONDS < deadline)) || break
 		sleep 1
 	done
+	[[ -z $response ]] || printf '%s\n' "$response" >&2
 	die 'Native Nix daemon readiness timed out after a 30-second budget (32-second maximum); socket/store ping did not become ready. Inspect systemctl status and journalctl -u nix-daemon.service.'
 }
 
