@@ -69,7 +69,7 @@ class ParuTests(unittest.TestCase):
         self.mock_path(self.rustc, "print('rustc 1.98.1 (fixture)')")
         self.mock_path(self.cargo, """
 if '--version' in sys.argv:
-    print('cargo 1.98.1 (fixture)')
+    print('cargo 1.98.0 (fixture)')
 else:
     import json
     with open(os.environ['TEST_LOG'] + '.env', 'w') as output:
@@ -335,6 +335,14 @@ update_system
         self.mock_path(self.rustc, "print('rustc 1.97.0 (fixture)')")
         result = self.run_recipe("prepare")
         self.assertEqual(result.returncode, 1)
+        self.assertIn("rustc 1.98.1 required", result.stderr)
+        self.assertNotIn("cargo fetch --locked --target x86_64-unknown-linux-gnu", self.calls())
+
+    def test_wrong_cargo_refuses_before_fetch(self):
+        self.mock_path(self.cargo, "print('cargo 1.98.1 (fixture)')")
+        result = self.run_recipe("prepare")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("cargo 1.98.0 required", result.stderr)
         self.assertNotIn("cargo fetch --locked --target x86_64-unknown-linux-gnu", self.calls())
 
     def test_post_cargo_hash_checked_even_after_failure(self):

@@ -37,7 +37,12 @@ and rerun the installer from a terminal to review and rebuild the owned recipe.
 Do not regenerate the lock or delegate the helper rebuild to AUR.
 
 The existing nixpkgs commit `7fd4004d0511991fff3a0524856a9be09e28c5f0`
-supplies Rust/Cargo 1.98.1 only for this build. Native `base-devel`, `git`,
+supplies rustc 1.98.1 and Cargo 1.98.0 only for this build. Both Nix derivations
+are named/versioned 1.98.1, but the bundled Cargo executable reports 1.98.0;
+these executable versions were verified in the Arch VM, including with only
+native `/usr/bin` on PATH. The recipe checks each executable version separately.
+This verifies the toolchain bundle, not dependency fetching or compilation.
+Native `base-devel`, `git`,
 `pacman`, and `openssl` must already satisfy makepkg's normal dependency checks.
 No global Rust/Cargo packages, `--nodeps`, or automatic dependency installs.
 The recipe enforces native compiler/linker flags inside `build()`, after makepkg
