@@ -125,7 +125,7 @@ passed, but `prepare()` stopped at an incorrect Cargo version expectation, befor
 fetching dependencies or compiling. The unchanged pinned Nix bundle actually
 reports Rust 1.98.1 and Cargo 1.98.0, despite both derivation names ending in
 1.98.1. Published `7949583` corrects the exact executable-version guard; no lock
-update or alternate toolchain was used. Its frozen-build retry is in progress.
+update or alternate toolchain was used.
 
 A cold-daemon test of published readiness code `09179cd` exposed a second
 startup state: the socket existed before it accepted connections, and the first
@@ -133,6 +133,27 @@ probe returned `Connection refused`. The helper stopped rather than retrying tha
 known transient failure. A later regular-user daemon ping succeeded. Readiness
 validation remains pending a narrowly scoped retry for this exact native socket
 error; unrelated configuration/permission errors must still stop promptly.
+
+The frozen build at `7949583` subsequently passed: `cargo fetch --locked`,
+`cargo build --release --frozen`, and the before/after lock checks completed.
+Compilation took 17m45s under x86_64 emulation. Pacman installed
+`paru 2.1.0.r7830fac-1` (and its generated debug package). The helper reports
+libalpm 16.0.1, is owned by `paru`, uses the native ELF interpreter, and `ldd`
+resolves all runtime libraries to `/usr`; no Nix-store RPATH/RUNPATH was found.
+The installer then stopped intentionally at VSCodium's review prompt, before
+its recipe was fetched, installed, or configs linked.
+
+Cold daemon setup with published `18d13b4` passed in three seconds after an
+explicit stop of the idle service. The revised readiness helper and subsequent
+strict daemon validation both completed; the service remained active. This
+verifies the real cold-start path in this guest, not every failure mode or
+Manjaro compatibility. VSCodium installation and complete/repeated workstation
+runs remain pending.
+
+The fixture suite at `18d13b4` also ran inside the guest as its regular user:
+229 tests passed in 143s with real GNU Stow 2.4.1, no failures or skips. This
+confirms Linux fixture behavior; it does not stand in for the remaining live
+installation, user configuration, or desktop checks.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
