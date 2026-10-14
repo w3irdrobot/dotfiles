@@ -53,6 +53,38 @@ validate_nix() {
 	fi
 }
 
+wait_nix_daemon_ready() {
+	if ((DRY_RUN)); then
+		log 'Would wait for the native Nix daemon socket and store ping.'
+		return 0
+	fi
+	# Type=simple can report active before the daemon binds its socket. Use one
+	# elapsed-time budget, not an attempt count: slow pings consume the same budget.
+	# timeout's kill grace and SECONDS' resolution allow at most 32 seconds total.
+	local deadline=$((SECONDS + 30)) remaining ping_limit status
+	while ((SECONDS < deadline)); do
+		timeout --kill-after=1s 1s systemctl is-active --quiet nix-daemon.service || die 'Native Nix daemon service is not active (inactive/failed) or its state check timed out; repair it before continuing.'
+		remaining=$((deadline - SECONDS))
+		((remaining > 0)) || break
+		if [[ -S /nix/var/nix/daemon-socket/socket ]]; then
+			ping_limit=$remaining
+			((ping_limit <= 5)) || ping_limit=5
+			if timeout --kill-after=1s "${ping_limit}s" /usr/bin/nix --extra-experimental-features 'nix-command flakes' store ping --store daemon >/dev/null; then
+				((SECONDS < deadline)) && return 0
+				break
+			else
+				status=$?
+				# Only a bounded probe timeout is retryable; preserve Nix's stderr
+				# and stop on configuration, permissions, or other unexpected errors.
+				[[ $status == 124 || $status == 137 ]] || die "Native Nix daemon is not responding: store ping failed (exit $status); repair it before continuing."
+			fi
+		fi
+		((SECONDS < deadline)) || break
+		sleep 1
+	done
+	die 'Native Nix daemon readiness timed out after a 30-second budget (32-second maximum); socket/store ping did not become ready. Inspect systemctl status and journalctl -u nix-daemon.service.'
+}
+
 setup_nix() {
 	[[ $# == 0 || ($# == 1 && $1 == --bootstrap) ]] || die 'Usage: setup_nix [--bootstrap]'
 	preflight_nix
@@ -62,5 +94,6 @@ setup_nix() {
 	fi
 	nix_package_owned || die 'Install the native nix package before setup_nix; no upstream installer fallback.'
 	run sudo systemctl enable --now nix-daemon.service || die 'Could not enable/start the native Nix daemon service.'
+	wait_nix_daemon_ready
 	validate_nix bootstrap
 }

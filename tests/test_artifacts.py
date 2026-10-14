@@ -44,6 +44,8 @@ if args == ['enable', '--now', 'nix-daemon.service']:
 if args == ['is-active', '--quiet', 'nix-daemon.service']:
     sys.exit(int(os.environ.get('TEST_SERVICE_ACTIVE_STATUS', '0')))
 sys.exit(97)""")
+        self.mock("timeout", """import subprocess
+sys.exit(subprocess.run(sys.argv[3:], check=False).returncode)""")
         self.mock("wget", """from pathlib import Path
 target = next(a.split('=', 1)[1] for a in sys.argv if a.startswith('--output-document='))
 Path(target).write_bytes(b'fixture archive, not a real release')""")
@@ -205,7 +207,7 @@ sys.exit(97)
         sudo_calls = [c for c in self.calls() if c[0] == "sudo"]
         self.assertEqual([["sudo", "systemctl", "enable", "--now", "nix-daemon.service"]] * 2, sudo_calls)
         nix_calls = [c for c in self.calls() if c[0] == "nix"]
-        self.assertEqual(2, len(nix_calls))
+        self.assertEqual(4, len(nix_calls))
         self.assertTrue(all("nix-command flakes" in c and "ping" in c for c in nix_calls))
 
     def test_native_nix_service_failure_stops_before_ping(self):
@@ -227,10 +229,10 @@ sys.exit(97)
     def test_native_nix_inactive_service_and_missing_socket_are_not_accepted(self):
         self.existing_nix()
         self.env["TEST_SERVICE_ACTIVE_STATUS"] = "1"
-        self.assert_failed(self.run_nix(), "service is not active")
+        self.assert_failed(self.run_nix("validate_nix", "bootstrap"), "service is not active")
         del self.env["TEST_SERVICE_ACTIVE_STATUS"]
         self.nix_socket.unlink()
-        self.assert_failed(self.run_nix(), "socket is missing")
+        self.assert_failed(self.run_nix("validate_nix", "bootstrap"), "socket is missing")
         self.assertFalse(any(c[0] == "nix" for c in self.calls()))
 
     def test_native_nix_client_validation_requires_linked_stow_features(self):

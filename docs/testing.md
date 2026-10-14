@@ -88,11 +88,36 @@ answers each of the two known pacman prompts once, and refuses other questions.
 It is not a general installer approval driver. Noninteractive SSH and pre-fed
 answers stopped at pacman prompts; those aborted attempts were not successes.
 
+For a controlled core run, `tests/vm/run-install.py` requires explicit published
+commit and reviewed local recipe SHA256 pins:
+
+```bash
+LIMA_HOME="$HOME/.lima-dotfiles-test" python3 -B tests/vm/run-install.py \
+  --commit FULL40SHA --recipe-sha256 RECIPE_SHA256
+```
+
+This host-specific driver validates the isolated guest and clean checkout, caps
+official transaction and frozen-helper approvals, and stops at AUR package review.
+It handles no-op native transactions without pre-feeding answers. The driver is
+test infrastructure, not a replacement for production review safeguards. A review
+stop or partial package installation is not a completed workstation setup.
+
 Full installation, the revised frozen paru build, native Nix daemon/flakes,
 OpenCode V2, repeat runs, Manjaro, and XFCE GUI behavior remain unverified.
 The guest's separate review-only VSCodium checkout matched audited AUR commit
 `d04471d2fba90dc9fc16d52be8e6f957061b5ab3`; its binary-package VM test was
 explicitly approved. This checkout has not built or installed the package.
+
+The subsequent real core run at `dbebbdab2302100b49d9fbc8917c56d019b626c6`
+completed the official transaction (263 packages, including dependencies) but
+stopped before paru at the immediate Nix socket check. The native service was
+active; its socket appeared one second after systemd reported the service started.
+This exposed a startup-readiness race, not a failed package installation. After
+the run exited, no package/build process or pacman lock remained. A regular-user
+daemon store ping succeeded with explicit bootstrap feature flags; `/usr/bin/nix`
+was package-owned, version 2.35.3. Global Rust/Rustup/Cargo/Node/npm packages were
+absent, and neither `.bashrc` nor user `nix.conf` had been linked. Full installation
+and repeated runs remain pending the bounded readiness fix and retry.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
