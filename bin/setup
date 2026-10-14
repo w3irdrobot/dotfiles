@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
+
+main() {
+	local root
+	root=$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd -P)
+	exec bash "$root/bin/dotfiles" install "$@"
+}
+main "$@"

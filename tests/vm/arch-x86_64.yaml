@@ -1,0 +1,23 @@
+# Run with LIMA_HOME="$HOME/.lima-dotfiles-test".
+# Test guest only: no host mounts, personal SSH keys, or forwarded agents.
+minimumLimaVersion: 2.2.1
+vmType: qemu
+arch: x86_64
+plain: true
+cpus: 4
+memory: 6GiB
+disk: 40GiB
+mounts: []
+portForwards: []
+containerd:
+  system: false
+  user: false
+ssh:
+  localPort: 60022
+  loadDotSSHPubKeys: false
+  forwardAgent: false
+  forwardX11: false
+images:
+  - location: https://geo.mirror.pkgbuild.com/images/v20261001.604814/Arch-Linux-x86_64-cloudimg-20261001.604814.qcow2
+    arch: x86_64
+    digest: sha256:360f0fa49db6813bdc8e35bed230a2dc2ae3567b7b5ab74719c0a706e4e34e87
