@@ -318,6 +318,27 @@ the fixture beneath the guest user's home resolved that test-layout issue.
 The updated local suite passed all 331 tests with two GNU Stow skips; Bash syntax,
 ShellCheck, shfmt, and independent Bash/security review passed.
 
+Follow-up safety review confirmed that SSH import previously selected only
+`id_*` files even though export supports arbitrary explicit identity basenames;
+PATH-installed OpenCode outside `~/.local/bin` also escaped the old shadow guard.
+USB discovery already used `lsblk -J`, but mountpoint selection still parsed a
+rendered label/path string, which mishandled paths containing ` - `. Regression
+fixtures now exercise these boundaries without real keys or removable devices.
+The alleged mode-0644 localhost private key was not reproduced with the host's
+OpenSSL: under umask 022 the original helper created key 0600 and certificate
+0644. The helper now explicitly uses umask 077 for both outputs and refuses
+pre-existing files or symlinks as defensive hardening.
+Real OpenSSL generation with the updated helper in a disposable directory created
+both outputs at mode 0600 under caller umask 022. A repeat invocation refused the
+existing outputs and left both fixture files byte-for-byte unchanged. SSH restore,
+USB selection, and certificate changes passed independent read-only review.
+The OpenCode PATH guard also covers standalone bootstrap Git prerequisites, before
+package queries/downloads, including dry-runs. It rejects unmanaged installations
+without executing them and accepts only aliases resolving to the native binary;
+the standalone/library guard bodies are checked for parity. The combined local
+suite passed 363 tests with three skips (two GNU Stow checks and one
+case-insensitive-filesystem check). Bash syntax, ShellCheck, and shfmt passed.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

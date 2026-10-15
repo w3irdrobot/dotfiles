@@ -1,4 +1,4 @@
-"""Disposable plaintext fixtures only; never execute the script's entrypoint."""
+"""Disposable plaintext fixtures only; operational commands are stubbed."""
 
 import os
 from pathlib import Path
@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 
@@ -222,6 +223,177 @@ printf '%s:%s:%s\\n' "$imported" "$skipped" "$failed"
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual("0:0:1\n", result.stdout)
                 self.assertFalse(dest.exists())
+
+    def test_explicit_nonstandard_keys_and_legacy_keys_are_selected_not_metadata(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            'Host fixture\n IdentityFile "~/.ssh/github auth"\n'
+            ' IdentityFile /old/machine/github_auth\n IdentityFile none\n')
+        names = ("github auth", "github auth.pub", "github_auth", "github_auth.pub",
+                 "id_legacy", "id_legacy.pub")
+        for name in (*names, "config", "config.local", "known_hosts", "metadata.json", "gpg_FIXTURE.asc"):
+            (archive / name).write_text("SYNTHETIC FIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({("public" if name.endswith(".pub") else "private", name)
+                          for name in names},
+                         {tuple(line.split("\t")) for line in result.stdout.splitlines()})
+
+    def test_missing_explicit_identity_refuses_before_any_ssh_publication(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth\n")
+        for name in ("github_auth.pub", "id_legacy"):
+            (archive / name).write_text("SYNTHETIC MUST NOT BE IMPORTED\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("", result.stdout)
+        self.assertIn("Missing archived SSH identity: github_auth", result.stderr)
+        self.assertNotIn("SYNTHETIC", result.stderr)
+        with tarfile.open(self.base / "fixture.tar.gz.gpg", "w:gz") as payload:
+            for source in archive.iterdir():
+                payload.add(source, arcname=source.name)
+        result = self.run_bash('''
+check_deps() { :; }
+list_removable_media() { :; }
+fzf() { cat; }
+gpg() { [[ $1 == --decrypt ]] || return 99; cat -- "$2"; }
+main
+''')
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Missing archived SSH identity: github_auth", result.stderr)
+        self.assertNotIn("Imported:", result.stdout)
+        self.assertEqual(["config"], [path.name for path in self.ssh.iterdir()])
+        self.assertEqual([], list(self.base.glob("tmp.*")))
+
+    def test_optional_public_companion_can_be_absent_even_for_pub_named_identity(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth\n"
+            " IdentityFile ~/.ssh/configured.pub\n IdentityFile none\n")
+        for name in ("github_auth", "configured.pub"):
+            (archive / name).write_text("SYNTHETIC IDENTITY FIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"private\tgithub_auth", "private\tconfigured.pub"},
+                         set(result.stdout.splitlines()))
+
+    def test_explicit_identity_role_wins_over_public_companion_role(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth\n"
+            " IdentityFile ~/.ssh/github_auth.pub\n")
+        for name in ("github_auth", "github_auth.pub", "github_auth.pub.pub"):
+            (archive / name).write_text("SYNTHETIC IDENTITY FIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual({"private\tgithub_auth", "private\tgithub_auth.pub",
+                          "public\tgithub_auth.pub.pub"}, set(result.stdout.splitlines()))
+
+    def test_archived_key_links_and_reserved_references_are_refused(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        config = archive / "ssh_config"
+        for name in ("ssh_config", "gpg_FIXTURE.asc", "sparrow_wallets", ".."):
+            with self.subTest(name=name):
+                config.write_text(f"Host fixture\n IdentityFile ~/.ssh/{name}\n")
+                result = self.call("list_archive_ssh_keys", archive)
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stdout)
+        config.write_text("Host fixture\n IdentityFile ~/.ssh/github_auth\n")
+        (archive / "github_auth").symlink_to(self.source)
+        self.assertEqual(2, self.call("list_archive_ssh_keys", archive).returncode)
+        (archive / "github_auth").unlink()
+        config.unlink()
+        config.symlink_to(self.source)
+        self.assertEqual(2, self.call("list_archive_ssh_keys", archive).returncode)
+
+    def test_archive_key_collisions_and_line_break_names_fail_before_output(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        malicious = archive / "id_fixture\n.."
+        malicious.write_text("SYNTHETIC FIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("", result.stdout)
+        malicious.unlink()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth\n"
+            " IdentityFile ~/.ssh/GITHUB_AUTH\n")
+        lower = archive / "github_auth"
+        upper = archive / "GITHUB_AUTH"
+        lower.write_text("SYNTHETIC FIRST FIXTURE\n")
+        if upper.exists():
+            self.skipTest("case-insensitive filesystem cannot store both archive names")
+        upper.write_text("SYNTHETIC SECOND FIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("", result.stdout)
+
+    def test_arbitrary_basename_roundtrip_through_export_and_import(self):
+        # Run real collection/tar/import with plaintext synthetic data and no
+        # USB enumeration, encryption, GPG import, real home, or network access.
+        export = (ROOT / "stow/gnupg/.local/bin/secrets_export").read_text()
+        export = export.removesuffix('main "$@"\n')
+        (self.ssh / "config").unlink()
+        (self.ssh / "config").write_text(
+            'Host fixture\n IdentityFile ~/.ssh/github_auth\n'
+            ' IdentityFile "~/.ssh/arbitrary key"\n IdentityFile ~/.ssh/id_legacy\n'
+            ' IdentityFile ~/.ssh/configured.pub\n')
+        expected = {}
+        private_names = {"github_auth", "arbitrary key", "id_legacy", "configured.pub"}
+        for name in private_names:
+            for suffix in ("", ".pub"):
+                expected[name + suffix] = f"SYNTHETIC {name}{suffix} CONTENT\n".encode()
+                (self.ssh / (name + suffix)).write_bytes(expected[name + suffix])
+        result = subprocess.run(
+            [BASH, "--noprofile", "--norc"], input=export + '''
+check_deps() { :; }
+list_removable_media() { :; }
+fzf() { printf 'fixture\\n'; }
+gpg() {
+    if [[ $1 == --list-secret-keys ]]; then return 0; fi
+    [[ $1 == --symmetric ]] || return 99
+    cat > "${@: -1}"
+}
+main
+''', cwd=self.base, env=self.env, text=True, capture_output=True, timeout=10)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        archive = next(self.base.glob("secrets-*.tar.gz.gpg"))
+        with tarfile.open(archive) as contents:
+            for name, data in expected.items():
+                self.assertEqual(data, contents.extractfile("./" + name).read())
+        restore = self.base / "restored"
+        (restore / ".ssh").mkdir(parents=True)
+        shutil.copyfile(ROOT / "stow/ssh/.ssh/config", restore / ".ssh/config")
+        body = f'''
+HOME={shlex.quote(str(restore))}
+check_deps() {{ :; }}
+list_removable_media() {{ :; }}
+fzf() {{ cat; }}
+gpg() {{ [[ $1 == --decrypt ]] || return 99; cat -- "$2"; }}
+main
+'''
+        first = self.run_bash(body)
+        self.assertEqual(0, first.returncode, first.stdout + first.stderr)
+        for name, data in expected.items():
+            dest = restore / ".ssh" / name
+            self.assertEqual(data, dest.read_bytes())
+            self.assertEqual(0o600 if name in private_names else 0o644,
+                             dest.stat().st_mode & 0o777)
+            self.assertNotIn(data.decode().strip(), first.stdout + first.stderr)
+        self.assertFalse((restore / ".ssh/ssh_config").exists())
+        conflict = restore / ".ssh/github_auth"
+        conflict.write_text("EXISTING DIFFERENT FIXTURE\n")
+        second = self.run_bash(body)
+        self.assertEqual(0, second.returncode, second.stdout + second.stderr)
+        self.assertEqual("EXISTING DIFFERENT FIXTURE\n", conflict.read_text())
+        self.assertIn("8 SSH key(s) skipped", second.stdout)
+        self.assertEqual([], list(self.base.glob("tmp.*")))
 
 
 if __name__ == "__main__":

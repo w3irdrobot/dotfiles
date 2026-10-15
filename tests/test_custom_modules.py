@@ -16,8 +16,9 @@ class CustomModules(unittest.TestCase):
         test_dotfiles.Fixture.setUp(self)
         self.native = self.base / "usr/bin/opencode"
         self.native.parent.mkdir(parents=True)
-        module = self.repo / "modules/opencode.sh"
-        module.write_text(module.read_text().replace("/usr/bin/opencode", str(self.native)))
+        for name in ("modules/opencode.sh", "lib/dotfiles.sh", "install.sh"):
+            path = self.repo / name
+            path.write_text(path.read_text().replace("/usr/bin/opencode", str(self.native)))
 
     def run_module(self, name, *args):
         return subprocess.run(
@@ -122,7 +123,7 @@ exit {status}
         self.assertFalse((self.home / "native-version-ran").exists())
 
     def test_opencode_post_install_accepts_native_v2_without_pacman_or_path_dispatch(self):
-        self.mock("opencode", "sys.exit(97)")
+        (self.path / "opencode").symlink_to(self.native)
         for version in ("2.0.29", "opencode v2.0.29"):
             with self.subTest(version=version):
                 self.fake_native(version=version)
@@ -131,6 +132,14 @@ exit {status}
                 self.assertTrue((self.home / "native-version-ran").exists())
                 (self.home / "native-version-ran").unlink()
         self.assertFalse(any(c[0] in ("pacman", "opencode", "wget", "sudo") for c in self.calls()))
+
+    def test_opencode_post_install_rejects_unmanaged_path_binary_without_execution(self):
+        self.fake_native()
+        self.mock("opencode", "sys.exit(97)")
+        before = self.snapshot()
+        self.assert_failed(self.run_module("opencode"), "shadows the native package")
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse(any(c[0] == "opencode" for c in self.calls()))
 
     def test_opencode_post_install_rejects_non_v2_and_failed_version_command(self):
         for version, status in (("1.2.3", 0), ("opencode v3.0.0", 0), ("opencode v2.0.29", 1)):

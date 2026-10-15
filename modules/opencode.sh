@@ -7,16 +7,6 @@ readonly ROOT
 # shellcheck source=lib/dotfiles.sh
 source "$ROOT/lib/dotfiles.sh"
 
-check_opencode_shadow() {
-	local shadow=$HOME/.local/bin/opencode actual native
-	if [[ -e $shadow || -L $shadow ]]; then
-		[[ -e $shadow ]] || die "Dangling OpenCode shadow: $shadow; inspect and move it manually. Leaving it unchanged."
-		actual=$(realpath -m "$shadow") || die "Could not resolve OpenCode shadow: $shadow"
-		native=$(realpath -m /usr/bin/opencode) || die 'Could not resolve native OpenCode path.'
-		[[ $actual == "$native" ]] || die "User-local OpenCode shadows the native package: $shadow; inspect and move it manually. Leaving it unchanged."
-	fi
-}
-
 check_opencode_repository() {
 	local metadata repository name version upstream
 	metadata=$(LC_ALL=C pacman -Si -- opencode) || die 'Official Extra OpenCode metadata is unavailable; repair repository configuration/databases. No AUR fallback.'
@@ -43,7 +33,7 @@ main() {
 	DRY_RUN=0
 	[[ $# == 0 || ($# == 1 && $1 == --check) ]] || die 'Usage: opencode.sh [--check]'
 	check_platform
-	check_opencode_shadow
+	preflight_native_opencode_paths
 	if [[ ${1:-} == --check ]]; then
 		# Read-only local database inspection, not a synchronization or installation.
 		check_opencode_repository

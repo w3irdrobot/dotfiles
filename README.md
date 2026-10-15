@@ -139,6 +139,14 @@ companions and reserved entries) stop export before staging or touching an
 existing archive. Rename colliding keys and update the config manually. Review
 the archive selection and verify a restore before wiping the source machine;
 key paths that differ on the destination still need manual adjustment.
+SSH import uses the archived `IdentityFile` entries to restore nonstandard key
+names too, not just `id_*`. Missing explicitly referenced private keys stop import;
+public companions are optional. Continue to test a restore before deleting originals.
+Explicit private identities stay mode `0600` even if their filename ends in `.pub`;
+public companions use `0644`. Existing differing files are warned about and skipped,
+not overwritten—check the restore summary before retiring the source machine.
+USB selection keeps exact mountpoints separate from displayed labels; failed
+discovery or an invalid picker selection aborts rather than selecting another path.
 Bitwarden's native Linux SSH-agent socket is `~/.bitwarden-ssh-agent.sock`.
 Enable the agent in the desktop app after signing in. An existing `SSH_AUTH_SOCK`
 is preserved; use your local shell override if you want Bitwarden to replace it.
@@ -203,6 +211,12 @@ explicit maintenance action. Each project's
 OpenCode stays on V2: repository versions outside major 2 stop installation or
 system updates rather than being silently accepted. A newer patch/minor V2
 release is allowed. A future V3 transition requires a deliberate policy change.
+Unmanaged OpenCode executables on `PATH` (including npm/Bun installations) are
+refused without executing them; only aliases resolving to native `/usr/bin/opencode`
+are accepted. Inspect and move conflicting installations manually.
+
+`generate_local_cert` uses a private umask for both localhost outputs and refuses
+existing key/certificate files or symlinks. Run it in an empty working directory.
 
 Nono is a pinned upstream binary, not an AUR package. Upgrade its
 version/digest through a reviewed repo change, then rerun setup. If a changed

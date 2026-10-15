@@ -224,6 +224,9 @@ link_configs() {
 
 install_packages() {
 	phase 'Package preflight: native ownership and helper health'
+	# Full upgrades also affect unselected applications; reject unmanaged PATH
+	# copies before downloads, without executing them (including in dry-runs).
+	preflight_native_opencode_paths
 	if group_selected core || ((${#PACKAGES[@]})); then validate_existing_paru; fi
 	local package guard_opencode=0 query_status need_nix=0
 	local -a baseline=(git stow wget ca-certificates xz)
@@ -367,13 +370,38 @@ require_native_nix_repository() {
 	NIX_REPOSITORY_TARGET=$repository/nix
 }
 
+# Keep these PATH guards identical to their standalone copies in install.sh.
 preflight_native_opencode_paths() {
-	local shadow=$HOME/.local/bin/opencode actual native
-	[[ -e $shadow || -L $shadow ]] || return 0
-	[[ -e $shadow ]] || die "Dangling local OpenCode shadow: $shadow; inspect and move it manually."
-	actual=$(realpath -m "$shadow")
-	native=$(realpath -m /usr/bin/opencode)
-	[[ $actual == "$native" ]] || die "Local OpenCode shadows the native package: $shadow; inspect and move it manually."
+	local remaining=${PATH-} directory candidate more
+	# Shell startup prepends this directory even when the installer PATH omits it.
+	check_native_opencode_path "$HOME/.local/bin/opencode" 1
+	while :; do
+		more=0
+		if [[ $remaining == *:* ]]; then
+			directory=${remaining%%:*}
+			remaining=${remaining#*:}
+			more=1
+		else
+			directory=$remaining
+		fi
+		# Empty entries mean the current directory, including a trailing colon.
+		candidate=${directory:-.}/opencode
+		check_native_opencode_path "$candidate" 0
+		((more)) || break
+	done
+}
+
+check_native_opencode_path() {
+	local candidate=$1 explicit=$2 actual native
+	[[ -e $candidate || -L $candidate ]] || return 0
+	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
+	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
+	# and the explicitly protected startup path still require inspection.
+	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
+	[[ $candidate != /usr/bin/opencode ]] || return 0
+	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
+	native=$(realpath -m -- /usr/bin/opencode) || die 'Could not resolve native OpenCode path; inspect it manually.'
+	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the native package: $candidate; inspect and move it manually. Leaving it unchanged."
 }
 
 # shellcheck source=modules/paru.sh
