@@ -66,7 +66,7 @@ machine for that final rehearsal.
 Keep the VM until review is complete. Do not automatically destroy it or treat a
 passing container test as equivalent to this rehearsal.
 
-## Observed Arch rehearsal (2026-10-14)
+## Observed Arch rehearsal (2026-10-14–15)
 
 The isolated `dotfiles-arch` guest booted as x86_64 Arch with systemd running,
 passwordless guest sudo, and no shared host mounts. Published commit
@@ -154,6 +154,31 @@ The fixture suite at `18d13b4` also ran inside the guest as its regular user:
 229 tests passed in 143s with real GNU Stow 2.4.1, no failures or skips. This
 confirms Linux fixture behavior; it does not stand in for the remaining live
 installation, user configuration, or desktop checks.
+
+VSCodium's approved local-build rehearsal then exited 0: paru built and installed
+`vscodium-bin 1.140.06880-1` from the exact audited AUR checkout, with all recipe
+sources and the x86_64 archive checksum passing. Its seven missing official
+dependencies were installed through pacman. The sandbox helper is package-owned,
+root:root, mode 4755 as reviewed. This used `paru --build --install --needed`,
+not mutable AUR synchronization; the original installer is being resumed to test
+its already-installed AUR path, module preparation, and links. This result is
+not an XFCE launch or extension-configuration test.
+
+Core installation at `e118831` then exited 0, including all 17 declared editor
+extensions, module setup, real Stow links, launcher creation, and native Nix
+validation using the linked user features. A fresh login Bash loaded `take`,
+`scratch`, `gshell`, and `ai` directly from repo `shell/functions.sh`; the launcher
+resolved through `~/.local/bin`. The original distribution `.bashrc` backup hash
+was unchanged, and the checkout remained clean.
+
+The real core repeat run also exited 0. Refreshed Arch indexes supplied four
+upgrades (curl, Hugo, Just, pacman), which completed as a full transaction. The
+installed package-name set was unchanged; five sampled managed links retained
+both targets and inodes. Stow produced no new link operations, and the launcher
+was recognized as already correct. VSCodium did not reinstall its extensions.
+These are repeat-install results, not yet explicit config/system/update-all
+command results. The user explicitly left Spotify's testing/beta AUR build
+pending; do not interpret that as approval or a production package-policy change.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
