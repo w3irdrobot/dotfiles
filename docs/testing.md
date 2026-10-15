@@ -273,8 +273,23 @@ registry and `nolabs-ai/nono-packs` release-workflow signer. `nono pin` excluded
 that exact version from package updates. Profile validation passed, and the real
 `ai --version` wrapper returned OpenCode 2.0.29 from a project directory. From
 `$HOME`, the dev wrapper correctly refused broad access overlapping protected
-credential paths; no deny rules were removed. Automatic pack provisioning is
-being added to the installer; no application sign-ins are to be automated.
+credential paths; no deny rules were removed. Published `691dbd6` automates pack
+installation and pinning without force or authentication automation. Fresh setup
+under a separate guest XDG config directory passed, read-only preflight created
+no config directory, repeat setup preserved the pack lockfile byte-for-byte, and
+normal setup validated the existing pinned pack. All 302 local tests passed with
+two GNU Stow skips; all 302 also passed in the guest with real GNU Stow and no
+skips. Both CI validation jobs passed at this checkpoint.
+
+The approved Brave snapshot `8ede66185c519130ac3bfb423be40acbec7f8c12`
+(`brave-bin` `1:1.97.57-1`) then built and installed through native paru. An initial
+GitHub download stalled; its downloader was stopped with no pacman transaction
+active, and a bounded resume verified the pinned archive checksum. The clean
+reviewed driver subsequently downloaded and verified the payload again and
+completed the package transaction. Pacman ownership, `brave --version`, and the
+standard root-owned mode-4755 `/opt/brave-bin/chrome-sandbox` were verified. No
+sandbox-disabling flags were used. GUI browsing remains untested in this headless
+guest; this establishes package installation, not Manjaro/XFCE GUI acceptance.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
