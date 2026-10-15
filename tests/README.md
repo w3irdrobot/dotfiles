@@ -24,6 +24,13 @@ Real GNU Stow tests clearly skip when Stow is absent; CI supplies Stow both on
 Ubuntu and inside a disposable Arch container. The latter runs tests as an
 unprivileged user with the source bind-mounted read-only.
 
+SSH export fixtures cover normalized equals-form directives, inherited/repeated
+identities, wildcard/negated hosts, `Match all`, unsupported-condition refusal,
+missing keys, and archive basename/public-companion collisions. Encryption is
+mocked and all keys are synthetic. When OpenSSH is available, `ssh -G -F` against
+explicit fixture configs compares supported flattened settings with OpenSSH;
+these configs contain no executable conditions or real user key/config paths.
+
 `just check-packages` explicitly queries Arch and AUR HTTPS metadata. It checks
 existence, not buildability, trust, package ownership, or Manjaro availability.
 Official package lookup accepts `x86_64` and architecture-independent `any`

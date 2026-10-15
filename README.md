@@ -122,10 +122,19 @@ stores. Sign in to your password manager and configure SSH signing manually.
 Wallet/key migration remains manual and separate from workstation installation.
 Imported SSH host definitions belong in the machine-local `~/.ssh/config.local`,
 not the symlinked repository config.
-`secrets_export` follows that supported include and includes selected hosts'
-explicit identity files. Other/nested includes are refused rather than silently
-omitted; flatten and review those configs manually before backup. Review the
-archive selection and verify a restore before wiping the source machine.
+`secrets_export` follows that include at the top of the main config, accepting
+both whitespace and `keyword=value` syntax. It flattens each selected host's
+applicable global, wildcard/negated, repeated-host, and `Match all` settings in
+their original order, collecting all explicit identity files. It never runs
+`ssh -G` or config commands. Other/nested/conditional includes, conditional
+`Match`, hostname canonicalization, and identity paths requiring expansions or
+ambiguous quoting are refused; flatten/review those configs manually first.
+Use absolute or `~/` identity paths. Default/agent-only identities are not inferred.
+The archive uses flat key filenames: basename collisions (including public-key
+companions and reserved entries) stop export before staging or touching an
+existing archive. Rename colliding keys and update the config manually. Review
+the archive selection and verify a restore before wiping the source machine;
+key paths that differ on the destination still need manual adjustment.
 Bitwarden's native Linux SSH-agent socket is `~/.bitwarden-ssh-agent.sock`.
 Enable the agent in the desktop app after signing in. An existing `SSH_AUTH_SOCK`
 is preserved; use your local shell override if you want Bitwarden to replace it.
