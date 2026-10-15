@@ -10,41 +10,44 @@
     }
   },
   "mcp": {
-    "better-auth": {
-      "enabled": false,
-      "type": "remote",
-      "url": "https://mcp.better-auth.com/mcp"
-    },
-    "exa": {
-      "enabled": true,
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp",
-      "headers": {
-        "x-api-key": "{env:EXA_API_KEY}"
-      }
-    },
-    "linear": {
-      "enabled": true,
-      "type": "remote",
-      "url": "https://mcp.linear.app/mcp"
-    },
-    "github": {
-      "enabled": true,
-      "type": "remote",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer {env:GITHUB_MCP_TOKEN}"
+    "servers": {
+      "better-auth": {
+        "disabled": true,
+        "type": "remote",
+        "url": "https://mcp.better-auth.com/mcp"
+      },
+      "exa": {
+        "disabled": false,
+        "type": "remote",
+        "url": "https://mcp.exa.ai/mcp",
+        "headers": {
+          "x-api-key": "{env:EXA_API_KEY}"
+        }
+      },
+      "linear": {
+        "disabled": false,
+        "type": "remote",
+        "url": "https://mcp.linear.app/mcp"
+      },
+      "github": {
+        "disabled": false,
+        "type": "remote",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+          "Authorization": "Bearer {env:GITHUB_MCP_TOKEN}"
+        }
       }
     }
   },
-  "provider": {
+  "providers": {
     "maple-local": {
       "name": "Maple Local",
-      "options": {
-        "baseURL": "http://127.0.0.1:8080/v1",
-        "headers": {
-          "Authorization": "Bearer {env:MAPLE_API_KEY}"
-        }
+      "package": "@opencode/ai/providers/openai-compatible",
+      "headers": {
+        "Authorization": "Bearer {env:MAPLE_API_KEY}"
+      },
+      "settings": {
+        "baseURL": "http://127.0.0.1:8080/v1"
       },
       "models": {
         "glm-5-3-flash": {
