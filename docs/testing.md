@@ -68,6 +68,15 @@ passing container test as equivalent to this rehearsal.
 
 ## Observed Arch rehearsal (2026-10-14–15)
 
+Current verified scope: core plus the explicit native-module subset
+`opencode,nono,bitwarden,discord,mullvad,signal,telegram,thunderbird,wallpaper`.
+Installation, core repeat installation, link/config/system/update-all commands,
+locked Nix development, local OpenCode API startup, and reboot persistence passed.
+This is not acceptance of the complete default set: Spotify and Brave remain
+pending, Claude Code is opt-in, and Manjaro/XFCE GUI checks and personal sign-ins
+remain manual. The progress below is chronological; later results supersede the
+earlier checkpoints' pending states.
+
 The isolated `dotfiles-arch` guest booted as x86_64 Arch with systemd running,
 passwordless guest sudo, and no shared host mounts. Published commit
 `7fd2b09e2dde6166ab87138407351cba8960bc8c` was used for these checks:
@@ -240,9 +249,22 @@ linked configuration, without a model request or sign-in.
 
 A final fresh-shell check exposed native Bitwarden's executable name:
 the package provides `bitwarden-desktop`, not `bitwarden`. Existing startup only
-checked the latter and therefore skipped the intended SSH socket default. The
-native command-detection fix and regression coverage are in progress; no GUI
-app or credential operation was launched by this check.
+checked the latter and therefore skipped the intended SSH socket default.
+Published `1c30d07` detects both native and legacy names without launching the
+app. All 14 startup tests passed in the guest, and a real fresh-login shell then
+selected the Bitwarden socket default while resolving native OpenCode and the
+managed nono executable correctly. No GUI app or credential operation was launched.
+
+A graceful Lima stop/start then booted the updated `7.2.9-arch1-1` kernel. Systemd
+reported running, Nix was active without manual restart, the locked dev shell and
+unchanged `flake.lock` passed again, fresh login retained the correct managed links
+and Bitwarden socket default, and OpenCode's local API responded after reboot.
+Mullvad remained inactive/disabled, no pacman lock remained, and the checkout
+stayed clean. The VM is preserved for further review; no credentials were imported.
+The final post-reboot suite at `1c30d07` passed all 277 tests in 154 seconds with
+real GNU Stow, no failures or skips. The same production checkpoint passed both
+CI jobs and a final independent read-only Bash/security review. This validates
+the approved Arch scope above, not Manjaro desktop operation or personal auth.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
