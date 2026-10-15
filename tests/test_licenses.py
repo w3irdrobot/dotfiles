@@ -12,9 +12,6 @@ ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_SHA256 = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
 FULL_SHA256 = "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
 LICENSES = {
-    "stow/claude-code/.claude/skills/frontend-design/LICENSE.txt": FRONTEND_SHA256,
-    "stow/claude-code/.claude/skills/skill-creator/LICENSE.txt": FULL_SHA256,
-    "stow/claude-code/.claude/skills/theme-factory/LICENSE.txt": FULL_SHA256,
     "stow/opencode/.config/opencode/skills/frontend-design/LICENSE.txt": FRONTEND_SHA256,
     "stow/opencode/.config/opencode/skills/skill-creator/LICENSE.txt": FULL_SHA256,
 }

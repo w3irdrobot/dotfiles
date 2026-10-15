@@ -72,10 +72,10 @@ Current verified scope: core plus the explicit native-module subset
 `opencode,nono,bitwarden,discord,mullvad,signal,telegram,thunderbird,wallpaper`.
 Installation, core repeat installation, link/config/system/update-all commands,
 locked Nix development, local OpenCode API startup, and reboot persistence passed.
-This is not acceptance of the complete default set: Spotify and Brave remain
-pending, Claude Code is opt-in, and Manjaro/XFCE GUI checks and personal sign-ins
-remain manual. The progress below is chronological; later results supersede the
-earlier checkpoints' pending states.
+Brave remains untested in the VM; no recipe-level blocker was found in its audit.
+Spotify and Claude Code were subsequently removed entirely at the user's request.
+Manjaro/XFCE GUI checks and personal sign-ins remain manual. The progress below is
+chronological; later results supersede the earlier checkpoints' pending states.
 
 The isolated `dotfiles-arch` guest booted as x86_64 Arch with systemd running,
 passwordless guest sudo, and no shared host mounts. Published commit
@@ -185,9 +185,8 @@ upgrades (curl, Hugo, Just, pacman), which completed as a full transaction. The
 installed package-name set was unchanged; five sampled managed links retained
 both targets and inodes. Stow produced no new link operations, and the launcher
 was recognized as already correct. VSCodium did not reinstall its extensions.
-These are repeat-install results, not yet explicit config/system/update-all
-command results. The user explicitly left Spotify's testing/beta AUR build
-pending; do not interpret that as approval or a production package-policy change.
+At that checkpoint, explicit config/system/update-all command tests were still
+pending; their completed results are recorded below.
 
 Explicit `link --groups core` passed without changing existing links. A real
 `update configs --groups core` fast-forwarded `e118831` to `431b98e`, restarted
@@ -196,11 +195,11 @@ checkout. With a newly created untracked probe present, config update exited 1
 before changing HEAD and preserved the probe. Only that test-created file was
 removed afterward; no user work was discarded.
 
-The user subsequently made OpenCode the default harness and left Claude Code
-opt-in (`default=false`); no Claude package was installed in the guest. Spotify
-remains explicitly pending, and Brave has not received VM-install approval.
-The remaining rehearsal uses additive native modules rather than changing the
-production desktop package policy to silently omit either application.
+The user initially made Claude Code opt-in, then requested complete removal of
+both Claude Code and Spotify. Neither was installed in the guest. Brave's reviewed
+package has no known recipe-level blocker, but its VM install remains untested.
+The native-module subset does not establish acceptance of the full desktop group
+while Brave's installation remains untested.
 
 The first native AI/desktop subset run stopped safely during pacman's Secret
 Service provider selection, before new applications were installed. The user

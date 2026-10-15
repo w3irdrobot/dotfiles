@@ -46,7 +46,7 @@ tests/                 disposable fixtures, not live-machine setup
 ```
 
 Core workstation, AI tools, and desktop applications are the default groups.
-OpenCode is the default AI harness; Claude Code is opt-in with `--modules claude-code`.
+OpenCode is the AI harness.
 Cloud/container, Bitcoin, and hardware-security tools are opt-in groups. Nix
 provides project environments; language toolchains and native build dependencies
 should live in project flakes instead of being installed globally. AUR's own
@@ -81,8 +81,7 @@ package hooks create standard system users/directories, but this installer does
 not start its service or configure mounted storage. Electrs installation, Tor,
 custom storage paths, and service management remain manual. Do not start those
 configs until their prerequisites and storage settings have been reviewed.
-Spotify intentionally remains an AUR package rather than using Extra's launcher,
-which separately downloads and updates the actual client. Mullvad uses Extra;
+Mullvad uses Extra;
 logging in, connecting, and daemon/service setup remain manual.
 
 ## Conflicts and local settings
@@ -159,6 +158,11 @@ restarting the affected application.
 After AI installation, initialize nono's pinned runtime pack manually with
 `nono pull nolabs-ai/opencode@0.4.0`. Review any existing-profile conflicts; the
 installer never uses force to replace registry-managed assets.
+This downloads nono's OpenCode integration pack, including the base sandbox
+profile inherited by the repo's custom profiles. It is separate from installing
+the nono executable and is required before using the sandboxed `ai` helper.
+Application, model-provider, and MCP sign-ins are separate personal authentication
+steps, not installer failures. Configure only the services you actually use.
 
 Nix's executable updates through pacman/paru; garbage collection remains an
 explicit maintenance action. Each project's
