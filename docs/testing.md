@@ -217,6 +217,33 @@ locked flake pinned to the same reviewed nixpkgs revision supplied `hello` throu
 `Hello, world!`, and the before/after `flake.lock` SHA256 matched. No project
 tool was installed globally, and no extra experimental-feature flags were needed.
 
+The native AI/desktop subset at `4700ad7` exited 0 after the three provider
+selections. Its full native transaction handled 148 packages/dependencies and
+upgrades; the pinned nono archive checksum passed, and new config links completed.
+Verified package-owned OpenCode reports `opencode v2.0.29`; the managed user-local
+nono link reports `nono 0.80.0`. Native Bitwarden, Discord, Mullvad, Signal,
+Telegram, Thunderbird, gnome-keyring, pipewire-jack, and Noto packages are installed.
+OpenCode/nono profiles, Signal's launcher, and the wallpaper are repo symlinks;
+the checkout is clean and systemd reports running. Claude Code, Spotify, Brave,
+Rust/Rustup/Cargo, Node.js, and npm packages remain absent. App sign-ins, Mullvad
+connection/service choices, nono's registry initialization, and GUI behavior
+were not exercised by this package/link validation.
+
+At `4c4d6e4`, both explicit `update system` and `update all` with the same
+39-module selection exited 0. The latter performed config fetch/restart, full
+native checks, `paru -Sua --ignore paru`, module setup, relinking, and linked Nix
+validation. These update runs found no new package upgrades; earlier install
+repeat runs exercised actual full native upgrades. All 275 fixture tests then
+passed in the guest with real GNU Stow, no skips. From the separate Nix rehearsal
+project, native OpenCode's local `/api/info` request also succeeded using the
+linked configuration, without a model request or sign-in.
+
+A final fresh-shell check exposed native Bitwarden's executable name:
+the package provides `bitwarden-desktop`, not `bitwarden`. Existing startup only
+checked the latter and therefore skipped the intended SSH socket default. The
+native command-detection fix and regression coverage are in progress; no GUI
+app or credential operation was launched by this check.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

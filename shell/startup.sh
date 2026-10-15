@@ -7,7 +7,7 @@
 source "${BASH_SOURCE[0]%/*}/init.sh" || return
 
 # App-specific defaults, before machine-local overrides. No app execution.
-if command -v bitwarden >/dev/null 2>&1; then
+if command -v bitwarden-desktop >/dev/null 2>&1 || command -v bitwarden >/dev/null 2>&1; then
 	# shellcheck source=./bitwarden.sh
 	source "${BASH_SOURCE[0]%/*}/bitwarden.sh" || return
 fi

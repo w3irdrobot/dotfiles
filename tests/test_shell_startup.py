@@ -72,8 +72,8 @@ class ShellStartup(unittest.TestCase):
         )
         script.chmod(0o755)
 
-    def native_bitwarden(self):
-        script = self.path / "bitwarden"
+    def native_bitwarden(self, command="bitwarden"):
+        script = self.path / command
         script.write_text(
             f"#!{sys.executable}\nfrom pathlib import Path\n"
             f"Path({str(self.base / 'app-executed')!r}).write_text('unexpected app execution')\n"
@@ -202,27 +202,56 @@ _dotfiles_load_shell() { [[ $LOCAL_EXISTING == replaced ]]; }
         self.assertEqual([], self.sources())
 
     def test_native_agent_default_preserves_explicit_empty_or_other_socket(self):
-        self.native_bitwarden()
         cases = ((None, str(self.home / ".bitwarden-ssh-agent.sock")),
                  ("", ""), (str(self.base / "explicit-agent"), str(self.base / "explicit-agent")))
-        for socket, expected in cases:
-            with self.subTest(socket=socket):
-                if socket is None:
-                    self.env.pop("SSH_AUTH_SOCK", None)
-                else:
-                    self.env["SSH_AUTH_SOCK"] = socket
+        for command in ("bitwarden-desktop", "bitwarden"):
+            self.native_bitwarden(command)
+            for socket, expected in cases:
+                with self.subTest(command=command, socket=socket):
+                    if socket is None:
+                        self.env.pop("SSH_AUTH_SOCK", None)
+                    else:
+                        self.env["SSH_AUTH_SOCK"] = socket
+                    if self.log.exists():
+                        self.log.unlink()
+                    result = self.run_shell('printf "%s" "$SSH_AUTH_SOCK"')
+                    self.assertEqual(expected, result.stdout)
+                    self.assertEqual(self.expected_sources(native=True), self.sources())
+            (self.path / command).unlink()
+
+    def test_native_agent_repeat_startup_preserves_caller_state(self):
+        for command in ("bitwarden-desktop", "bitwarden"):
+            with self.subTest(command=command):
+                self.native_bitwarden(command)
                 if self.log.exists():
                     self.log.unlink()
-                result = self.run_shell('printf "%s" "$SSH_AUTH_SOCK"')
-                self.assertEqual(expected, result.stdout)
-                self.assertEqual(self.expected_sources(native=True), self.sources())
+                self.run_shell('''
+source "$HOME/.bashrc"
+[[ $- == "$original_flags" && $SHELLOPTS == "$original_options" ]] || exit 97
+[[ $ROOT == root-sentinel && $directory == directory-sentinel ]] || exit 97
+[[ ! -v _dotfiles_repo && ! -v _dotfiles_override ]] || exit 97
+[[ ! -v _dotfiles_bashrc && ! -v _dotfiles_directory ]] || exit 97
+[[ $SSH_AUTH_SOCK == "$HOME/.bitwarden-ssh-agent.sock" ]] || exit 97
+! declare -F _dotfiles_load_shell
+''', before='''
+set +e
+original_flags=$- original_options=$SHELLOPTS
+ROOT=root-sentinel directory=directory-sentinel
+''')
+                self.assertEqual(self.expected_sources(native=True) * 2, self.sources())
+                (self.path / command).unlink()
+
+    def test_password_manager_cli_does_not_select_gui_agent(self):
+        self.native_bitwarden("bw")
+        self.run_shell('[[ ! -v SSH_AUTH_SOCK ]]')
+        self.assertEqual(self.expected_sources(), self.sources())
 
     def test_absent_native_app_does_not_set_a_socket(self):
         self.run_shell('[[ ! -v SSH_AUTH_SOCK ]]')
         self.assertNotIn(str(self.repo / "shell/bitwarden.sh"), self.sources())
 
     def test_repo_local_overrides_run_in_order_after_defaults(self):
-        self.native_bitwarden()
+        self.native_bitwarden("bitwarden-desktop")
         local = self.repo / "local/bash"
         local.mkdir(parents=True)
         bodies = {
