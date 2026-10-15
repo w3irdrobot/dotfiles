@@ -201,6 +201,18 @@ selected `gnome-keyring` for this guest. The VM driver requires explicit
 flag it still refuses. This test approval does not pin a provider or alter XFCE
 settings in the production installer.
 
+Pacman next requested a `jack` provider because Telegram depends on FFmpeg,
+whose Arch package requires JACK-compatible libraries. After that explanation,
+the user approved `pipewire-jack`, matching the guest's existing PipeWire stack.
+This is a VM dependency choice, not an OpenCode requirement or an XFCE preference
+change. The transaction still had not installed the pending native applications.
+
+A separate guest project also verified the linked Nix workflow: an initially
+locked flake pinned to the same reviewed nixpkgs revision supplied `hello` through
+`mkShellNoCC`. `nix develop --no-update-lock-file --command hello` printed
+`Hello, world!`, and the before/after `flake.lock` SHA256 matched. No project
+tool was installed globally, and no extra experimental-feature flags were needed.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

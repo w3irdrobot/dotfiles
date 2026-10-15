@@ -40,9 +40,115 @@ def native_finished(state):
 PROVIDER_MENU = (":: There are 5 providers available for org.freedesktop.secrets:\n"
                  ":: Repository extra\n"
                  "   1) chipass  2) gnome-keyring  3) keepassxc  4) kwallet  5) oo7\n\n")
+JACK_MENU = (":: There are 2 providers available for jack:\n"
+             ":: Repository extra\n   1) jack2  2) pipewire-jack\n\n")
 
 
 class InstallDriver(unittest.TestCase):
+    def test_independent_provider_choices_sequential_menus_and_native_cap(self):
+        for jack_menu, expected in ((JACK_MENU, b"2\n"),
+                                   (JACK_MENU.replace("1) jack2  2) pipewire-jack",
+                                                      "1) pipewire-jack  2) jack2"), b"1\n")):
+            for jack_first in (False, True):
+                with self.subTest(expected=expected, jack_first=jack_first):
+                    state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+                    ready(state, driver.INSTALL_PHASE)
+                    menus = [(PROVIDER_MENU, b"2\n"), (jack_menu, expected)]
+                    for menu, answer in reversed(menus) if jack_first else menus:
+                        self.assertEqual([answer], state.feed((menu + driver.PROVIDER_PROMPT + " \ny\n").encode()))
+                    self.assertEqual({"jack", "org.freedesktop.secrets"}, state.approved_providers)
+                    self.assertEqual((0, 0), (state.downloads, state.installs))
+                    self.assertEqual([b"y\n"], state.feed(driver.bootstrap.PROMPTS[1].encode()))
+                    with self.assertRaises(driver.bootstrap.Refused):
+                        state.feed(("\n" + driver.bootstrap.PROMPTS[1]).encode())
+                    self.assertEqual(1, state.installs)
+
+    def test_two_provider_menus_all_byte_boundaries(self):
+        data = (PROVIDER_MENU + driver.PROVIDER_PROMPT + " \r\n2\r\n" +
+                JACK_MENU.replace("\n", "\r\n") + "\x1b[1m" + driver.PROVIDER_PROMPT + "\x1b[0m ").encode()
+        for split in range(len(data) + 1):
+            with self.subTest(split=split):
+                state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+                ready(state, driver.INSTALL_PHASE)
+                self.assertEqual([b"2\n", b"2\n"], state.feed(data[:split]) + state.feed(data[split:]))
+                self.assertEqual([], state.feed(b"\r\n2\r\n"))
+                self.assertEqual({"jack", "org.freedesktop.secrets"}, state.approved_providers)
+
+    def test_provider_flags_do_not_authorize_each_other_or_unknown_namespace(self):
+        state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+        ready(state, driver.INSTALL_PHASE)
+        state.feed((PROVIDER_MENU + driver.PROVIDER_PROMPT + "\n").encode())
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed((JACK_MENU + driver.PROVIDER_PROMPT).encode())
+        for secret, jack, menu in ((None, None, JACK_MENU), (None, "pipewire-jack", PROVIDER_MENU),
+                                   ("gnome-keyring", "pipewire-jack", JACK_MENU.replace("for jack:", "for pipewire-session-manager:"))):
+            state = driver.InstallParser(COMMIT, RECIPE, secret, jack)
+            ready(state, driver.INSTALL_PHASE)
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed((menu + driver.PROVIDER_PROMPT).encode())
+            self.assertEqual(set(), state.approved_providers)
+
+    def test_jack_malformed_missing_or_duplicate_options_refuse(self):
+        for menu in (JACK_MENU.replace("pipewire-jack", "gnome-keyring"),
+                     JACK_MENU.replace("2) pipewire-jack", "1) pipewire-jack"),
+                     JACK_MENU.replace("1) jack2", "1) pipewire-jack"),
+                     JACK_MENU.replace("pipewire-jack", "pipewire-jack;id"),
+                     JACK_MENU.replace("2 providers", "3 providers"),
+                     JACK_MENU.replace("for jack:", "for jack;id:"),
+                     JACK_MENU.replace("  2) pipewire-jack", "")):
+            state = driver.InstallParser(COMMIT, RECIPE, jack_provider="pipewire-jack")
+            ready(state, driver.INSTALL_PHASE)
+            with self.subTest(menu=menu), self.assertRaises(driver.bootstrap.Refused):
+                state.feed((menu + driver.PROVIDER_PROMPT).encode())
+            self.assertEqual(set(), state.approved_providers)
+
+    def test_jack_repeated_menu_or_prompt_refuses_even_after_other_provider(self):
+        for other_menu in (False, True):
+            for repeat in (driver.PROVIDER_PROMPT, JACK_MENU + driver.PROVIDER_PROMPT):
+                state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+                ready(state, driver.INSTALL_PHASE)
+                state.feed((JACK_MENU + driver.PROVIDER_PROMPT + "\n").encode())
+                if other_menu:
+                    state.feed((PROVIDER_MENU + driver.PROVIDER_PROMPT + "\n").encode())
+                with self.assertRaises(driver.bootstrap.Refused):
+                    state.feed(repeat.encode())
+                self.assertEqual(0, state.installs)
+
+    def test_jack_requires_verified_native_install_scope(self):
+        for phase in (None, driver.DOWNLOAD_PHASE, driver.HELPER_PHASE, driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+            state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+            if phase in (driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+                ready(state, driver.HELPER_PHASE)
+                state.feed((phase + "\n").encode())
+            elif phase is not None:
+                ready(state, phase)
+            with self.subTest(phase=phase), self.assertRaises(driver.bootstrap.Refused):
+                state.feed((JACK_MENU + driver.PROVIDER_PROMPT).encode())
+            self.assertEqual(set(), state.approved_providers)
+
+    def test_jack_cli_rejects_other_choices_and_wires_explicit_opt_in(self):
+        for value in ("", "true", "false", "2", "jack2", "pipewire-session-manager", "pipewire-jack;id", "pipewire-jack "):
+            with self.subTest(value=value), \
+                    patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                                       "--recipe-sha256", RECIPE, "--jack-provider=" + value]), \
+                    patch.object(driver.subprocess, "run") as run, \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                driver.main()
+            self.assertEqual(2, caught.exception.code)
+            run.assert_not_called()
+        for value in (True, False, "jack2", "pipewire-jack;id"):
+            with self.assertRaises(driver.argparse.ArgumentTypeError):
+                driver.InstallParser(COMMIT, RECIPE, jack_provider=value)
+        with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                               "--recipe-sha256", RECIPE, "--secret-service-provider", "gnome-keyring",
+                                               "--jack-provider", "pipewire-jack"]), \
+                patch.object(driver, "InstallParser", wraps=driver.InstallParser) as constructor, \
+                patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
+                patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1, driver.main())
+        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+        run.assert_not_called()
+
     def test_provider_default_refuses_and_opt_in_maps_displayed_index(self):
         state = parser()
         ready(state, driver.INSTALL_PHASE)
@@ -153,7 +259,7 @@ class InstallDriver(unittest.TestCase):
                 patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
                 patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, driver.main())
-        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring")
+        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", None)
         run.assert_not_called()
 
     def test_pins_required_before_subprocess(self):

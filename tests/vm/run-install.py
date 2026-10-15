@@ -5,6 +5,7 @@ Usage: python3 -B tests/vm/run-install.py --commit FULL40SHA --recipe-sha256 SHA
 Optional: --operation install|update-system|update-all (default install), and
 --modules CSV (only explicitly allowlisted additive modules).
 --secret-service-provider gnome-keyring explicitly approves that VM provider once.
+--jack-provider pipewire-jack independently approves that VM provider once.
 Both pins must be reviewed/published beforehand. No stdin forwarding, forced
 transaction timeout, or VSCodium/AUR package approval. An AUR review stop is NOT
 installation success. The shared PTY runner prints all guest/package output.
@@ -34,7 +35,7 @@ OPERATIONS = {"install": ("install",), "update-system": ("update", "system"),
               "update-all": ("update", "all")}
 MODULE_ALLOWLIST = frozenset(("opencode", "nono", "bitwarden", "discord", "mullvad",
                               "signal", "telegram", "thunderbird", "wallpaper"))
-PROVIDER_HEADER = re.compile(r":: There are ([1-5]) providers available for org\.freedesktop\.secrets:")
+PROVIDER_HEADER = re.compile(r":: There are ([1-5]) providers available for (org\.freedesktop\.secrets|jack):")
 PROVIDER_ROW = re.compile(r"([1-5])\)\s+([a-z0-9][a-z0-9+_.-]*)(?=\s|$)")
 PROVIDER_PROMPT = "Enter a number (default=1):"
 # Anchor known interactive forms, not arbitrary question marks in build output,
@@ -83,11 +84,15 @@ def verified_marker(commit, recipe_sha):
 
 
 class InstallParser:
-    def __init__(self, commit, recipe_sha, secret_service_provider=None):
+    def __init__(self, commit, recipe_sha, secret_service_provider=None, jack_provider=None):
         if secret_service_provider not in (None, "gnome-keyring"):
             raise argparse.ArgumentTypeError("Only gnome-keyring may be explicitly approved")
+        if jack_provider not in (None, "pipewire-jack"):
+            raise argparse.ArgumentTypeError("Only pipewire-jack may be explicitly approved for jack")
         self.marker = verified_marker(commit, recipe_sha)
-        self.secret_service_provider = secret_service_provider
+        self.provider_choices = {"org.freedesktop.secrets": secret_service_provider, "jack": jack_provider}
+        self.approved_providers = set()
+        self.provider_name = None
         self.provider_count = None
         self.provider_options = {}
         self.provider_repo = False
@@ -121,22 +126,29 @@ class InstallParser:
             self.phase = text
             self.aur_started = True
         if text == PROVIDER_PROMPT:
+            choice = self.provider_choices.get(self.provider_name)
             if (not self.verified or self.phase != INSTALL_PHASE or self.aur_started or
-                    self.secret_service_provider != "gnome-keyring" or self.provider_approved or
+                    choice is None or self.provider_approved or self.provider_name in self.approved_providers or
                     self.provider_count is None or
                     set(self.provider_options) != set(range(1, self.provider_count + 1)) or
-                    "gnome-keyring" not in self.provider_options.values()):
+                    choice not in self.provider_options.values()):
                 self.refuse()
             self.provider_approved = True
-            index = next(index for index, name in self.provider_options.items() if name == "gnome-keyring")
+            self.approved_providers.add(self.provider_name)
+            index = next(index for index, name in self.provider_options.items() if name == choice)
             return f"{index}\n".encode()
         if complete and text.startswith(":: There are ") and " providers available for " in text:
             header = PROVIDER_HEADER.fullmatch(text)
             if (not header or not self.verified or self.phase != INSTALL_PHASE or self.aur_started or
-                    self.secret_service_provider != "gnome-keyring" or self.provider_count is not None or
+                    self.provider_choices.get(header[2]) is None or header[2] in self.approved_providers or
+                    (self.provider_count is not None and not self.provider_approved) or
                     self.native_install_approved):
                 self.refuse()
             self.provider_count = int(header[1])
+            self.provider_name = header[2]
+            self.provider_options = {}
+            self.provider_repo = False
+            self.provider_approved = False
             return None
         if self.provider_count is not None and not self.provider_approved:
             if not complete or not text:
@@ -275,8 +287,10 @@ def main():
     cli.add_argument("--operation", type=validate_operation, choices=tuple(OPERATIONS), default="install")
     cli.add_argument("--secret-service-provider", choices=("gnome-keyring",), default=None,
                      help="Explicitly approve gnome-keyring once in the VM's native provider menu")
+    cli.add_argument("--jack-provider", choices=("pipewire-jack",), default=None,
+                     help="Explicitly approve pipewire-jack once in the VM's native jack provider menu")
     args = cli.parse_args()
-    parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider)
+    parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider, args.jack_provider)
     try:
         if os.environ.get("LIMA_HOME", str(bootstrap.VM_HOME)) != str(bootstrap.VM_HOME):
             raise bootstrap.Refused("Only the exact isolated test LIMA_HOME is allowed")
