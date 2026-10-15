@@ -6,6 +6,7 @@ Optional: --operation install|update-system|update-all (default install), and
 --modules CSV (only explicitly allowlisted additive modules).
 --secret-service-provider gnome-keyring explicitly approves that VM provider once.
 --jack-provider pipewire-jack independently approves that VM provider once.
+--font-provider noto-fonts independently approves that VM dependency provider once.
 Both pins must be reviewed/published beforehand. No stdin forwarding, forced
 transaction timeout, or VSCodium/AUR package approval. An AUR review stop is NOT
 installation success. The shared PTY runner prints all guest/package output.
@@ -35,8 +36,8 @@ OPERATIONS = {"install": ("install",), "update-system": ("update", "system"),
               "update-all": ("update", "all")}
 MODULE_ALLOWLIST = frozenset(("opencode", "nono", "bitwarden", "discord", "mullvad",
                               "signal", "telegram", "thunderbird", "wallpaper"))
-PROVIDER_HEADER = re.compile(r":: There are ([1-5]) providers available for (org\.freedesktop\.secrets|jack):")
-PROVIDER_ROW = re.compile(r"([1-5])\)\s+([a-z0-9][a-z0-9+_.-]*)(?=\s|$)")
+PROVIDER_HEADER = re.compile(r":: There are ([1-9]|1[01]) providers available for (org\.freedesktop\.secrets|jack|ttf-font):")
+PROVIDER_ROW = re.compile(r"([1-9]|1[01])\)\s+([a-z0-9][a-z0-9+_.-]*)(?=\s|$)")
 PROVIDER_PROMPT = "Enter a number (default=1):"
 # Anchor known interactive forms, not arbitrary question marks in build output,
 # PKGBUILD comments, package descriptions, or URLs containing query strings.
@@ -84,13 +85,16 @@ def verified_marker(commit, recipe_sha):
 
 
 class InstallParser:
-    def __init__(self, commit, recipe_sha, secret_service_provider=None, jack_provider=None):
+    def __init__(self, commit, recipe_sha, secret_service_provider=None, jack_provider=None, font_provider=None):
         if secret_service_provider not in (None, "gnome-keyring"):
             raise argparse.ArgumentTypeError("Only gnome-keyring may be explicitly approved")
         if jack_provider not in (None, "pipewire-jack"):
             raise argparse.ArgumentTypeError("Only pipewire-jack may be explicitly approved for jack")
+        if font_provider not in (None, "noto-fonts"):
+            raise argparse.ArgumentTypeError("Only noto-fonts may be explicitly approved for ttf-font")
         self.marker = verified_marker(commit, recipe_sha)
-        self.provider_choices = {"org.freedesktop.secrets": secret_service_provider, "jack": jack_provider}
+        self.provider_choices = {"org.freedesktop.secrets": secret_service_provider, "jack": jack_provider,
+                                 "ttf-font": font_provider}
         self.approved_providers = set()
         self.provider_name = None
         self.provider_count = None
@@ -141,6 +145,7 @@ class InstallParser:
             header = PROVIDER_HEADER.fullmatch(text)
             if (not header or not self.verified or self.phase != INSTALL_PHASE or self.aur_started or
                     self.provider_choices.get(header[2]) is None or header[2] in self.approved_providers or
+                    int(header[1]) > (11 if header[2] == "ttf-font" else 5) or
                     (self.provider_count is not None and not self.provider_approved) or
                     self.native_install_approved):
                 self.refuse()
@@ -289,8 +294,10 @@ def main():
                      help="Explicitly approve gnome-keyring once in the VM's native provider menu")
     cli.add_argument("--jack-provider", choices=("pipewire-jack",), default=None,
                      help="Explicitly approve pipewire-jack once in the VM's native jack provider menu")
+    cli.add_argument("--font-provider", choices=("noto-fonts",), default=None,
+                     help="Explicitly approve noto-fonts once in the VM's native ttf-font provider menu")
     args = cli.parse_args()
-    parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider, args.jack_provider)
+    parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider, args.jack_provider, args.font_provider)
     try:
         if os.environ.get("LIMA_HOME", str(bootstrap.VM_HOME)) != str(bootstrap.VM_HOME):
             raise bootstrap.Refused("Only the exact isolated test LIMA_HOME is allowed")

@@ -42,9 +42,97 @@ PROVIDER_MENU = (":: There are 5 providers available for org.freedesktop.secrets
                  "   1) chipass  2) gnome-keyring  3) keepassxc  4) kwallet  5) oo7\n\n")
 JACK_MENU = (":: There are 2 providers available for jack:\n"
              ":: Repository extra\n   1) jack2  2) pipewire-jack\n\n")
+FONT_MENU = (":: There are 11 providers available for ttf-font:\n:: Repository extra\n"
+             "   1) gnu-free-fonts  2) noto-fonts  3) ttf-bitstream-vera  4) ttf-croscore\n"
+             "   5) ttf-dejavu  6) ttf-droid  7) ttf-ibm-plex  8) ttf-input\n"
+             "   9) ttf-input-nerd  10) ttf-liberation  11) ttf-roboto\n\n")
 
 
 class InstallDriver(unittest.TestCase):
+    def test_three_independent_menus_and_multidigit_font_index_all_boundaries(self):
+        for menu, answer in ((FONT_MENU, b"2\n"),
+                             (FONT_MENU.replace("2) noto-fonts", "2) ttf-liberation")
+                                       .replace("10) ttf-liberation", "10) noto-fonts"), b"10\n")):
+            data = (PROVIDER_MENU + driver.PROVIDER_PROMPT + "\r\n2\r\n" +
+                    JACK_MENU + driver.PROVIDER_PROMPT + "\r\n2\r\n" + menu +
+                    "\x1b[1m" + driver.PROVIDER_PROMPT + "\x1b[0m ").encode()
+            for split in range(len(data) + 1):
+                with self.subTest(answer=answer, split=split):
+                    state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack", "noto-fonts")
+                    ready(state, driver.INSTALL_PHASE)
+                    self.assertEqual([b"2\n", b"2\n", answer], state.feed(data[:split]) + state.feed(data[split:]))
+                    self.assertEqual({"org.freedesktop.secrets", "jack", "ttf-font"}, state.approved_providers)
+                    self.assertEqual((0, 0), (state.downloads, state.installs))
+                    self.assertEqual([], state.feed(b"\r\n2\r\n"))
+                    self.assertEqual([b"y\n"], state.feed(driver.bootstrap.PROMPTS[1].encode()))
+                    with self.assertRaises(driver.bootstrap.Refused):
+                        state.feed(("\n" + driver.bootstrap.PROMPTS[1]).encode())
+
+    def test_font_requires_its_flag_and_does_not_approve_other_namespaces(self):
+        for font, menu in ((None, FONT_MENU), ("noto-fonts", JACK_MENU),
+                           ("noto-fonts", FONT_MENU.replace("ttf-font:", "pipewire-session-manager:"))):
+            state = driver.InstallParser(COMMIT, RECIPE, font_provider=font)
+            ready(state, driver.INSTALL_PHASE)
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed((menu + driver.PROVIDER_PROMPT).encode())
+            self.assertEqual(set(), state.approved_providers)
+
+    def test_font_invalid_counts_noncontiguous_duplicate_and_missing_options_refuse(self):
+        for menu in (FONT_MENU.replace("11 providers", "12 providers"),
+                     FONT_MENU.replace("11 providers", "0 providers"),
+                     FONT_MENU.replace("11 providers", "10 providers"),
+                     FONT_MENU.replace("11) ttf-roboto", "12) ttf-roboto"),
+                     FONT_MENU.replace("10) ttf-liberation", "9) ttf-liberation"),
+                     FONT_MENU.replace("10) ttf-liberation", "010) ttf-liberation"),
+                     FONT_MENU.replace("  10) ttf-liberation", ""),
+                     FONT_MENU.replace("noto-fonts", "another-font"),
+                     FONT_MENU.replace("ttf-roboto", "noto-fonts"),
+                     FONT_MENU.replace("noto-fonts", "noto-fonts;id")):
+            state = driver.InstallParser(COMMIT, RECIPE, font_provider="noto-fonts")
+            ready(state, driver.INSTALL_PHASE)
+            with self.subTest(menu=menu), self.assertRaises(driver.bootstrap.Refused):
+                state.feed((menu + driver.PROVIDER_PROMPT).encode())
+            self.assertEqual(set(), state.approved_providers)
+
+    def test_font_repeat_phase_and_aur_restrictions(self):
+        for phase in (None, driver.DOWNLOAD_PHASE, driver.HELPER_PHASE, driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+            state = driver.InstallParser(COMMIT, RECIPE, font_provider="noto-fonts")
+            if phase in (driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+                ready(state, driver.HELPER_PHASE)
+                state.feed((phase + "\n").encode())
+            elif phase is not None:
+                ready(state, phase)
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed((FONT_MENU + driver.PROVIDER_PROMPT).encode())
+        for repeated in (driver.PROVIDER_PROMPT, FONT_MENU + driver.PROVIDER_PROMPT):
+            state = driver.InstallParser(COMMIT, RECIPE, font_provider="noto-fonts")
+            ready(state, driver.INSTALL_PHASE)
+            state.feed((FONT_MENU + driver.PROVIDER_PROMPT + "\n").encode())
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed(repeated.encode())
+            self.assertEqual({"ttf-font"}, state.approved_providers)
+
+    def test_font_cli_only_accepts_explicit_noto_fonts(self):
+        for value in ("", "true", "false", "2", "ttf-dejavu", "noto-fonts;id", "noto-fonts "):
+            with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                                   "--recipe-sha256", RECIPE, "--font-provider=" + value]), \
+                    patch.object(driver.subprocess, "run") as run, \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                driver.main()
+            self.assertEqual(2, caught.exception.code)
+            run.assert_not_called()
+        for value in (True, False, "ttf-dejavu", "noto-fonts;id"):
+            with self.assertRaises(driver.argparse.ArgumentTypeError):
+                driver.InstallParser(COMMIT, RECIPE, font_provider=value)
+        with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                               "--recipe-sha256", RECIPE, "--font-provider", "noto-fonts"]), \
+                patch.object(driver, "InstallParser", wraps=driver.InstallParser) as constructor, \
+                patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
+                patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1, driver.main())
+        constructor.assert_called_once_with(COMMIT, RECIPE, None, None, "noto-fonts")
+        run.assert_not_called()
+
     def test_independent_provider_choices_sequential_menus_and_native_cap(self):
         for jack_menu, expected in ((JACK_MENU, b"2\n"),
                                    (JACK_MENU.replace("1) jack2  2) pipewire-jack",
@@ -146,7 +234,7 @@ class InstallDriver(unittest.TestCase):
                 patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
                 patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, driver.main())
-        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack")
+        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", "pipewire-jack", None)
         run.assert_not_called()
 
     def test_provider_default_refuses_and_opt_in_maps_displayed_index(self):
@@ -259,7 +347,7 @@ class InstallDriver(unittest.TestCase):
                 patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
                 patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(1, driver.main())
-        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", None)
+        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring", None, None)
         run.assert_not_called()
 
     def test_pins_required_before_subprocess(self):

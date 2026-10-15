@@ -206,6 +206,10 @@ whose Arch package requires JACK-compatible libraries. After that explanation,
 the user approved `pipewire-jack`, matching the guest's existing PipeWire stack.
 This is a VM dependency choice, not an OpenCode requirement or an XFCE preference
 change. The transaction still had not installed the pending native applications.
+The next unresolved dependency was `ttf-font`: the installed coding fonts do not
+satisfy that virtual package. The rehearsal uses conventional `noto-fonts` for
+general UI fallback without editing font selections or XFCE preferences; the
+driver still requires its exact opt-in flag rather than accepting menu defaults.
 
 A separate guest project also verified the linked Nix workflow: an initially
 locked flake pinned to the same reviewed nixpkgs revision supplied `hello` through
