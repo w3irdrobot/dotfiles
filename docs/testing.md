@@ -291,6 +291,14 @@ standard root-owned mode-4755 `/opt/brave-bin/chrome-sandbox` were verified. No
 sandbox-disabling flags were used. GUI browsing remains untested in this headless
 guest; this establishes package installation, not Manjaro/XFCE GUI acceptance.
 
+Plain `bin/dotfiles install` at `691dbd6` then completed successfully with no
+selection overrides: all 40 default modules across `core,ai,desktop`, including
+Brave and automatic nono pack validation. Existing native and AUR packages were
+correctly skipped as current; module setup, Stow relinking, and linked Nix daemon
+validation passed. No package confirmations or new provider selections were
+needed. This is a full-default repeat-install rehearsal on the provisioned guest,
+not a fresh-machine GUI installation test.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).
