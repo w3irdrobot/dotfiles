@@ -55,6 +55,96 @@ class InstallDriver(unittest.TestCase):
             with self.assertRaises(driver.argparse.ArgumentTypeError):
                 driver.remote_script(value, RECIPE)
 
+    def test_exact_additive_module_allowlist_and_csv_mapping(self):
+        expected = {"opencode", "nono", "bitwarden", "discord", "mullvad",
+                    "signal", "telegram", "thunderbird", "wallpaper"}
+        self.assertEqual(expected, driver.MODULE_ALLOWLIST)
+        self.assertEqual((), driver.validate_modules(()))
+        for name in sorted(expected):
+            self.assertEqual((name,), driver.parse_modules(name))
+        self.assertEqual(("nono", "discord"), driver.parse_modules("nono,discord"))
+
+    def test_invalid_modules_rejected_before_any_subprocess(self):
+        for value in ("", ",", "discord,", ",discord", "discord,,nono", "discord,discord",
+                      "discord, nono", "discord\n", "Discord", "spotify", "brave", "claude",
+                      "1password", "slack", "tor", "cloud", "docker", "--groups=desktop",
+                      "discord;id", "$(id)", "discord`id`", "discord.*", "discord,spotify"):
+            with self.subTest(value=value):
+                with self.assertRaises(driver.argparse.ArgumentTypeError):
+                    driver.parse_modules(value)
+                with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                                       "--recipe-sha256", RECIPE, "--modules=" + value]), \
+                        patch.object(driver.subprocess, "run") as run, \
+                        contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                    driver.main()
+                self.assertEqual(2, caught.exception.code)
+                run.assert_not_called()
+
+    def test_remote_module_contract_and_default_core_unchanged(self):
+        default = driver.remote_script(COMMIT, RECIPE)
+        self.assertEqual(default, driver.remote_script(COMMIT, RECIPE, ()))
+        self.assertNotIn("--modules", default)
+        self.assertTrue(default.endswith("exec bash --noprofile --norc bin/dotfiles install --groups core\n"))
+        for invalid in ("discord", None, ("discord", "discord"), ("discord;id",), ([],)):
+            with self.subTest(invalid=invalid), self.assertRaises(driver.argparse.ArgumentTypeError):
+                driver.ssh_command(COMMIT, RECIPE, invalid)
+
+    def test_operation_mapping_default_and_modules_shell_syntax(self):
+        expected = {"install": ["install"], "update-system": ["update", "system"],
+                    "update-all": ["update", "all"]}
+        self.assertEqual(set(expected), set(driver.OPERATIONS))
+        self.assertEqual(driver.remote_script(COMMIT, RECIPE),
+                         driver.remote_script(COMMIT, RECIPE, operation="install"))
+        for operation, scope in expected.items():
+            for modules in ((), ("opencode", "nono")):
+                with self.subTest(operation=operation, modules=modules):
+                    command = driver.ssh_command(COMMIT, RECIPE, modules, operation)
+                    self.assertEqual(driver.bootstrap.ssh_command()[:-1], command[:-1])
+                    script = shlex.split(command[-1])[-1]
+                    argv = ["exec", "bash", "--noprofile", "--norc", "bin/dotfiles", *scope,
+                            "--groups", "core"] + (["--modules", ",".join(modules)] if modules else [])
+                    self.assertEqual(argv, shlex.split(script.splitlines()[-1]))
+                    for guard in ("rev-parse --verify HEAD", "--untracked-files=all --ignored=matching",
+                                  "sha256sum -- modules/paru-recipe/PKGBUILD", "[ ! -L"):
+                        self.assertIn(guard, script)
+                    checked = subprocess.run([shutil.which("bash"), "--noprofile", "--norc", "-n"],
+                                             input=script, text=True, capture_output=True,
+                                             env=driver.bootstrap.environment(), timeout=5)
+                    self.assertEqual(0, checked.returncode, checked.stderr)
+
+    def test_invalid_operation_rejected_by_api_and_cli_before_subprocess(self):
+        invalids = ("", "update", "update system", "update-all;id", "$(id)", "install\n",
+                    "INSTALL", "--groups=desktop", "update-system.*", None, [], ("install",))
+        for operation in invalids:
+            with self.subTest(operation=operation):
+                with self.assertRaises(driver.argparse.ArgumentTypeError):
+                    driver.ssh_command(COMMIT, RECIPE, operation=operation)
+                if not isinstance(operation, str):
+                    continue
+                with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                                       "--recipe-sha256", RECIPE, "--operation=" + operation]), \
+                        patch.object(driver.subprocess, "run") as run, \
+                        contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                    driver.main()
+                self.assertEqual(2, caught.exception.code)
+                run.assert_not_called()
+
+    def test_additive_command_quoting_marker_and_shell_syntax(self):
+        modules = tuple(sorted(driver.MODULE_ALLOWLIST))
+        command = driver.ssh_command(COMMIT, RECIPE, modules)
+        self.assertEqual(driver.bootstrap.ssh_command()[:-1], command[:-1])
+        remote = shlex.split(command[-1])
+        self.assertEqual(["bash", "--noprofile", "--norc", "-c"], remote[:-1])
+        script = remote[-1]
+        argv = shlex.split(script.splitlines()[-1])
+        self.assertEqual(["exec", "bash", "--noprofile", "--norc", "bin/dotfiles", "install",
+                          "--groups", "core", "--modules", ",".join(modules)], argv)
+        self.assertIn("VM install driver: additive modules " + ",".join(modules), script)
+        self.assertLess(script.index("sha256sum"), script.index("VM install driver: additive modules"))
+        checked = subprocess.run([shutil.which("bash"), "--noprofile", "--norc", "-n"], input=script,
+                                 text=True, capture_output=True, env=driver.bootstrap.environment(), timeout=5)
+        self.assertEqual(0, checked.returncode, checked.stderr)
+
     def test_hash_marker_required_for_approval(self):
         state = parser()
         with self.assertRaises(driver.bootstrap.Refused):
@@ -295,6 +385,42 @@ class InstallDriver(unittest.TestCase):
                 state.feed(prompt.encode())
             self.assertTrue(state.stopped_at_review)
 
+    def test_foreign_aur_update_blocks_all_prompts_after_native_or_noop(self):
+        for native in (False, True):
+            for aur_packages in (False, True):
+                for prompt in (*driver.bootstrap.PROMPTS, driver.PARU_PROMPT,
+                               ":: Proceed to review? [Y/n]:", ":: Proceed with installation? [Y/n]:"):
+                    with self.subTest(native=native, aur_packages=aur_packages, prompt=prompt):
+                        state = parser()
+                        if native:
+                            native_finished(state)
+                        ready(state, driver.HELPER_PHASE)
+                        if aur_packages:
+                            state.feed((driver.AUR_PHASE + "\n").encode())
+                        state.feed((driver.AUR_UPDATE_PHASE + "\n").encode())
+                        with self.assertRaises(driver.bootstrap.Refused):
+                            state.feed(prompt.encode())
+                        self.assertTrue(state.stopped_at_review)
+                        self.assertEqual(int(native), state.installs)
+
+    def test_aur_update_phase_order_and_fragment_boundaries(self):
+        for phase in (None, driver.DOWNLOAD_PHASE, driver.INSTALL_PHASE, driver.AUR_UPDATE_PHASE):
+            state = parser()
+            if phase == driver.AUR_UPDATE_PHASE:
+                ready(state, driver.HELPER_PHASE)
+                state.feed((driver.AUR_UPDATE_PHASE + "\n").encode())
+            elif phase is not None:
+                ready(state, phase)
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed((driver.AUR_UPDATE_PHASE + "\n").encode())
+        data = (driver.AUR_UPDATE_PHASE + "\n").encode()
+        for split in range(len(data) + 1):
+            state = parser()
+            ready(state, driver.HELPER_PHASE)
+            self.assertEqual([], state.feed(data[:split]) + state.feed(data[split:]))
+            self.assertTrue(state.aur_started)
+            self.assertEqual(driver.AUR_UPDATE_PHASE, state.phase)
+
     def test_output_bound_including_incomplete_ansi(self):
         state = parser()
         with self.assertRaises(driver.bootstrap.Refused):
@@ -336,13 +462,29 @@ class InstallDriver(unittest.TestCase):
                "sshAddress": "127.0.0.1", "sshConfigFile": str(base.SSH_CONFIG),
                "config": {"plain": True, "vmType": "qemu", "arch": "x86_64",
                           "ssh": {"localPort": 60022, "loadDotSSHPubKeys": False, "forwardAgent": False}}}
-        for status, verified, expected in ((43, True, 43), (-2, True, 130), (0, False, 1)):
+        for status, verified, expected, modules, operation in (
+                (43, True, 43, (), "install"), (-2, True, 130, (), "install"),
+                (0, False, 1, (), "install"), (0, True, 0, ("nono", "discord"), "install"),
+                (43, True, 43, ("opencode", "nono"), "update-system"),
+                (0, True, 0, ("opencode", "nono"), "update-all")):
             def fake_runner(command, env, state):
+                self.assertEqual(driver.ssh_command(COMMIT, RECIPE, modules, operation), command)
                 if verified:
                     state.feed((state.marker + "\n").encode())
+                    if modules:
+                        state.feed((driver.DOWNLOAD_PHASE + "\n" + driver.INSTALL_PHASE + "\n" +
+                                    driver.HELPER_PHASE + "\n").encode())
+                        self.assertEqual(0, state.installs)
+                        state.feed((driver.AUR_PHASE + "\n").encode())
+                        if operation != "install":
+                            state.feed((driver.AUR_UPDATE_PHASE + "\n").encode())
+                        with self.assertRaises(driver.bootstrap.Refused):
+                            state.feed(b":: Proceed to review? [Y/n]: ")
                 return status
             with patch.dict(driver.os.environ, {"LIMA_HOME": str(base.VM_HOME)}), \
-                    patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT, "--recipe-sha256", RECIPE]), \
+                    patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT, "--recipe-sha256", RECIPE] +
+                                 (["--modules", ",".join(modules)] if modules else []) +
+                                 (["--operation", operation] if operation != "install" else [])), \
                     patch.object(Path, "resolve", autospec=True, side_effect=lambda path: path), \
                     patch.object(driver.subprocess, "run", return_value=SimpleNamespace(stdout=json.dumps(row))) as run, \
                     patch.object(base, "run_pty", side_effect=fake_runner), \

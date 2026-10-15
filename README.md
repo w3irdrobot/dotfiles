@@ -46,6 +46,7 @@ tests/                 disposable fixtures, not live-machine setup
 ```
 
 Core workstation, AI tools, and desktop applications are the default groups.
+OpenCode is the default AI harness; Claude Code is opt-in with `--modules claude-code`.
 Cloud/container, Bitcoin, and hardware-security tools are opt-in groups. Nix
 provides project environments; language toolchains and native build dependencies
 should live in project flakes instead of being installed globally. AUR's own

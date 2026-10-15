@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Controlled core install in the approved disposable guest, never on the host.
+"""Controlled core install/update in the approved disposable guest, never on the host.
 
 Usage: python3 -B tests/vm/run-install.py --commit FULL40SHA --recipe-sha256 SHA256
+Optional: --operation install|update-system|update-all (default install), and
+--modules CSV (only explicitly allowlisted additive modules).
 Both pins must be reviewed/published beforehand. No stdin forwarding, forced
 transaction timeout, or VSCodium/AUR package approval. An AUR review stop is NOT
 installation success. The shared PTY runner prints all guest/package output.
@@ -26,6 +28,11 @@ DOWNLOAD_PHASE = "dotfiles: Database refresh: downloading the full upgrade witho
 INSTALL_PHASE = "dotfiles: Full upgrade: installing against the checked repository indexes"
 HELPER_PHASE = "dotfiles: AUR setup: preparing the helper and selected packages"
 AUR_PHASE = "dotfiles: AUR packages: installing the selected dependencies"
+AUR_UPDATE_PHASE = "dotfiles: AUR update: upgrading installed AUR packages"
+OPERATIONS = {"install": ("install",), "update-system": ("update", "system"),
+              "update-all": ("update", "all")}
+MODULE_ALLOWLIST = frozenset(("opencode", "nono", "bitwarden", "discord", "mullvad",
+                              "signal", "telegram", "thunderbird", "wallpaper"))
 # Anchor known interactive forms, not arbitrary question marks in build output,
 # PKGBUILD comments, package descriptions, or URLs containing query strings.
 INTERACTIVE = re.compile(
@@ -47,6 +54,24 @@ def pin(value, length):
     if not re.fullmatch(rf"[0-9a-fA-F]{{{length}}}", value):
         raise argparse.ArgumentTypeError(f"Expected exactly {length} hexadecimal characters")
     return value.lower()
+
+
+def validate_modules(modules):
+    if (not isinstance(modules, (tuple, list)) or
+            any(not isinstance(name, str) or name not in MODULE_ALLOWLIST for name in modules) or
+            len(set(modules)) != len(modules)):
+        raise argparse.ArgumentTypeError("Modules must be unique IDs from: " + ",".join(sorted(MODULE_ALLOWLIST)))
+    return tuple(modules)
+
+
+def parse_modules(value):
+    return validate_modules(tuple(value.split(",")))
+
+
+def validate_operation(value):
+    if not isinstance(value, str) or value not in OPERATIONS:
+        raise argparse.ArgumentTypeError("Operation must be one of: " + ", ".join(OPERATIONS))
+    return value
 
 
 def verified_marker(commit, recipe_sha):
@@ -79,6 +104,11 @@ class InstallParser:
             self.phase = text
             if text == AUR_PHASE:
                 self.aur_started = True
+        if complete and text == AUR_UPDATE_PHASE:
+            if not self.verified or self.phase not in (HELPER_PHASE, AUR_PHASE):
+                raise bootstrap.Refused("Unverified, repeated, or out-of-order AUR update phase")
+            self.phase = text
+            self.aur_started = True
         if text in (*bootstrap.PROMPTS, PARU_PROMPT):
             if not self.verified or self.aur_started:
                 self.refuse()
@@ -133,9 +163,16 @@ class InstallParser:
         return answers
 
 
-def remote_script(commit, recipe_sha):
+def remote_script(commit, recipe_sha, modules=(), operation="install"):
     # Validate again for callers other than argparse; no shell text interpolation.
     commit, recipe_sha = pin(commit, 40), pin(recipe_sha, 64)
+    modules = validate_modules(modules)
+    command = ["bash", "--noprofile", "--norc", "bin/dotfiles",
+               *OPERATIONS[validate_operation(operation)], "--groups", "core"]
+    selection = ",".join(modules)
+    if modules:
+        command.extend(("--modules", selection))
+    module_marker = "printf '%s\\n' " + shlex.quote("VM install driver: additive modules " + selection) + "\n" if modules else ""
     return r'''set -euo pipefail
 export LC_ALL=C PATH=/usr/bin:/bin
 unset BASH_ENV ENV GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CONFIG GIT_CONFIG_COUNT
@@ -174,20 +211,21 @@ done
 actual=$(sha256sum -- modules/paru-recipe/PKGBUILD)
 [ "${actual%% *}" = ''' + shlex.quote(recipe_sha) + r''' ] || fail
 printf '%s\n' ''' + shlex.quote(verified_marker(commit, recipe_sha)) + r'''
-exec bash --noprofile --norc bin/dotfiles install --groups core
-'''
+''' + module_marker + 'exec ' + shlex.join(command) + '\n'
 
 
-def ssh_command(commit, recipe_sha):
+def ssh_command(commit, recipe_sha, modules=(), operation="install"):
     # Reuse every fixed-target SSH option; discard only the bootstrap remote cmd.
     return bootstrap.ssh_command()[:-1] + [
-        "bash --noprofile --norc -c " + shlex.quote(remote_script(commit, recipe_sha))]
+        "bash --noprofile --norc -c " + shlex.quote(remote_script(commit, recipe_sha, modules, operation))]
 
 
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--commit", required=True, type=lambda value: pin(value, 40))
     cli.add_argument("--recipe-sha256", required=True, type=lambda value: pin(value, 64))
+    cli.add_argument("--modules", type=parse_modules, default=(), help="Allowlisted additive module IDs, comma-separated")
+    cli.add_argument("--operation", type=validate_operation, choices=tuple(OPERATIONS), default="install")
     args = cli.parse_args()
     parser = InstallParser(args.commit, args.recipe_sha256)
     try:
@@ -201,7 +239,7 @@ def main():
                                   env=env, capture_output=True, text=True, check=True, timeout=30)
         bootstrap.validate_metadata(metadata.stdout)
         print("Driver: isolated VM verified; guest pins/clean checkout must pass before any approvals. AUR packages remain unapproved.", flush=True)
-        status = bootstrap.run_pty(ssh_command(args.commit, args.recipe_sha256), env, parser)
+        status = bootstrap.run_pty(ssh_command(args.commit, args.recipe_sha256, args.modules, args.operation), env, parser)
         print(f"\nDriver: SSH/installer exit status {status}; native install approved: {parser.native_install_approved}; paru install approved: {parser.paru_install_approved}; install confirmations: {parser.installs}; pinned paru review approved: {parser.paru_approved}.", file=sys.stderr)
         if not parser.verified:
             return status if status > 0 else 1

@@ -180,6 +180,19 @@ These are repeat-install results, not yet explicit config/system/update-all
 command results. The user explicitly left Spotify's testing/beta AUR build
 pending; do not interpret that as approval or a production package-policy change.
 
+Explicit `link --groups core` passed without changing existing links. A real
+`update configs --groups core` fast-forwarded `e118831` to `431b98e`, restarted
+from the updated entrypoint, linked safely, validated Nix, and left a clean
+checkout. With a newly created untracked probe present, config update exited 1
+before changing HEAD and preserved the probe. Only that test-created file was
+removed afterward; no user work was discarded.
+
+The user subsequently made OpenCode the default harness and left Claude Code
+opt-in (`default=false`); no Claude package was installed in the guest. Spotify
+remains explicitly pending, and Brave has not received VM-install approval.
+The remaining rehearsal uses additive native modules rather than changing the
+production desktop package policy to silently omit either application.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).
