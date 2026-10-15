@@ -130,6 +130,20 @@ printf '%s\n' "$PATH"
         self.assertEqual(self.inherited_path + "\n", result.stdout)
         self.assertEqual([], self.sources())
 
+    def test_optional_replacement_aliases_are_absent_without_tools(self):
+        self.run_shell('''
+for name in ls ll find cat lg; do
+    if alias "$name" >/dev/null 2>&1; then exit 97; fi
+done
+''')
+
+    def test_optional_replacement_aliases_are_enabled_for_installed_tools(self):
+        for name in ("eza", "fd", "bat", "lazygit"):
+            self.native_bitwarden(name)  # Detection must never execute these tools.
+        result = self.run_shell('alias ls ll find cat lg')
+        for alias in ("ls='eza'", "find='fd'", "cat='bat'", "lg='lazygit'"):
+            self.assertIn(alias, result.stdout)
+
     def test_path_options_and_unrelated_variables_survive_repeat_startup(self):
         result = self.run_shell('''
 source "$HOME/.bashrc"

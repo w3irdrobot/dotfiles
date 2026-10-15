@@ -37,6 +37,7 @@ check_platform() {
 	distro=${distro//\'/}
 	[[ $distro == arch || $distro == manjaro ]] || die 'Only Arch and Manjaro are supported.'
 	((EUID != 0)) || die 'Run as your regular user, not root.'
+	[[ ${XDG_CONFIG_HOME:-$HOME/.config} == "$HOME/.config" ]] || die 'Custom XDG_CONFIG_HOME is unsupported; configs deploy to ~/.config. No setup changes applied.'
 }
 
 check_checkout() {

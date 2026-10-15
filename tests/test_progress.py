@@ -146,7 +146,8 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
     def test_provider_followups_without_managed_bash_do_not_claim_exports_are_loaded(self):
         result = self.helper('print_next_steps link\n', ("opencode",))
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("existing shell's private export setup", result.stdout)
+        self.assertIn("Prefer credential injection", result.stdout)
+        self.assertNotIn("private export setup", result.stdout)
         self.assertIn("Linking did not install packages", result.stdout)
         self.assertNotIn("mkdir -p", result.stdout)
         self.assertNotIn("nono pull", result.stdout)
@@ -249,14 +250,15 @@ sys.exit(97)""")
         self.assertFalse(any("clone" in call for call in self.calls()))
         self.assert_no_secrets(result)
 
-    def test_template_contains_only_commented_placeholders_for_managed_env_refs(self):
+    def test_template_is_commented_and_does_not_encourage_local_api_key_exports(self):
         template = test_dotfiles.ROOT / "examples/local-variables.sh"
         text = template.read_text()
         self.assertTrue(all(not line.strip() or line.lstrip().startswith("#") for line in text.splitlines()))
         for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
-            self.assertIn("# export " + name, text)
+            self.assertNotIn("# export " + name, text)
             self.assertIn(name, (test_dotfiles.ROOT / "stow/opencode/.config/opencode/opencode.jsonc").read_text())
         self.assertNotIn("set -", text)
+        self.assertIn("credential injection", text)
         self.assertNotIn(self.sentinel, text)
 
 

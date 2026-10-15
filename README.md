@@ -101,12 +101,20 @@ prompt, and the Bitwarden helper at top level. No `.init`, `.functions`,
 `.prompt`, `.bash_profile`, or `.hushlogin` links are created in home. Your
 distribution's existing login profile stays untouched; if you have a custom
 login profile, make sure it loads `~/.bashrc` for interactive Bash sessions.
+The installer requires unset/default `XDG_CONFIG_HOME` (`$HOME/.config`) and
+rejects a custom path before changing the machine; Stow's home-shaped tree does
+not relocate application configs.
 
 Put machine-local shell settings in this checkout's ignored `local/bash/`
 directory: `init.sh`, `variables.sh`, `aliases.sh`, and `functions.sh` are optional
-overrides. Environment variables and API credentials belong in
+overrides. **Non-secret** environment settings belong in
 `local/bash/variables.sh`; see `examples/local-variables.sh` for a commented
-template. Local overrides run after the repo defaults, including Bitwarden.
+template. Do not store API credentials there: the checkout is AI-readable and
+writable, even when files are ignored by Git or mode `0600`. Prefer nono
+credential injection; keep credential-manager storage outside AI filesystem
+grants and do not export secrets globally into agent processes. Existing local
+files are not inspected or migrated: move any credentials manually.
+Local overrides run after the repo defaults, including Bitwarden.
 The installer does not copy or read your old `~/.config/bash/` overrides: migrate
 them manually if needed. Keep personal Git identity/signing overrides in
 `~/.gitconfig_local`. Never commit keys, tokens, wallet data, or authentication
@@ -114,6 +122,10 @@ stores. Sign in to your password manager and configure SSH signing manually.
 Wallet/key migration remains manual and separate from workstation installation.
 Imported SSH host definitions belong in the machine-local `~/.ssh/config.local`,
 not the symlinked repository config.
+`secrets_export` follows that supported include and includes selected hosts'
+explicit identity files. Other/nested includes are refused rather than silently
+omitted; flatten and review those configs manually before backup. Review the
+archive selection and verify a restore before wiping the source machine.
 Bitwarden's native Linux SSH-agent socket is `~/.bitwarden-ssh-agent.sock`.
 Enable the agent in the desktop app after signing in. An existing `SSH_AUTH_SOCK`
 is preserved; use your local shell override if you want Bitwarden to replace it.
@@ -165,6 +177,10 @@ profile inherited by the repo's custom profiles. It is separate from installing
 the nono executable and is required before using the sandboxed `ai` helper.
 Run `ai` from a project directory. Its dev profile grants the current directory;
 granting all of `$HOME` would conflict with Linux credential protections.
+`ai setup` grants the dotfiles checkout, not the entire owner namespace. Both
+setup and dev sessions that can edit dotfiles can change shell startup code that
+will later run outside the sandbox. Treat those edits as trusted code and review
+them before opening a new shell; sandboxing cannot remove that persistence risk.
 Application, model-provider, and MCP sign-ins are separate personal authentication
 steps, not installer failures. Configure only the services you actually use.
 

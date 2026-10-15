@@ -1,13 +1,9 @@
-# Machine-local exports: copy this example to ignored local/bash/variables.sh.
-# The managed .bashrc reads that private file through the checkout's shell helpers.
-# Keep your private copy mode 0600. Never put real keys in this tracked example.
-# Uncomment only services you use and replace their placeholders yourself.
+# Non-secret machine-local exports: copy to ignored local/bash/variables.sh.
+# The managed .bashrc reads this through the checkout's shell helpers.
+# This checkout is AI-readable/writable. Gitignore and mode 0600 do not isolate
+# secrets from an agent running as you. Use credential injection for API access;
+# keep credential-manager storage outside AI filesystem grants.
 
-# OpenCode Exa MCP server:
-# export EXA_API_KEY='replace-with-your-Exa-API-key'
-
-# OpenCode GitHub MCP server (use an appropriately scoped token):
-# export GITHUB_MCP_TOKEN='replace-with-your-GitHub-MCP-token'
-
-# OpenCode Maple proxy/MCP integration:
-# export MAPLE_API_KEY='replace-with-your-Maple-API-key'
+# export EDITOR=vim
+# export AWS_PROFILE=personal
+# export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"

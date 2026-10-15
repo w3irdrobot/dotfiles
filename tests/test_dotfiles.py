@@ -128,6 +128,17 @@ class Fixture(unittest.TestCase):
         self.assertEqual({}, self.snapshot())
         self.assertFalse([c for c in self.calls() if c[0] != "uname"])
 
+    def test_custom_xdg_config_home_refuses_before_mutation(self):
+        self.env["XDG_CONFIG_HOME"] = str(self.home / "custom-config")
+        for bootstrap, args in ((True, ()), (False, ("install",)),
+                                (False, ("link",)), (False, ("update", "all"))):
+            with self.subTest(bootstrap=bootstrap, args=args):
+                before = self.snapshot()
+                self.assert_failed(self.run_cli(*args, bootstrap=bootstrap),
+                                   "Custom XDG_CONFIG_HOME is unsupported")
+                self.assertEqual(before, self.snapshot())
+                self.assertFalse([c for c in self.calls() if c[0] != "uname"])
+
     def test_shipped_metadata_can_be_planned(self):
         self.mock("stow", "sys.exit(0 if '--simulate' in sys.argv else 97)")
         result = self.run_cli("link", "--dry-run")

@@ -2,12 +2,12 @@
   "extends": "opencode-base",
   "meta": {
     "name": "opencode-setup",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "Maintain local shell configuration and developer tooling"
   },
   "filesystem": {
     "allow": [
-      "$HOME/projects/github.com/w3irdrobot",
+      "$HOME/projects/github.com/w3irdrobot/dotfiles",
       "$HOME/.local/bin"
     ],
     "read": [

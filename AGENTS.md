@@ -34,8 +34,9 @@
 - No automatic Docker-group membership, autologin, wallet/key import, hardware
   provisioning, or changes to networking services.
 - Keep API keys, authentication stores, private keys, wallet data, and machine
-  exports out of Git. Shell environment overrides belong in ignored
-  `local/bash/variables.sh`; Git overrides remain in `~/.gitconfig_local`.
+  exports out of Git and AI-readable checkouts. Non-secret shell environment
+  overrides belong in ignored `local/bash/variables.sh`; prefer credential
+  injection for API access. Git overrides remain in `~/.gitconfig_local`.
 - Log meaningful installer phases and failures, never environment/credential
   values. Print next steps only after successful runs, with dry-runs clearly
   marked as plans. Do not emit installer-style progress logs during shell startup.
