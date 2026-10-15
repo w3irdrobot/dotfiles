@@ -1,11 +1,13 @@
-"""Offline reviewed-VSCodium driver tests; no VM, package, or SSH execution."""
+"""Offline reviewed-AUR driver tests; no VM, package, or SSH execution."""
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import shlex
 import shutil
 import subprocess
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -22,6 +24,114 @@ def ready():
 
 
 class VSCodiumDriver(unittest.TestCase):
+    def test_only_two_fixed_audited_snapshots_and_brave_pins(self):
+        self.assertEqual({"vscodium", "brave"}, set(driver.SNAPSHOTS))
+        snapshot = driver.snapshot_config("brave")
+        self.assertEqual("8ede66185c519130ac3bfb423be40acbec7f8c12", snapshot["commit"])
+        self.assertEqual("f5e4ad59b48b0965fe285fb762a2e554115e210486a953eeec997ef785a84c6c", snapshot["recipe"])
+        self.assertEqual("8a08822ca82528b30c6f553988ec7214e6999ef362f6eff148d386f0053f903c", snapshot["archive"])
+        self.assertEqual("1:1.97.57-1", snapshot["version"])
+        self.assertEqual({"alsa-lib", "gtk3", "libxss", "nss", "noto-fonts"}, snapshot["deps"])
+        self.assertEqual(driver.MARKER, driver.reviewed_marker())
+        self.assertEqual(driver.remote_script(), driver.remote_script("vscodium"))
+        for invalid in ("brave-bin", "spotify", "brave;id", "$(id)", "brave\n", "", None, []):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(driver.argparse.ArgumentTypeError):
+                    driver.remote_script(invalid)
+                with self.assertRaises(driver.argparse.ArgumentTypeError):
+                    driver.ReviewedParser(invalid)
+
+    def test_brave_requires_brave_marker_and_exact_version_not_vscodium(self):
+        for marker, plan in ((driver.MARKER, "brave-bin-1:1.97.57-1"),
+                             (driver.reviewed_marker("brave"), "vscodium-bin-1.110.0-1"),
+                             (driver.reviewed_marker("brave"), "brave-bin-1:1.97.58-1"),
+                             (driver.reviewed_marker("brave"), "brave-bin-1.97.57-1")):
+            state = driver.ReviewedParser("brave")
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed((marker + "\nPkgbuilds (1) " + plan + "\n" + driver.PROMPTS[1]).encode())
+            self.assertEqual([0, 0, 0], state.counts)
+        state = driver.ReviewedParser()
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed((driver.MARKER + "\nPkgbuilds (1) brave-bin-1:1.97.57-1\n").encode())
+
+    def test_brave_plan_only_no_new_dependencies_all_prompt_boundaries(self):
+        for index, prompt in enumerate(driver.PROMPTS):
+            data = ("\x1b[1m" + prompt + "\x1b[0m ").encode()
+            for split in range(len(data) + 1):
+                state = driver.ReviewedParser("brave")
+                state.feed((state.marker + "\nPkgbuilds (1) brave-bin-1:1.97.57-1\n").encode())
+                if index == 2:
+                    state.feed(b"Packages (1) brave-bin-1:1.97.57-1\n")
+                self.assertEqual([b"y\n"], state.feed(data[:split]) + state.feed(data[split:]))
+                self.assertEqual(1, state.counts[index])
+                self.assertEqual([], state.feed(b"\r\ny\r\n"))
+
+    def test_brave_allowlisted_native_dependencies_caps_and_unknown_prompts(self):
+        state = driver.ReviewedParser("brave")
+        native = " ".join(name + "-1.0-1" for name in sorted(driver.snapshot_config("brave")["deps"]))
+        state.feed((state.marker + f"\nRepo (5) {native}\nPkgbuilds (1) brave-bin-1:1.97.57-1\n").encode())
+        self.assertEqual([b"y\n"], state.feed((driver.PROMPTS[1] + " \n").encode()))
+        for packages in ((5, native), (1, "brave-bin-1:1.97.57-1")):
+            state.feed((f"Packages ({packages[0]}) {packages[1]}\n").encode())
+            self.assertEqual([b"y\n"], state.feed((driver.PROMPTS[2] + " \n").encode()))
+        state.feed(b"Packages (1) brave-bin-1:1.97.57-1\n")
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed((driver.PROMPTS[2] + " ").encode())
+        for text in ("Repo (1) unknown-1.0-1\n", "Aur (1) brave-bin-1:1.97.57-1\n",
+                     "Packages (1) paru-2.1.0-1\n", ":: Enter a selection:", ":: Import PGP key? [Y/n]"):
+            state = driver.ReviewedParser("brave")
+            state.feed((state.marker + "\nPkgbuilds (1) brave-bin-1:1.97.57-1\n").encode())
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed(text.encode())
+            self.assertEqual([0, 0, 0], state.counts)
+
+    def test_approval_flags_are_exclusive_and_no_arbitrary_package_cli(self):
+        for args in (["--approve-reviewed-brave", "--approve-reviewed-vscodium"],
+                     ["--package", "brave"], ["--approve-reviewed-brave=false"],
+                     ["--approve-reviewed-spotify"]):
+            with patch.object(driver.sys, "argv", ["run-vscodium.py", *args]), \
+                    patch.object(driver.subprocess, "run") as run, \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                driver.main()
+            self.assertEqual(2, caught.exception.code)
+            run.assert_not_called()
+
+    def test_both_cli_approvals_select_matching_script_parser_and_preserve_status(self):
+        base = driver.bootstrap
+        row = {"name": base.INSTANCE, "dir": str(base.VM_DIR), "vmType": "qemu", "arch": "x86_64",
+               "status": "Running", "sshLocalPort": 60022, "sshAddress": "127.0.0.1",
+               "sshConfigFile": str(base.SSH_CONFIG), "config": {"plain": True, "vmType": "qemu",
+               "arch": "x86_64", "ssh": {"localPort": 60022, "loadDotSSHPubKeys": False, "forwardAgent": False}}}
+        for name in ("vscodium", "brave"):
+            def fake_pty(command, env, parser):
+                self.assertEqual(base.ssh_command()[:-1], command[:-1])
+                self.assertEqual(driver.remote_script(name), shlex.split(command[-1])[-1])
+                self.assertEqual(driver.reviewed_marker(name), parser.marker)
+                parser.feed((parser.marker + "\n").encode())
+                return 43
+            with patch.object(driver.sys, "argv", ["run-vscodium.py", "--approve-reviewed-" + name]), \
+                    patch.dict(driver.os.environ, {"LIMA_HOME": str(base.VM_HOME)}), \
+                    patch.object(Path, "resolve", autospec=True, side_effect=lambda path: path), \
+                    patch.object(driver.subprocess, "run", return_value=SimpleNamespace(stdout=json.dumps(row))), \
+                    patch.object(base, "run_pty", side_effect=fake_pty), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(43, driver.main())
+
+    def test_brave_guest_script_checks_all_pins_and_local_path_shell_syntax(self):
+        script = driver.remote_script("brave")
+        snapshot = driver.snapshot_config("brave")
+        for text in (snapshot["commit"], snapshot["recipe"], snapshot["archive"],
+                     "for component in aur-review brave-bin", "https://aur.archlinux.org/brave-bin.git",
+                     "--untracked-files=all --ignored=matching", "'^filter\\.'", "[ ! -L",
+                     "pacman -Qqo /usr/bin/paru", "PARU_CONF=/dev/null", "PARU_PAGER=/usr/bin/cat",
+                     "exec /usr/bin/paru --build --install --needed --color never --", driver.reviewed_marker("brave")):
+            self.assertIn(text, script)
+        for text in ("vscodium-bin", "--pager", "--skipreview", "--noconfirm", "git pull", "eval "):
+            self.assertNotIn(text, script)
+        self.assertLess(script.index("sha256sum"), script.index("exec /usr/bin/paru"))
+        checked = subprocess.run([shutil.which("bash"), "--noprofile", "--norc", "-n"], input=script,
+                                 text=True, capture_output=True, env=driver.bootstrap.environment(), timeout=5)
+        self.assertEqual(0, checked.returncode, checked.stderr)
+
     def test_explicit_approval_required_before_any_subprocess(self):
         with patch.object(driver.sys, "argv", ["run-vscodium.py"]), \
                 patch.object(driver.subprocess, "run") as run, \

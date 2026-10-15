@@ -126,7 +126,7 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
                        "examples/local-variables.sh", "mkdir -p", "cp -n", "! -e", "! -L",
                        "chmod 0600", "EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY",
                        "~/.gitconfig_local", "native Bitwarden", "~/.bitwarden-ssh-agent.sock",
-                       "nono pull nolabs-ai/opencode@0.4.0", "Log out and back in",
+                        "Nono and its pinned OpenCode pack are ready", "Log out and back in",
                        "mullvad-daemon.service", "Tor", "electrs", "per-project flakes"):
             self.assertIn(phrase, text)
         self.assertIn("instructions only", text)
@@ -135,6 +135,13 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assertEqual({}, self.snapshot())
         self.assertEqual([], self.calls())
         self.assert_no_secrets(result)
+
+    def test_link_does_not_claim_nono_pack_was_installed(self):
+        result = self.helper('print_next_steps link\n', ("nono",))
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("linking and dry-runs do not install the pack", result.stdout)
+        self.assertNotIn("pack are ready", result.stdout)
+        self.assertNotIn("nono pull", result.stdout)
 
     def test_provider_followups_without_managed_bash_do_not_claim_exports_are_loaded(self):
         result = self.helper('print_next_steps link\n', ("opencode",))

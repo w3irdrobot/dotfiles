@@ -74,8 +74,9 @@ Installation, core repeat installation, link/config/system/update-all commands,
 locked Nix development, local OpenCode API startup, and reboot persistence passed.
 Brave remains untested in the VM; no recipe-level blocker was found in its audit.
 Spotify and Claude Code were subsequently removed entirely at the user's request.
-Manjaro/XFCE GUI checks and personal sign-ins remain manual. The progress below is
-chronological; later results supersede the earlier checkpoints' pending states.
+Manjaro/XFCE GUI checks remain unverified. Personal sign-ins are normal application
+use, not provisioning blockers. The progress below is chronological; later results
+supersede the earlier checkpoints' pending states.
 
 The isolated `dotfiles-arch` guest booted as x86_64 Arch with systemd running,
 passwordless guest sudo, and no shared host mounts. Published commit
@@ -264,6 +265,16 @@ The final post-reboot suite at `1c30d07` passed all 277 tests in 154 seconds wit
 real GNU Stow, no failures or skips. The same production checkpoint passed both
 CI jobs and a final independent read-only Bash/security review. This validates
 the approved Arch scope above, not Manjaro desktop operation or personal auth.
+
+After the user requested pack provisioning, `nono pull nolabs-ai/opencode@0.4.0`
+succeeded in the guest, preserving the custom profiles and installing the signed
+upstream policy/plugin/skill wiring. The installed metadata records the official
+registry and `nolabs-ai/nono-packs` release-workflow signer. `nono pin` excluded
+that exact version from package updates. Profile validation passed, and the real
+`ai --version` wrapper returned OpenCode 2.0.29 from a project directory. From
+`$HOME`, the dev wrapper correctly refused broad access overlapping protected
+credential paths; no deny rules were removed. Automatic pack provisioning is
+being added to the installer; no application sign-ins are to be automated.
 
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),

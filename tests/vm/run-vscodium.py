@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Reviewed guest-only local VSCodium build: python3 -B tests/vm/run-vscodium.py
---approve-reviewed-vscodium. No mutable AUR sync/upgrade, stdin forwarding, or
+"""Reviewed guest-only local build: python3 -B tests/vm/run-vscodium.py
+--approve-reviewed-vscodium OR --approve-reviewed-brave. The historical filename
+and default VSCodium API remain compatible. No mutable AUR sync/upgrade, stdin forwarding, or
 forced transaction timeout. Reuses the isolated VM/SSH/PTY safety helpers.
 """
 import argparse
@@ -23,11 +24,33 @@ DEPS = {"alsa-topology-conf", "alsa-ucm-conf", "alsa-lib", "nspr", "nss", "libno
 PROMPTS = (":: Proceed to review? [Y/n]:", ":: Proceed with installation? [Y/n]:",
            ":: Proceed with installation? [Y/n]")
 MARKER = f"VM VSCodium driver: verified reviewed snapshot {COMMIT} recipe {RECIPE}"
+SNAPSHOTS = {
+    "vscodium": {"label": "VSCodium", "package": "vscodium-bin", "commit": COMMIT,
+                 "recipe": RECIPE, "archive": ARCHIVE, "deps": frozenset(DEPS)},
+    "brave": {"label": "Brave", "package": "brave-bin", "version": "1:1.97.57-1",
+              "commit": "8ede66185c519130ac3bfb423be40acbec7f8c12",
+              "recipe": "f5e4ad59b48b0965fe285fb762a2e554115e210486a953eeec997ef785a84c6c",
+              "archive": "8a08822ca82528b30c6f553988ec7214e6999ef362f6eff148d386f0053f903c",
+              "deps": frozenset(("alsa-lib", "gtk3", "libxss", "nss", "noto-fonts"))},
+}
 PLAN = re.compile(r"^(Repo|Repo Make|Pkgbuilds|Pkgbuilds Make|Aur|Aur Make|Packages) \((\d+)\)\s*(.*)$")
 
 
+def snapshot_config(name):
+    if not isinstance(name, str) or name not in SNAPSHOTS:
+        raise argparse.ArgumentTypeError("Only the audited vscodium and brave snapshots are supported")
+    return SNAPSHOTS[name]
+
+
+def reviewed_marker(name="vscodium"):
+    snapshot = snapshot_config(name)
+    return f"VM {snapshot['label']} driver: verified reviewed snapshot {snapshot['commit']} recipe {snapshot['recipe']}"
+
+
 class ReviewedParser:
-    def __init__(self):
+    def __init__(self, snapshot="vscodium"):
+        self.snapshot = snapshot_config(snapshot)
+        self.marker = reviewed_marker(snapshot)
         self.pending = b""
         self.verified = False
         self.counts = [0, 0, 0]
@@ -39,7 +62,7 @@ class ReviewedParser:
 
     def line(self, text, complete):
         stripped = text.strip()
-        if complete and stripped == MARKER:
+        if complete and stripped == self.marker:
             self.verified = True
         match = PLAN.fullmatch(stripped) if complete else None
         if match:
@@ -50,15 +73,18 @@ class ReviewedParser:
             if self.plan not in ("Repo", "Pkgbuilds", "Packages") or not self.remaining:
                 raise bootstrap.Refused("Unapproved AUR/make package plan")
         if complete and (match or (self.remaining and text[:1].isspace())):
-            allowed = DEPS if self.plan == "Repo" else {"vscodium-bin"} if self.plan == "Pkgbuilds" else DEPS | {"vscodium-bin"}
+            package, deps = self.snapshot["package"], self.snapshot["deps"]
+            allowed = deps if self.plan == "Repo" else {package} if self.plan == "Pkgbuilds" else deps | {package}
             for token in text.split():
                 names = [name for name in allowed if re.fullmatch(re.escape(name) + r"-[0-9][^\s]*", token)]
                 if len(names) != 1 or names[0] in self.packages or self.remaining <= 0:
                     raise bootstrap.Refused("Package plan contains an unapproved/duplicate target")
+                if names[0] == package and self.snapshot.get("version") and token != package + "-" + self.snapshot["version"]:
+                    raise bootstrap.Refused("Package plan does not match the audited version")
                 self.packages.add(names[0])
                 self.remaining -= 1
             if not self.remaining:
-                self.pkgbuild_seen |= self.plan == "Pkgbuilds" and self.packages == {"vscodium-bin"}
+                self.pkgbuild_seen |= self.plan == "Pkgbuilds" and self.packages == {package}
                 self.pacman_plan = self.plan == "Packages"
         if stripped in PROMPTS:
             index = PROMPTS.index(stripped)
@@ -100,46 +126,49 @@ class ReviewedParser:
         return answers
 
 
-def remote_script():
+def remote_script(snapshot="vscodium"):
+    selected = snapshot_config(snapshot)
     return r'''set -euo pipefail
 export PATH=/usr/bin:/bin LC_ALL=C TERM=dumb COLUMNS=1000
 export PARU_CONF=/dev/null PARU_PAGER=/usr/bin/cat PAGER=/usr/bin/cat BAT_PAGER=/usr/bin/cat
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
 unset BASH_ENV ENV GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_CONFIG GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS
 unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR
-fail() { printf 'Reviewed VSCodium snapshot/native paru validation failed; refusing execution.\n' >&2; exit 65; }
+fail() { printf 'Reviewed AUR snapshot/native paru validation failed; refusing execution.\n' >&2; exit 65; }
 [ "$(uname -s)" = Linux ] && [ "$(uname -m)" = x86_64 ] && [ "$EUID" -ne 0 ] || fail
 root="$HOME"
-for component in aur-review vscodium-bin; do
+for component in aur-review ''' + shlex.quote(selected["package"]) + r'''; do
     root="$root/$component"; [ -d "$root" ] && [ ! -L "$root" ] || fail
 done
 [ "$(realpath -e -- "$root")" = "$root" ] && [ -d "$root/.git" ] && [ ! -L "$root/.git" ] || fail
 cd -- "$root"
 git_safe() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null "$@"; }
 [ "$(git_safe rev-parse --show-toplevel)" = "$root" ] || fail
-[ "$(git_safe rev-parse HEAD)" = ''' + COMMIT + r''' ] || fail
-[ "$(git_safe remote get-url origin)" = https://aur.archlinux.org/vscodium-bin.git ] || fail
+[ "$(git_safe rev-parse HEAD)" = ''' + shlex.quote(selected["commit"]) + r''' ] || fail
+[ "$(git_safe remote get-url origin)" = ''' + shlex.quote("https://aur.archlinux.org/" + selected["package"] + ".git") + r''' ] || fail
 if git_safe config --get-regexp '^filter\.' >/dev/null; then fail; fi
 tracked=$(git_safe ls-files -v)
 if printf '%s\n' "$tracked" | grep '^[a-zS]' >/dev/null; then fail; fi
 [ -z "$(git_safe status --porcelain=v1 --untracked-files=all --ignored=matching)" ] || fail
 [ -f PKGBUILD ] && [ ! -L PKGBUILD ] || fail
 actual=$(sha256sum -- PKGBUILD)
-[ "${actual%% *}" = ''' + RECIPE + r''' ] || fail
-grep -Fq -- ''' + ARCHIVE + r''' PKGBUILD || fail
+[ "${actual%% *}" = ''' + shlex.quote(selected["recipe"]) + r''' ] || fail
+grep -Fq -- ''' + shlex.quote(selected["archive"]) + r''' PKGBUILD || fail
 [ -f /usr/bin/paru ] && [ ! -L /usr/bin/paru ] && [ "$(pacman -Qqo /usr/bin/paru)" = paru ] || fail
 case "$(/usr/bin/paru --version)" in 'paru v2.1.0'|'paru v2.1.0 '*) ;; *) fail ;; esac
 linked=$(ldd /usr/bin/paru)
 if printf '%s\n' "$linked" | grep -E '/nix/|not found' >/dev/null; then fail; fi
-printf '%s\n' ''' + shlex.quote(MARKER) + r'''
+printf '%s\n' ''' + shlex.quote(reviewed_marker(snapshot)) + r'''
 exec /usr/bin/paru --build --install --needed --color never -- "$root"
 '''
 
 
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
-    cli.add_argument("--approve-reviewed-vscodium", required=True, action="store_true")
-    cli.parse_args()
+    approval = cli.add_mutually_exclusive_group(required=True)
+    approval.add_argument("--approve-reviewed-vscodium", dest="snapshot", action="store_const", const="vscodium")
+    approval.add_argument("--approve-reviewed-brave", dest="snapshot", action="store_const", const="brave")
+    args = cli.parse_args()
     try:
         if os.environ.get("LIMA_HOME", str(bootstrap.VM_HOME)) != str(bootstrap.VM_HOME):
             raise bootstrap.Refused("Only the isolated test LIMA_HOME is allowed")
@@ -150,8 +179,8 @@ def main():
         metadata = subprocess.run(["limactl", "list", "--json", bootstrap.INSTANCE], env=env,
                                   capture_output=True, text=True, check=True, timeout=30)
         bootstrap.validate_metadata(metadata.stdout)
-        command = bootstrap.ssh_command()[:-1] + ["bash --noprofile --norc -c " + shlex.quote(remote_script())]
-        parser = ReviewedParser()
+        command = bootstrap.ssh_command()[:-1] + ["bash --noprofile --norc -c " + shlex.quote(remote_script(args.snapshot))]
+        parser = ReviewedParser(args.snapshot)
         status = bootstrap.run_pty(command, env, parser)
         print(f"\nDriver: SSH/Paru exit status {status}; prompt approvals {parser.counts} (not a configuration-link test).", file=sys.stderr)
         return (status if status >= 0 else 128 - status) if parser.verified else (status if status > 0 else 1)

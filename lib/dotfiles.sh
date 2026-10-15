@@ -483,7 +483,13 @@ print_next_steps() {
 	if module_selected git; then printf '  Set personal Git identity/signing preferences in ~/.gitconfig_local.\n'; fi
 	if module_selected ssh; then printf '  Add SSH keys and authenticate manually; dotfiles did not generate or import keys.\n'; fi
 	if module_selected bitwarden; then printf '  Log in to native Bitwarden, unlock the vault, and enable its SSH agent. Default socket: ~/.bitwarden-ssh-agent.sock.\n'; fi
-	if module_selected nono; then printf '  Registry setup is manual; review conflicts and do not force replacement:\n    nono pull nolabs-ai/opencode@0.4.0\n'; fi
+	if module_selected nono; then
+		if [[ $command == link ]] || ((DRY_RUN)); then
+			printf '  Install prepares nono and its pinned OpenCode pack; linking and dry-runs do not install the pack.\n'
+		else
+			printf '  Nono and its pinned OpenCode pack are ready. Sign in manually only to services you use; no authentication was automated.\n'
+		fi
+	fi
 	if ((DOCKER_GROUP)); then printf '  Log out and back in for Docker membership if it changed (root-equivalent access).\n'; fi
 	if module_selected mullvad; then printf '  Manage mullvad-daemon.service and connect in Mullvad manually when ready; dotfiles did not change networking.\n'; fi
 	if module_selected bitcoin || module_selected electrs || module_selected sparrow; then

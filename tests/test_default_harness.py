@@ -45,6 +45,11 @@ printf 'stow:%s\\n' "${STOW_PACKAGES[@]}"
         modules = {name for name in selected if ":" not in name}
         self.assertEqual(modules, {"opencode", "nono"})
 
+    def test_default_desktop_includes_brave(self):
+        selected = self.selected(groups="desktop")
+        self.assertIn("brave", selected)
+        self.assertIn("package:brave-bin", selected)
+
     def test_removed_modules_reject_explicit_selectors(self):
         for module in ("claude-code", "spotify"):
             with self.subTest(module=module):

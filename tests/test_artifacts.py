@@ -294,7 +294,7 @@ sys.exit(97)
                 self.assertFalse(any(c[0] == "install" for c in self.calls()))
                 self.assertNotIn("nono installed.", result.stderr)
 
-    def test_nono_matching_executable_target_is_idempotent(self):
+    def test_nono_matching_binary_alone_does_not_claim_pack_ready(self):
         binary = b"#!/bin/sh\nexit 0\n"
         self.mock_nono_archive(binary)
         target = self.nono_target()
@@ -304,10 +304,11 @@ sys.exit(97)
         link = self.home / ".local/bin/nono"
         link.parent.mkdir(parents=True)
         link.symlink_to(target)
+        (self.home / ".config").mkdir()
         before = self.snapshot()
         for _ in range(2):
             result = self.run_nono()
-            self.assertEqual(0, result.returncode, result.stderr)
+            self.assert_failed(result, "did not install the pinned OpenCode pack")
             self.assertEqual(before, self.snapshot())
         self.assertFalse(any(c[0] == "install" for c in self.calls()))
 

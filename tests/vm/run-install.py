@@ -2,7 +2,7 @@
 """Controlled core install/update in the approved disposable guest, never on the host.
 
 Usage: python3 -B tests/vm/run-install.py --commit FULL40SHA --recipe-sha256 SHA256
-Optional: --operation install|update-system|update-all (default install), and
+Optional: --operation install|install-defaults|update-system|update-all (default install), and
 --modules CSV (only explicitly allowlisted additive modules).
 --secret-service-provider gnome-keyring explicitly approves that VM provider once.
 --jack-provider pipewire-jack independently approves that VM provider once.
@@ -32,8 +32,9 @@ INSTALL_PHASE = "dotfiles: Full upgrade: installing against the checked reposito
 HELPER_PHASE = "dotfiles: AUR setup: preparing the helper and selected packages"
 AUR_PHASE = "dotfiles: AUR packages: installing the selected dependencies"
 AUR_UPDATE_PHASE = "dotfiles: AUR update: upgrading installed AUR packages"
-OPERATIONS = {"install": ("install",), "update-system": ("update", "system"),
-              "update-all": ("update", "all")}
+OPERATIONS = {"install": ("install", "--groups", "core"), "install-defaults": ("install",),
+              "update-system": ("update", "system", "--groups", "core"),
+              "update-all": ("update", "all", "--groups", "core")}
 MODULE_ALLOWLIST = frozenset(("opencode", "nono", "bitwarden", "discord", "mullvad",
                               "signal", "telegram", "thunderbird", "wallpaper"))
 PROVIDER_HEADER = re.compile(r":: There are ([1-9]|1[01]) providers available for (org\.freedesktop\.secrets|jack|ttf-font):")
@@ -231,8 +232,11 @@ def remote_script(commit, recipe_sha, modules=(), operation="install"):
     # Validate again for callers other than argparse; no shell text interpolation.
     commit, recipe_sha = pin(commit, 40), pin(recipe_sha, 64)
     modules = validate_modules(modules)
+    operation = validate_operation(operation)
+    if operation == "install-defaults" and modules:
+        raise argparse.ArgumentTypeError("install-defaults does not allow module overrides")
     command = ["bash", "--noprofile", "--norc", "bin/dotfiles",
-               *OPERATIONS[validate_operation(operation)], "--groups", "core"]
+               *OPERATIONS[operation]]
     selection = ",".join(modules)
     if modules:
         command.extend(("--modules", selection))
@@ -297,6 +301,8 @@ def main():
     cli.add_argument("--font-provider", choices=("noto-fonts",), default=None,
                      help="Explicitly approve noto-fonts once in the VM's native ttf-font provider menu")
     args = cli.parse_args()
+    if args.operation == "install-defaults" and args.modules:
+        cli.error("install-defaults does not allow --modules overrides")
     parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider, args.jack_provider, args.font_provider)
     try:
         if os.environ.get("LIMA_HOME", str(bootstrap.VM_HOME)) != str(bootstrap.VM_HOME):

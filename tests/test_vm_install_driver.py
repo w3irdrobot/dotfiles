@@ -402,20 +402,28 @@ class InstallDriver(unittest.TestCase):
                 driver.ssh_command(COMMIT, RECIPE, invalid)
 
     def test_operation_mapping_default_and_modules_shell_syntax(self):
-        expected = {"install": ["install"], "update-system": ["update", "system"],
-                    "update-all": ["update", "all"]}
+        expected = {"install": ["install", "--groups", "core"], "install-defaults": ["install"],
+                    "update-system": ["update", "system", "--groups", "core"],
+                    "update-all": ["update", "all", "--groups", "core"]}
         self.assertEqual(set(expected), set(driver.OPERATIONS))
         self.assertEqual(driver.remote_script(COMMIT, RECIPE),
                          driver.remote_script(COMMIT, RECIPE, operation="install"))
         for operation, scope in expected.items():
             for modules in ((), ("opencode", "nono")):
                 with self.subTest(operation=operation, modules=modules):
+                    if operation == "install-defaults" and modules:
+                        with self.assertRaises(driver.argparse.ArgumentTypeError):
+                            driver.ssh_command(COMMIT, RECIPE, modules, operation)
+                        continue
                     command = driver.ssh_command(COMMIT, RECIPE, modules, operation)
                     self.assertEqual(driver.bootstrap.ssh_command()[:-1], command[:-1])
                     script = shlex.split(command[-1])[-1]
-                    argv = ["exec", "bash", "--noprofile", "--norc", "bin/dotfiles", *scope,
-                            "--groups", "core"] + (["--modules", ",".join(modules)] if modules else [])
+                    argv = ["exec", "bash", "--noprofile", "--norc", "bin/dotfiles", *scope] + \
+                           (["--modules", ",".join(modules)] if modules else [])
                     self.assertEqual(argv, shlex.split(script.splitlines()[-1]))
+                    if operation == "install-defaults":
+                        self.assertNotIn("--groups", script)
+                        self.assertNotIn("--modules", script)
                     for guard in ("rev-parse --verify HEAD", "--untracked-files=all --ignored=matching",
                                   "sha256sum -- modules/paru-recipe/PKGBUILD", "[ ! -L"):
                         self.assertIn(guard, script)
@@ -423,6 +431,16 @@ class InstallDriver(unittest.TestCase):
                                              input=script, text=True, capture_output=True,
                                              env=driver.bootstrap.environment(), timeout=5)
                     self.assertEqual(0, checked.returncode, checked.stderr)
+
+    def test_install_defaults_cli_rejects_module_overrides_before_subprocess(self):
+        with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                               "--recipe-sha256", RECIPE, "--operation", "install-defaults",
+                                               "--modules", "opencode"]), \
+                patch.object(driver.subprocess, "run") as run, \
+                contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+            driver.main()
+        self.assertEqual(2, caught.exception.code)
+        run.assert_not_called()
 
     def test_invalid_operation_rejected_by_api_and_cli_before_subprocess(self):
         invalids = ("", "update", "update system", "update-all;id", "$(id)", "install\n",
@@ -778,17 +796,18 @@ class InstallDriver(unittest.TestCase):
                 (43, True, 43, (), "install"), (-2, True, 130, (), "install"),
                 (0, False, 1, (), "install"), (0, True, 0, ("nono", "discord"), "install"),
                 (43, True, 43, ("opencode", "nono"), "update-system"),
-                (0, True, 0, ("opencode", "nono"), "update-all")):
+                (0, True, 0, ("opencode", "nono"), "update-all"),
+                (0, True, 0, (), "install-defaults")):
             def fake_runner(command, env, state):
                 self.assertEqual(driver.ssh_command(COMMIT, RECIPE, modules, operation), command)
                 if verified:
                     state.feed((state.marker + "\n").encode())
-                    if modules:
+                    if modules or operation == "install-defaults":
                         state.feed((driver.DOWNLOAD_PHASE + "\n" + driver.INSTALL_PHASE + "\n" +
                                     driver.HELPER_PHASE + "\n").encode())
                         self.assertEqual(0, state.installs)
                         state.feed((driver.AUR_PHASE + "\n").encode())
-                        if operation != "install":
+                        if operation in ("update-system", "update-all"):
                             state.feed((driver.AUR_UPDATE_PHASE + "\n").encode())
                         with self.assertRaises(driver.bootstrap.Refused):
                             state.feed(b":: Proceed to review? [Y/n]: ")

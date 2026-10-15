@@ -58,6 +58,8 @@ Flatpak/npm/upstream installers. Nono is currently an explicit, checksum-verifie
 upstream exception. The Nix module enables its packaged daemon and supplies
 user-level flakes configuration; it does not overwrite global Nix settings or
 mix a pre-existing upstream installation with the repository package.
+Brave is included in the desktop group via AUR's `brave-bin`, built/installed
+through paru and then tracked by pacman. It is not an official-repository target.
 
 From the checkout, use:
 
@@ -155,12 +157,14 @@ and `--modules` choices on subsequent runs; selections are explicit, not saved a
 hidden machine state. Updating symlinked config content can still require
 restarting the affected application.
 
-After AI installation, initialize nono's pinned runtime pack manually with
-`nono pull nolabs-ai/opencode@0.4.0`. Review any existing-profile conflicts; the
-installer never uses force to replace registry-managed assets.
+AI setup installs and pins nono's `nolabs-ai/opencode@0.4.0` runtime pack.
+Existing package/profile conflicts stop setup; the installer never uses force
+to replace registry-managed assets.
 This downloads nono's OpenCode integration pack, including the base sandbox
 profile inherited by the repo's custom profiles. It is separate from installing
 the nono executable and is required before using the sandboxed `ai` helper.
+Run `ai` from a project directory. Its dev profile grants the current directory;
+granting all of `$HOME` would conflict with Linux credential protections.
 Application, model-provider, and MCP sign-ins are separate personal authentication
 steps, not installer failures. Configure only the services you actually use.
 
