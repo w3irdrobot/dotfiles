@@ -1,0 +1,124 @@
+# shellcheck shell=bash
+#
+# Custom PS1 prompt with Kestrel colors
+# Displays: directory | git branch/status | AWS profile | gcloud profile |
+# k8s context (if KUBECONFIG set)
+# Two-line prompt with ₿ character (rust=success, bright rust=error)
+
+# Color palette (using true color)
+__prompt_green='\[\e[38;2;229;191;141m\]'   # #E5BF8D gold success
+__prompt_pink='\[\e[38;2;200;107;52m\]'     # #C86B34 git branch
+__prompt_red='\[\e[38;2;217;117;58m\]'      # #D9753A errors
+__prompt_purple='\[\e[38;2;176;199;221m\]'  # #B0C7DD bright wing blue
+__prompt_blue='\[\e[38;2;138;168;197m\]'    # #8AA8C5 wing blue
+__prompt_orange='\[\e[38;2;229;191;141m\]'  # #E5BF8D bitcoin prompt
+__prompt_mustard='\[\e[38;2;156;150;138m\]' # #9C968A muted feather
+__prompt_reset='\[\e[0m\]'
+
+# Directory display:
+#   - In a git repo: repo name + path from repo root (no truncation)
+#   - In home (no repo): ~/path, truncated to ~/.../<last-2>/<last> if >3 components
+#   - Outside home (no repo): full absolute path
+__prompt_dir() {
+	local dir="$PWD"
+	local git_root
+	git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+	if [[ -n "$git_root" ]]; then
+		local repo_name
+		repo_name=$(basename "$git_root")
+		if [[ "$dir" == "$git_root" ]]; then
+			echo "$repo_name"
+		else
+			echo "$repo_name${dir#"$git_root"}"
+		fi
+	elif [[ "$dir" == "$HOME"* ]]; then
+		dir="${dir/#$HOME/\~}"
+		local parts
+		IFS='/' read -ra parts <<<"$dir"
+		if ((${#parts[@]} > 3)); then
+			printf '%c/.../%s/%s\n' '~' "${parts[-2]}" "${parts[-1]}"
+		else
+			echo "$dir"
+		fi
+	else
+		echo "$dir"
+	fi
+}
+
+# Git info: branch + dirty/clean
+__prompt_git() {
+	local branch
+	branch=$(git symbolic-ref --short HEAD 2>/dev/null) || return
+	local status="✓"
+	git diff --quiet 2>/dev/null || status="✗"
+	git diff --cached --quiet 2>/dev/null || status="✗"
+	echo "  ${branch} ${status}"
+}
+
+# AWS profile (AWSUME_PROFILE takes precedence over AWS_PROFILE)
+__prompt_aws() {
+	local profile="${AWSUME_PROFILE:-${AWS_PROFILE:-}}"
+	[[ -n "$profile" ]] || return
+	echo "  ${profile}"
+}
+
+# Google Cloud profile (only show if GSHELL_ACTIVE is set, read from env/config file)
+__prompt_gcloud() {
+	[[ -n "${GSHELL_ACTIVE:-}" ]] || return
+
+	local profile="${CLOUDSDK_ACTIVE_CONFIG_NAME:-}"
+	if [[ -z "$profile" && -n "${CLOUDSDK_CONFIG:-}" ]]; then
+		profile=$(cat "$CLOUDSDK_CONFIG/active_config" 2>/dev/null)
+	fi
+
+	[[ -n "$profile" ]] || return
+	echo "  ☁ ${profile}"
+}
+
+# Kubernetes context (only if KUBECONFIG is set)
+__prompt_k8s() {
+	[[ -n "${KUBECONFIG:-}" ]] || return
+	command -v kubectl &>/dev/null || return
+	local ctx
+	ctx=$(kubectl config current-context 2>/dev/null) || return
+	echo "  ⎈ ${ctx}"
+}
+
+# Prompt text is data, not PS1 syntax. Strip terminal controls before display.
+__prompt_safe_text() {
+	local LC_ALL=C
+	printf '%s' "${1//[[:cntrl:]]/?}"
+}
+
+# Literal references insert text after prompt escapes/substitutions are parsed;
+# their contents are not evaluated again. These variables must outlive this call.
+__prompt_command() {
+	local exit_code=$?
+	local prompt_char="₿"
+
+	if ((exit_code == 0)); then
+		local char_color="$__prompt_orange"
+	else
+		local char_color="$__prompt_red"
+	fi
+
+	__prompt_directory=$(__prompt_dir)
+	__prompt_git_text=$(__prompt_git) || __prompt_git_text=''
+	__prompt_aws_text=$(__prompt_aws) || __prompt_aws_text=''
+	__prompt_gcloud_text=$(__prompt_gcloud) || __prompt_gcloud_text=''
+	__prompt_k8s_text=$(__prompt_k8s) || __prompt_k8s_text=''
+	__prompt_directory=$(__prompt_safe_text "$__prompt_directory")
+	__prompt_git_text=$(__prompt_safe_text "$__prompt_git_text")
+	__prompt_aws_text=$(__prompt_safe_text "$__prompt_aws_text")
+	__prompt_gcloud_text=$(__prompt_safe_text "$__prompt_gcloud_text")
+	__prompt_k8s_text=$(__prompt_safe_text "$__prompt_k8s_text")
+	PS1="\n${__prompt_green}"'${__prompt_directory}'"${__prompt_reset}"
+	PS1+="${__prompt_pink}"'${__prompt_git_text}'"${__prompt_reset}"
+	PS1+="${__prompt_mustard}"'${__prompt_aws_text}'"${__prompt_reset}"
+	PS1+="${__prompt_blue}"'${__prompt_gcloud_text}'"${__prompt_reset}"
+	PS1+="${__prompt_purple}"'${__prompt_k8s_text}'"${__prompt_reset}"
+	PS1+="\n${char_color}${prompt_char}${__prompt_reset} "
+}
+
+PROMPT_COMMAND=__prompt_command

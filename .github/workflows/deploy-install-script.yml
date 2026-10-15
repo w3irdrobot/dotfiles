@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -19,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,17 +27,23 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Prepare docs directory
+        id: artifact
         run: |
-          mkdir -p docs
-          cp install.sh docs/install.sh
-          echo "dotfiles.w3ird.tech" > docs/CNAME
+          bash -n install.sh
+          shellcheck install.sh
+          staging="$(mktemp -d "$RUNNER_TEMP/dotfiles-pages.XXXXXXXX")"
+          cp install.sh "$staging/install.sh"
+          printf 'path=%s\n' "$staging" >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: ${{ steps.artifact.outputs.path }}
 
   deploy:
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

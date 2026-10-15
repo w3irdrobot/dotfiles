@@ -1,0 +1,6 @@
+# Before running electrs, set absolute paths appropriate for this machine.
+# cookie_file = "/absolute/path/to/bitcoin/.cookie"
+# db_dir = "/absolute/path/to/electrs"
+# No storage, group membership, or services are provisioned automatically.
+network = "bitcoin"
+log_filters = "INFO"

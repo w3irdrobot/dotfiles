@@ -1,4 +1,0 @@
-{{- define "ghostty-config" -}}
-theme = Kestrel
-window-padding-x = 10
-{{- end -}}
