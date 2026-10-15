@@ -299,6 +299,25 @@ validation passed. No package confirmations or new provider selections were
 needed. This is a full-default repeat-install rehearsal on the provisioned guest,
 not a fresh-machine GUI installation test.
 
+Machine environment overrides now use fixed `~/.config/bash/variables.sh`, outside
+the checkout. Legacy checkout-local variables are not sourced or migrated; other
+non-secret local hooks remain available. Disposable-home tests cover override
+order, top-level declarations, repeat startup, ignored legacy variables, and
+xtrace/verbose suppression and restoration, including failed sources. Managed
+nono profiles deny `~/.config/bash` through their shared base. File isolation does
+not prevent already-exported values from reaching AI processes. No real private
+override files were read or changed during this work.
+In the preserved Arch guest, all three current managed profiles validated and
+launched with the denied directory absent. With a fixture-only variables file,
+each sandbox could read its project control file but received `PermissionError`
+reading the private file. Broad fixture-HOME grants failed closed on deny overlap.
+The disposable home used copied public signed-pack artifacts and a dummy SSH
+socket, not personal application configuration. An initial fixture under `/tmp`
+was refused because its nono state overlapped the profile's `/tmp` grant; moving
+the fixture beneath the guest user's home resolved that test-layout issue.
+The updated local suite passed all 331 tests with two GNU Stow skips; Bash syntax,
+ShellCheck, shfmt, and independent Bash/security review passed.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

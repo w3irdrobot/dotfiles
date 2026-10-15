@@ -94,7 +94,7 @@ class ShellStartup(unittest.TestCase):
     def sources(self):
         return self.log.read_text().splitlines() if self.log.exists() else []
 
-    def expected_sources(self, native=False, local=False):
+    def expected_sources(self, native=False, local=False, external=False):
         paths = [str(self.repo / "shell" / name) for name in (
             "startup.sh", "init.sh", "variables.sh", "aliases.sh", "functions.sh",
         )]
@@ -102,8 +102,10 @@ class ShellStartup(unittest.TestCase):
             paths.append(str(self.repo / "shell/bitwarden.sh"))
         if local:
             paths.extend(str(self.repo / "shell/../local/bash" / name) for name in (
-                "init.sh", "variables.sh", "aliases.sh", "functions.sh",
+                "init.sh", "aliases.sh", "functions.sh",
             ))
+        if external:
+            paths.append(str(self.home / ".config/bash/variables.sh"))
         return [*paths, str(self.completion), "fzf", str(self.repo / "shell/prompt.sh"), "zoxide"]
 
     def test_fresh_home_only_needs_bashrc_and_loads_checkout_helpers(self):
@@ -174,7 +176,7 @@ _dotfiles_repo=caller-sentinel
 ''')
 
     def test_override_declarations_persist_at_top_level(self):
-        local = self.repo / "local/bash"
+        local = self.home / ".config/bash"
         local.mkdir(parents=True)
         (local / "variables.sh").write_text('''
 declare -x LOCAL_EXPORTED=dummy-export
@@ -198,6 +200,72 @@ LOCAL_EXISTING=original ROOT=root-sentinel directory=directory-sentinel
 _dotfiles_bashrc=caller-bashrc _dotfiles_directory=caller-directory
 _dotfiles_load_shell() { [[ $LOCAL_EXISTING == replaced ]]; }
 ''')
+
+    def test_external_variables_hide_secrets_and_restore_trace_options_and_status(self):
+        external = self.home / ".config/bash/variables.sh"
+        external.parent.mkdir(parents=True)
+        for flags in ("", "x", "v", "xv"):
+            for status in (0, 43):
+                with self.subTest(flags=flags, status=status):
+                    external.write_text(
+                        'declare -x PRIVATE_VALUE=fixture-secret-must-not-appear\n'
+                        'declare -a PRIVATE_ARRAY=(fixture-array-secret "two words")\n'
+                        f'return {status}\n'
+                    )
+                    result = self.run_shell('''
+startup_status=$? final_flags=$- final_options=$SHELLOPTS
+set +xv
+[[ $startup_status == "$expected_status" ]] || exit 97
+[[ $final_flags == "$original_flags" && $final_options == "$original_options" ]] || exit 97
+[[ $PRIVATE_VALUE == fixture-secret-must-not-appear ]] || exit 97
+[[ ${PRIVATE_ARRAY[0]} == fixture-array-secret && ${PRIVATE_ARRAY[1]} == "two words" ]] || exit 97
+[[ $(declare -p PRIVATE_VALUE) == "declare -x "* ]] || exit 97
+''', before=f'''
+set +e
+expected_status={status}
+{'set -' + flags if flags else ':'}
+original_flags=$- original_options=$SHELLOPTS
+''')
+                    # The assertions above run only after disabling trace/verbose.
+                    self.assertNotIn("fixture-secret-must-not-appear", result.stderr)
+                    self.assertNotIn("fixture-array-secret", result.stderr)
+                    self.assertEqual("", result.stdout)
+
+    def test_missing_external_variables_preserve_trace_options_without_creating_files(self):
+        for flags in ("x", "v", "xv"):
+            with self.subTest(flags=flags):
+                self.run_shell('''
+final_flags=$- final_options=$SHELLOPTS
+set +xv
+[[ $final_flags == "$original_flags" && $final_options == "$original_options" ]]
+''', before=f'''
+set -{flags}
+original_flags=$- original_options=$SHELLOPTS
+''')
+                self.assertEqual([".bashrc"], sorted(p.name for p in self.home.iterdir()))
+
+    def test_fixed_external_path_ignores_xdg_changes_and_repo_variables(self):
+        local = self.repo / "local/bash"
+        local.mkdir(parents=True)
+        legacy = local / "variables.sh"
+        legacy.write_text('printf forbidden-repo-variables\nreturn 97\n')
+        original_legacy = legacy.read_bytes()
+        decoy = self.base / "decoy config/bash/variables.sh"
+        decoy.parent.mkdir(parents=True)
+        decoy.write_text('printf forbidden-xdg-source\nreturn 97\n')
+        self.env["XDG_CONFIG_HOME"] = str(decoy.parent.parent)
+        (local / "init.sh").write_text('XDG_CONFIG_HOME="$HOME/another-config"\n')
+        external = self.home / ".config/bash/variables.sh"
+        external.parent.mkdir(parents=True)
+        external.write_text(
+            'XDG_CONFIG_HOME="$HOME/final-config"\n'
+            'FIXED_EXTERNAL_READY=1\n'
+        )
+        result = self.run_shell('[[ $FIXED_EXTERNAL_READY == 1 ]]\nprintf clean-startup\n')
+        self.assertEqual("clean-startup", result.stdout)
+        self.assertEqual(original_legacy, legacy.read_bytes())
+        self.assertFalse((self.home / "another-config").exists())
+        self.assertFalse((self.home / "final-config").exists())
 
     def test_failed_symlink_resolution_never_sources_emitted_path(self):
         readlink = self.path / "readlink"
@@ -270,14 +338,20 @@ ROOT=root-sentinel directory=directory-sentinel
         local.mkdir(parents=True)
         bodies = {
             "init.sh": '[[ $EDITOR == vim && $SSH_AUTH_SOCK == "$HOME/.bitwarden-ssh-agent.sock" ]] || return 97\nLOCAL_INIT=1\n',
-            "variables.sh": '[[ $LOCAL_INIT == 1 ]] || return 97\nexport SSH_AUTH_SOCK="$HOME/local-agent.sock"\nEDITOR=fixture-editor\nLOCAL_VARIABLES=1\n',
-            "aliases.sh": '[[ $LOCAL_VARIABLES == 1 ]] || return 97\nalias clip="fixture-clipboard"\nLOCAL_ALIASES=1\n',
-            "functions.sh": '[[ $LOCAL_ALIASES == 1 ]] || return 97\nfunction take() { printf local-take; }\n',
+            "aliases.sh": '[[ $LOCAL_INIT == 1 ]] || return 97\nalias clip="fixture-clipboard"\nLOCAL_ALIASES=1\nEDITOR=local-editor\n',
+            "functions.sh": '[[ $LOCAL_ALIASES == 1 ]] || return 97\nfunction take() { printf local-take; }\nLOCAL_FUNCTIONS=1\n',
         }
         for name, body in bodies.items():
             (local / name).write_text(
                 'printf "%s\\n" "${BASH_SOURCE[0]}" >> "$TEST_SOURCE_LOG"\n' + body,
             )
+        external = self.home / ".config/bash/variables.sh"
+        external.parent.mkdir(parents=True)
+        external.write_text(
+            'printf "%s\\n" "${BASH_SOURCE[0]}" >> "$TEST_SOURCE_LOG"\n'
+            '[[ $LOCAL_FUNCTIONS == 1 && $EDITOR == local-editor ]] || return 97\n'
+            'export SSH_AUTH_SOCK="$HOME/local-agent.sock"\nEDITOR=fixture-editor\n'
+        )
         result = self.run_shell('''
 printf '%s\n' "$SSH_AUTH_SOCK" "$EDITOR"
 alias clip
@@ -287,7 +361,7 @@ take
         self.assertIn("fixture-editor", result.stdout)
         self.assertIn("fixture-clipboard", result.stdout)
         self.assertTrue(result.stdout.endswith("local-take"))
-        self.assertEqual(self.expected_sources(native=True, local=True), self.sources())
+        self.assertEqual(self.expected_sources(native=True, local=True, external=True), self.sources())
 
     def test_old_home_overrides_and_distro_profile_are_never_read_or_changed(self):
         files = [self.home / name for name in (

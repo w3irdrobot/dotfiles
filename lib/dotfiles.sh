@@ -456,7 +456,7 @@ update_system() {
 }
 
 print_next_steps() {
-	local command=$1 scope=${2:-} variables=$ROOT/local/bash/variables.sh
+	local command=$1 scope=${2:-} variables=$HOME/.config/bash/variables.sh
 	printf '\nNext steps:\n'
 	if [[ $command == update ]]; then
 		printf '  Restart affected apps; reopen your terminal for shell/config changes.\n'
@@ -470,16 +470,16 @@ print_next_steps() {
 	printf '  No personal credentials, SSH keys, or wallet data were imported.\n'
 	if module_selected bash; then
 		printf '  Open a new terminal. A custom distro ~/.bash_profile must source ~/.bashrc.\n'
-		printf '  Store non-secret exports in local/bash/variables.sh; startup overrides also belong in local/bash/{init,aliases,functions}.sh.\n'
+		printf '  Store machine environment overrides in ~/.config/bash/variables.sh, outside this checkout.\n'
 		printf '  These commands are instructions only; do not overwrite an existing local file:\n'
-		printf '    mkdir -p %q\n' "$ROOT/local/bash"
+		printf '    (umask 077; mkdir -p %q)\n' "$HOME/.config/bash"
 		printf '    if [[ ! -e %q && ! -L %q ]]; then (umask 077; cp -n -- %q %q); fi\n' "$variables" "$variables" "$ROOT/examples/local-variables.sh" "$variables"
 		printf '    if [[ -f %q && ! -L %q ]]; then chmod 0600 -- %q; fi\n' "$variables" "$variables" "$variables"
-		printf '  Edit that local file yourself. Keep credentials outside this checkout and AI filesystem grants; prefer credential injection.\n'
+		printf '  Edit that private file yourself; setup never creates, reads, or modifies it. Managed nono profiles deny ~/.config/bash.\n'
 	fi
 	if module_selected opencode; then
 		printf '  OpenCode env references: EXA_API_KEY, GITHUB_MCP_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
-		printf '  Prefer credential injection for API access; do not store tokens in local/bash/variables.sh or other AI-readable files.\n'
+		printf '  Exported secrets can be inherited by AI processes even when the file is denied. Prefer credential injection where available.\n'
 	fi
 	if module_selected git; then printf '  Set personal Git identity/signing preferences in ~/.gitconfig_local.\n'; fi
 	if module_selected ssh; then printf '  Add SSH keys and authenticate manually; dotfiles did not generate or import keys.\n'; fi

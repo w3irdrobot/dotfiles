@@ -105,18 +105,22 @@ The installer requires unset/default `XDG_CONFIG_HOME` (`$HOME/.config`) and
 rejects a custom path before changing the machine; Stow's home-shaped tree does
 not relocate application configs.
 
-Put machine-local shell settings in this checkout's ignored `local/bash/`
-directory: `init.sh`, `variables.sh`, `aliases.sh`, and `functions.sh` are optional
-overrides. **Non-secret** environment settings belong in
-`local/bash/variables.sh`; see `examples/local-variables.sh` for a commented
-template. Do not store API credentials there: the checkout is AI-readable and
-writable, even when files are ignored by Git or mode `0600`. Prefer nono
-credential injection; keep credential-manager storage outside AI filesystem
-grants and do not export secrets globally into agent processes. Existing local
-files are not inspected or migrated: move any credentials manually.
-Local overrides run after the repo defaults, including Bitwarden.
-The installer does not copy or read your old `~/.config/bash/` overrides: migrate
-them manually if needed. Keep personal Git identity/signing overrides in
+Put machine-specific environment overrides, secret or non-secret, in one file:
+**`~/.config/bash/variables.sh`** (fixed location, independent of `XDG_CONFIG_HOME`).
+Interactive Bash sources it after repo defaults, including Bitwarden, and after
+optional non-secret `local/bash/{init,aliases,functions}.sh` hooks. Checkout-local
+`local/bash/variables.sh` is no longer sourced. Move any existing settings manually;
+the installer never reads, creates, adopts, links, or modifies the private file.
+See `examples/local-variables.sh` for a commented template; create your own file
+with owner-only permissions (`0600`, ideally a `0700` parent directory).
+
+Managed nono profiles explicitly deny `~/.config/bash`. This protects file access,
+not values already exported into child processes: **AI processes can inherit
+exported secrets**. Prefer credential injection where available; do not assume
+Bitwarden injection is configured. Bash disables xtrace/verbose output while
+sourcing the file; do not re-enable tracing, print secrets, or install debug traps
+inside it. Unsandboxed tools are not protected by the nono rule. Other old home
+override files remain untouched and are not sourced. Keep Git overrides in
 `~/.gitconfig_local`. Never commit keys, tokens, wallet data, or authentication
 stores. Sign in to your password manager and configure SSH signing manually.
 Wallet/key migration remains manual and separate from workstation installation.

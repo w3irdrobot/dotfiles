@@ -116,13 +116,14 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
 
     def test_selected_followups_are_private_manual_and_nonoverwriting(self):
         selected = ("bash", "opencode", "git", "ssh", "bitwarden", "nono", "nix", "mullvad", "bitcoin", "electrs")
-        variables = self.repo / "local/bash/variables.sh"
+        variables = self.home / ".config/bash/variables.sh"
         variables.parent.mkdir(parents=True)
         variables.write_text(self.sentinel)
+        before = self.snapshot()
         result = self.helper('DOCKER_GROUP=1; print_next_steps install\n', selected)
         self.assertEqual(0, result.returncode, result.stderr)
         text = result.stdout
-        for phrase in ("new terminal", "~/.bash_profile", "~/.bashrc", "local/bash/variables.sh",
+        for phrase in ("new terminal", "~/.bash_profile", "~/.bashrc", "~/.config/bash/variables.sh",
                        "examples/local-variables.sh", "mkdir -p", "cp -n", "! -e", "! -L",
                        "chmod 0600", "EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY",
                        "~/.gitconfig_local", "native Bitwarden", "~/.bitwarden-ssh-agent.sock",
@@ -132,7 +133,7 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assertIn("instructions only", text)
         self.assertIn("No personal credentials", text)
         self.assertEqual(self.sentinel, variables.read_text())
-        self.assertEqual({}, self.snapshot())
+        self.assertEqual(before, self.snapshot())
         self.assertEqual([], self.calls())
         self.assert_no_secrets(result)
 

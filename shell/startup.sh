@@ -17,10 +17,6 @@ if [[ -f "${BASH_SOURCE[0]%/*}/../local/bash/init.sh" ]]; then
 	# shellcheck source=/dev/null
 	source "${BASH_SOURCE[0]%/*}/../local/bash/init.sh" || return
 fi
-if [[ -f "${BASH_SOURCE[0]%/*}/../local/bash/variables.sh" ]]; then
-	# shellcheck source=/dev/null
-	source "${BASH_SOURCE[0]%/*}/../local/bash/variables.sh" || return
-fi
 if [[ -f "${BASH_SOURCE[0]%/*}/../local/bash/aliases.sh" ]]; then
 	# shellcheck source=/dev/null
 	source "${BASH_SOURCE[0]%/*}/../local/bash/aliases.sh" || return
@@ -28,6 +24,37 @@ fi
 if [[ -f "${BASH_SOURCE[0]%/*}/../local/bash/functions.sh" ]]; then
 	# shellcheck source=/dev/null
 	source "${BASH_SOURCE[0]%/*}/../local/bash/functions.sh" || return
+fi
+
+# Private variables are optional, outside the checkout, and last among overrides.
+# Keep source at top level for declare/typeset. Explicit branches avoid caller
+# bookkeeping variables; eval only restores literal options and a numeric status.
+# Suppress both command tracing and verbose source-line output before reading.
+if [[ -f "$HOME/.config/bash/variables.sh" ]]; then
+	case $- in
+	*x*v* | *v*x*)
+		set +xv
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bash/variables.sh" || eval "set -xv; return $?"
+		set -xv
+		;;
+	*x*)
+		set +x
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bash/variables.sh" || eval "set -x; return $?"
+		set -x
+		;;
+	*v*)
+		set +v
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bash/variables.sh" || eval "set -v; return $?"
+		set -v
+		;;
+	*)
+		# shellcheck source=/dev/null
+		source "$HOME/.config/bash/variables.sh" || return
+		;;
+	esac
 fi
 
 if [[ -f /usr/share/bash-completion/bash_completion ]]; then

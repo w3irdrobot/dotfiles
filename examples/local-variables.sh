@@ -1,8 +1,9 @@
-# Non-secret machine-local exports: copy to ignored local/bash/variables.sh.
+# Machine-local exports: manually copy to ~/.config/bash/variables.sh.
 # The managed .bashrc reads this through the checkout's shell helpers.
-# This checkout is AI-readable/writable. Gitignore and mode 0600 do not isolate
-# secrets from an agent running as you. Use credential injection for API access;
-# keep credential-manager storage outside AI filesystem grants.
+# Keep the real file outside this checkout and owner-only (mode 0600).
+# Managed nono profiles deny ~/.config/bash, but exported secrets can still be
+# inherited by child processes, including AI. Prefer credential injection when
+# available. Never enable tracing inside this file or print secret values.
 
 # export EDITOR=vim
 # export AWS_PROFILE=personal

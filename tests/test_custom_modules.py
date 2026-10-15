@@ -177,7 +177,7 @@ printf '%s\\n' "${PACKAGES[@]}"
         script = """set -euo pipefail
 source "$1"
 source "$1"
-if [[ $2 == local ]]; then source "$3/local/bash/variables.sh"; fi
+if [[ $2 == local ]]; then source "$HOME/.config/bash/variables.sh"; fi
 printf '%s' "$SSH_AUTH_SOCK"
 """
         return subprocess.run(
@@ -206,7 +206,7 @@ printf '%s' "$SSH_AUTH_SOCK"
                 self.assertEqual([], self.calls())
 
     def test_bitwarden_local_variables_override_default(self):
-        variables = self.repo / "local/bash/variables.sh"
+        variables = self.home / ".config/bash/variables.sh"
         variables.parent.mkdir(parents=True)
         variables.write_text('export SSH_AUTH_SOCK="$HOME/local-agent.sock"\n')
         before = self.snapshot()
@@ -218,7 +218,7 @@ printf '%s' "$SSH_AUTH_SOCK"
         # Keep the tested source order consistent with the actual interactive shell.
         startup = (self.repo / "shell/startup.sh").read_text()
         self.assertLess(startup.index('source "${BASH_SOURCE[0]%/*}/bitwarden.sh"'),
-                        startup.index('source "${BASH_SOURCE[0]%/*}/../local/bash/variables.sh"'))
+                         startup.index('source "$HOME/.config/bash/variables.sh"'))
 
 
 if __name__ == "__main__":

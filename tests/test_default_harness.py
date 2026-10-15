@@ -19,12 +19,20 @@ class DefaultHarness(unittest.TestCase):
         self.assertIn("$HOME/projects/github.com/w3irdrobot/dotfiles", grants)
         self.assertNotIn("$HOME/projects/github.com/w3irdrobot", grants)
 
-    def test_local_exports_example_never_recommends_credential_storage(self):
+    def test_machine_exports_example_stays_outside_checkout(self):
         example = (ROOT / "examples/local-variables.sh").read_text()
-        self.assertIn("Non-secret", example)
+        self.assertIn("~/.config/bash/variables.sh", example)
+        self.assertIn("inherited by child processes", example)
         self.assertIn("credential injection", example)
         for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
             self.assertNotIn(f"export {name}=", example)
+
+    def test_all_managed_ai_profiles_inherit_private_bash_denial(self):
+        base = json.loads((ROOT / "stow/nono/.config/nono/profiles/opencode-base.json").read_text())
+        self.assertIn("$HOME/.config/bash", base["filesystem"]["deny"])
+        for name in ("dev", "setup"):
+            child = json.loads((ROOT / f"stow/nono/.config/nono/profiles/opencode-{name}.json").read_text())
+            self.assertEqual("opencode-base", child["extends"])
 
     def selected(self, explicit="", groups="ai", expected_error=None):
         with tempfile.TemporaryDirectory(prefix="harness-selection-") as home:

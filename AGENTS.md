@@ -13,7 +13,9 @@
   interactive functions that affect the caller's shell.
 - Bash deploys only `~/.bashrc`. Its loader sources helpers from repo `shell/`,
   never home-level helper symlinks. Optional machine-local shell overrides live
-  in ignored `local/bash/`; do not read or migrate real credentials automatically.
+   in `~/.config/bash/variables.sh` for environment settings; optional non-secret
+   init/alias/function hooks remain in ignored `local/bash/`. Never read or migrate
+   real credentials automatically.
 - Default groups are core, AI, and desktop. Cloud/container, Bitcoin, and
   hardware-security groups are optional. Project toolchains belong in project
   Nix environments, not global Rustup/NVM installations.
@@ -34,9 +36,11 @@
 - No automatic Docker-group membership, autologin, wallet/key import, hardware
   provisioning, or changes to networking services.
 - Keep API keys, authentication stores, private keys, wallet data, and machine
-  exports out of Git and AI-readable checkouts. Non-secret shell environment
-  overrides belong in ignored `local/bash/variables.sh`; prefer credential
-  injection for API access. Git overrides remain in `~/.gitconfig_local`.
+  exports out of Git and AI-readable checkouts. Machine environment overrides,
+  secret or non-secret, belong in `~/.config/bash/variables.sh`, never in the
+  checkout. Managed nono profiles deny `~/.config/bash`; exported values may
+  still be inherited by AI processes. Prefer credential injection where available.
+  Git overrides remain in `~/.gitconfig_local`.
 - Log meaningful installer phases and failures, never environment/credential
   values. Print next steps only after successful runs, with dry-runs clearly
   marked as plans. Do not emit installer-style progress logs during shell startup.

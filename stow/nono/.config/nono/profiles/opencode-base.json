@@ -14,6 +14,9 @@
     }
   },
   "filesystem": {
+    "deny": [
+      "$HOME/.config/bash"
+    ],
     "allow": [
       "$HOME/.cargo/registry"
     ],
