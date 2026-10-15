@@ -37,7 +37,125 @@ def native_finished(state):
     state.feed((driver.INSTALL_PHASE + "\n" + driver.bootstrap.PROMPTS[1] + "\n").encode())
 
 
+PROVIDER_MENU = (":: There are 5 providers available for org.freedesktop.secrets:\n"
+                 ":: Repository extra\n"
+                 "   1) chipass  2) gnome-keyring  3) keepassxc  4) kwallet  5) oo7\n\n")
+
+
 class InstallDriver(unittest.TestCase):
+    def test_provider_default_refuses_and_opt_in_maps_displayed_index(self):
+        state = parser()
+        ready(state, driver.INSTALL_PHASE)
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed((PROVIDER_MENU + driver.PROVIDER_PROMPT).encode())
+        for menu, expected in ((PROVIDER_MENU, b"2\n"),
+                               (PROVIDER_MENU.replace("2) gnome-keyring  3) keepassxc",
+                                                      "2) keepassxc  3) gnome-keyring"), b"3\n")):
+            state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+            ready(state, driver.INSTALL_PHASE)
+            self.assertEqual([], state.feed(menu.encode()))
+            self.assertEqual([expected], state.feed(driver.PROVIDER_PROMPT.encode()))
+            self.assertTrue(state.provider_approved)
+            self.assertEqual((0, 0), (state.downloads, state.installs))
+            self.assertEqual([b"y\n"], state.feed(("\n" + driver.bootstrap.PROMPTS[1]).encode()))
+            self.assertEqual(1, state.installs)
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed(("\n" + driver.bootstrap.PROMPTS[1]).encode())
+
+    def test_provider_menu_and_prompt_all_byte_boundaries(self):
+        menus = (PROVIDER_MENU, PROVIDER_MENU.replace("  2)", "\n  2)").replace("  3)", "\n  3)"))
+        for menu in menus:
+            data = (menu.replace("\n", "\r\n") + "\x1b[1m" + driver.PROVIDER_PROMPT + "\x1b[0m ").encode()
+            for split in range(len(data) + 1):
+                with self.subTest(split=split, wrapped=menu != PROVIDER_MENU):
+                    state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+                    ready(state, driver.INSTALL_PHASE)
+                    self.assertEqual([b"2\n"], state.feed(data[:split]) + state.feed(data[split:]))
+                    self.assertEqual([], state.feed(b"\r\n2\r\n"))
+                    self.assertEqual(0, state.installs)
+
+    def test_provider_missing_duplicate_malformed_or_wrong_virtual_name_refuses(self):
+        menus = (PROVIDER_MENU.replace("gnome-keyring", "other-provider"),
+                 PROVIDER_MENU.replace("3) keepassxc", "2) keepassxc"),
+                 PROVIDER_MENU.replace("keepassxc", "gnome-keyring"),
+                 PROVIDER_MENU.replace("3) keepassxc", "3) keepassxc;id"),
+                 PROVIDER_MENU.replace("5) oo7", "6) oo7"),
+                 PROVIDER_MENU.replace("  5) oo7", ""),
+                 PROVIDER_MENU.replace("org.freedesktop.secrets", "other.virtual.provider"),
+                 PROVIDER_MENU.replace("There are 5", "There are 6"),
+                 PROVIDER_MENU.replace("Repository extra", "Repository untrusted"),
+                 PROVIDER_MENU.replace(":: Repository extra\n", ""))
+        for menu in menus:
+            with self.subTest(menu=menu):
+                state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+                ready(state, driver.INSTALL_PHASE)
+                with self.assertRaises(driver.bootstrap.Refused):
+                    state.feed((menu + driver.PROVIDER_PROMPT).encode())
+                self.assertFalse(state.provider_approved)
+
+    def test_provider_requires_verified_install_phase_and_menu(self):
+        for phase in (None, driver.DOWNLOAD_PHASE, driver.HELPER_PHASE, driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+            state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+            if phase in (driver.AUR_PHASE, driver.AUR_UPDATE_PHASE):
+                ready(state, driver.HELPER_PHASE)
+                state.feed((phase + "\n").encode())
+            elif phase is not None:
+                ready(state, phase)
+            with self.subTest(phase=phase), self.assertRaises(driver.bootstrap.Refused):
+                state.feed((PROVIDER_MENU + driver.PROVIDER_PROMPT).encode())
+            self.assertFalse(state.provider_approved)
+        state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+        ready(state, driver.INSTALL_PHASE)
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed(driver.PROVIDER_PROMPT.encode())
+
+    def test_provider_approval_once_and_no_selection_after_native_confirmation(self):
+        for repeated in (driver.PROVIDER_PROMPT, PROVIDER_MENU + driver.PROVIDER_PROMPT):
+            state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+            ready(state, driver.INSTALL_PHASE)
+            self.assertEqual([b"2\n"], state.feed((PROVIDER_MENU + driver.PROVIDER_PROMPT + "\n").encode()))
+            with self.assertRaises(driver.bootstrap.Refused):
+                state.feed(repeated.encode())
+            self.assertEqual(0, state.installs)
+        state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+        native_finished(state)
+        with self.assertRaises(driver.bootstrap.Refused):
+            state.feed(PROVIDER_MENU.encode())
+
+    def test_provider_menu_does_not_approve_or_wait_on_other_terminal_questions(self):
+        for prompt in ("Enter a number (default=2):", "Choose a provider:",
+                       ":: Import PGP key? [Y/n]", driver.bootstrap.PROMPTS[1]):
+            state = driver.InstallParser(COMMIT, RECIPE, "gnome-keyring")
+            ready(state, driver.INSTALL_PHASE)
+            state.feed(PROVIDER_MENU.encode())
+            with self.subTest(prompt=prompt), self.assertRaises(driver.bootstrap.Refused):
+                state.feed(prompt.encode())
+            self.assertFalse(state.provider_approved)
+            self.assertEqual(0, state.installs)
+
+    def test_provider_cli_only_accepts_explicit_gnome_keyring(self):
+        for value in ("", "true", "false", "2", "keepassxc", "gnome-keyring;id", "gnome-keyring "):
+            with self.subTest(value=value), \
+                    patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                                       "--recipe-sha256", RECIPE, "--secret-service-provider=" + value]), \
+                    patch.object(driver.subprocess, "run") as run, \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                driver.main()
+            self.assertEqual(2, caught.exception.code)
+            run.assert_not_called()
+        for value in (True, False, "keepassxc"):
+            with self.assertRaises(driver.argparse.ArgumentTypeError):
+                driver.InstallParser(COMMIT, RECIPE, value)
+        # A mocked metadata failure stops before SSH while exposing parsed opt-in.
+        with patch.object(driver.sys, "argv", ["run-install.py", "--commit", COMMIT,
+                                               "--recipe-sha256", RECIPE, "--secret-service-provider", "gnome-keyring"]), \
+                patch.object(driver, "InstallParser", wraps=driver.InstallParser) as constructor, \
+                patch.dict(driver.os.environ, {"LIMA_HOME": "/unsafe"}), \
+                patch.object(driver.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(1, driver.main())
+        constructor.assert_called_once_with(COMMIT, RECIPE, "gnome-keyring")
+        run.assert_not_called()
+
     def test_pins_required_before_subprocess(self):
         for args in ([], ["--commit", COMMIT], ["--recipe-sha256", RECIPE],
                      ["--commit", "master", "--recipe-sha256", RECIPE],

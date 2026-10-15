@@ -193,6 +193,14 @@ remains explicitly pending, and Brave has not received VM-install approval.
 The remaining rehearsal uses additive native modules rather than changing the
 production desktop package policy to silently omit either application.
 
+The first native AI/desktop subset run stopped safely during pacman's Secret
+Service provider selection, before new applications were installed. The user
+selected `gnome-keyring` for this guest. The VM driver requires explicit
+`--secret-service-provider gnome-keyring` approval, validates the displayed
+`org.freedesktop.secrets` menu, and chooses its current index once. Without that
+flag it still refuses. This test approval does not pin a provider or alter XFCE
+settings in the production installer.
+
 References: [foreign architectures](https://lima-vm.io/docs/config/multi-arch/),
 [plain mode](https://lima-vm.io/docs/config/plain/),
 [Arch template](https://github.com/lima-vm/lima/blob/master/templates/archlinux.yaml).

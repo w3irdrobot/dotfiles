@@ -4,6 +4,7 @@
 Usage: python3 -B tests/vm/run-install.py --commit FULL40SHA --recipe-sha256 SHA256
 Optional: --operation install|update-system|update-all (default install), and
 --modules CSV (only explicitly allowlisted additive modules).
+--secret-service-provider gnome-keyring explicitly approves that VM provider once.
 Both pins must be reviewed/published beforehand. No stdin forwarding, forced
 transaction timeout, or VSCodium/AUR package approval. An AUR review stop is NOT
 installation success. The shared PTY runner prints all guest/package output.
@@ -33,6 +34,9 @@ OPERATIONS = {"install": ("install",), "update-system": ("update", "system"),
               "update-all": ("update", "all")}
 MODULE_ALLOWLIST = frozenset(("opencode", "nono", "bitwarden", "discord", "mullvad",
                               "signal", "telegram", "thunderbird", "wallpaper"))
+PROVIDER_HEADER = re.compile(r":: There are ([1-5]) providers available for org\.freedesktop\.secrets:")
+PROVIDER_ROW = re.compile(r"([1-5])\)\s+([a-z0-9][a-z0-9+_.-]*)(?=\s|$)")
+PROVIDER_PROMPT = "Enter a number (default=1):"
 # Anchor known interactive forms, not arbitrary question marks in build output,
 # PKGBUILD comments, package descriptions, or URLs containing query strings.
 INTERACTIVE = re.compile(
@@ -79,8 +83,15 @@ def verified_marker(commit, recipe_sha):
 
 
 class InstallParser:
-    def __init__(self, commit, recipe_sha):
+    def __init__(self, commit, recipe_sha, secret_service_provider=None):
+        if secret_service_provider not in (None, "gnome-keyring"):
+            raise argparse.ArgumentTypeError("Only gnome-keyring may be explicitly approved")
         self.marker = verified_marker(commit, recipe_sha)
+        self.secret_service_provider = secret_service_provider
+        self.provider_count = None
+        self.provider_options = {}
+        self.provider_repo = False
+        self.provider_approved = False
         self.pending = b""
         self.verified = False
         self.phase = None
@@ -109,6 +120,42 @@ class InstallParser:
                 raise bootstrap.Refused("Unverified, repeated, or out-of-order AUR update phase")
             self.phase = text
             self.aur_started = True
+        if text == PROVIDER_PROMPT:
+            if (not self.verified or self.phase != INSTALL_PHASE or self.aur_started or
+                    self.secret_service_provider != "gnome-keyring" or self.provider_approved or
+                    self.provider_count is None or
+                    set(self.provider_options) != set(range(1, self.provider_count + 1)) or
+                    "gnome-keyring" not in self.provider_options.values()):
+                self.refuse()
+            self.provider_approved = True
+            index = next(index for index, name in self.provider_options.items() if name == "gnome-keyring")
+            return f"{index}\n".encode()
+        if complete and text.startswith(":: There are ") and " providers available for " in text:
+            header = PROVIDER_HEADER.fullmatch(text)
+            if (not header or not self.verified or self.phase != INSTALL_PHASE or self.aur_started or
+                    self.secret_service_provider != "gnome-keyring" or self.provider_count is not None or
+                    self.native_install_approved):
+                self.refuse()
+            self.provider_count = int(header[1])
+            return None
+        if self.provider_count is not None and not self.provider_approved:
+            if not complete or not text:
+                if PROMPT_END.search(text) and INTERACTIVE.search(text):
+                    self.refuse()
+                return None
+            if text == ":: Repository extra":
+                self.provider_repo = True
+                return None
+            rows = list(PROVIDER_ROW.finditer(text))
+            if not self.provider_repo or not rows or PROVIDER_ROW.sub("", text).strip():
+                self.refuse()
+            for row in rows:
+                index, name = int(row[1]), row[2]
+                if (index > self.provider_count or index in self.provider_options or
+                        name in self.provider_options.values()):
+                    self.refuse()
+                self.provider_options[index] = name
+            return None
         if text in (*bootstrap.PROMPTS, PARU_PROMPT):
             if not self.verified or self.aur_started:
                 self.refuse()
@@ -226,8 +273,10 @@ def main():
     cli.add_argument("--recipe-sha256", required=True, type=lambda value: pin(value, 64))
     cli.add_argument("--modules", type=parse_modules, default=(), help="Allowlisted additive module IDs, comma-separated")
     cli.add_argument("--operation", type=validate_operation, choices=tuple(OPERATIONS), default="install")
+    cli.add_argument("--secret-service-provider", choices=("gnome-keyring",), default=None,
+                     help="Explicitly approve gnome-keyring once in the VM's native provider menu")
     args = cli.parse_args()
-    parser = InstallParser(args.commit, args.recipe_sha256)
+    parser = InstallParser(args.commit, args.recipe_sha256, args.secret_service_provider)
     try:
         if os.environ.get("LIMA_HOME", str(bootstrap.VM_HOME)) != str(bootstrap.VM_HOME):
             raise bootstrap.Refused("Only the exact isolated test LIMA_HOME is allowed")
