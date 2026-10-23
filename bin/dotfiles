@@ -90,6 +90,7 @@ main() {
 		fi
 	fi
 	load_modules
+	if [[ $command == install ]] && module_selected plasma; then report_desktop_session; fi
 	log "Selected modules (${#MODULES[@]}): ${MODULES[*]}"
 	phase 'Preflight: checking conflicts and setup prerequisites'
 	case $command:$scope in

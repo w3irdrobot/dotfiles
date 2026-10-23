@@ -1,9 +1,51 @@
 # Dotfiles
 
 Linux workstation setup using Bash, paru, repository-packaged Nix,
-and GNU Stow. The initial target is **x86_64 Arch Linux or Manjaro with XFCE**.
+and GNU Stow. The primary target is **x86_64 Manjaro KDE Plasma on Wayland**;
+Arch Linux remains supported by the installer.
 macOS and Pop!_OS/COSMIC provisioning have been removed; earlier setups remain in
 Git history. The installer does not change your desktop session settings.
+
+Start with the Manjaro KDE edition rather than converting an XFCE installation.
+Select **Plasma (Wayland)** at login and verify `echo "$XDG_SESSION_TYPE"` prints
+`wayland`. Installation from a TTY is supported; X11 sessions receive guidance,
+not an automatic session change. The desktop group installs KDE portal support;
+the KDE edition supplies Plasma, KWin, PowerDevil, and login/session management.
+Clipboard helpers prefer Wayland with an X11 fallback. XWayland applications can
+still run inside Plasma Wayland; no global Electron/Ozone flags are forced.
+
+### System76 hardware
+
+On confirmed System76 hardware, selecting `core` (including the default install)
+or `hardware` also selects `system76-driver`, `system76-firmware`,
+`system76-power`, and the `firmware-manager` GUI. The planned laptop is a Lemur
+Pro **lemp14**; this model's real hardware behavior has not yet been verified.
+Detection reads `/sys/class/dmi/id/sys_vendor` without sudo, normalizes known
+System76 vendor names, and reports a safe product name. Other manufacturers and
+unavailable DMI information skip these packages. `--modules system76` also
+requires a confirmed System76 vendor; it cannot bypass the hardware check.
+
+Packages follow the normal repository-first, reviewed AUR installation flow.
+Manjaro branch compatibility must be checked at installation; no forced or partial
+upgrades. No extra DKMS packages are selected: modern kernels include
+`system76_acpi`. Thelio I/O, OLED, NVIDIA, and GNOME extensions are not generic
+Lemur requirements.
+
+The installer does not activate System76 services, add privileged groups, change
+graphics/boot settings, or flash firmware. Review package hooks and packaged
+units before manual activation. Check `power-profiles-daemon`, TLP, and
+`auto-cpufreq` before enabling `system76-power`; resolve competing backends
+yourself. Keep Plasma's PowerDevil desktop power management. Firmware updates
+and any firmware-manager polkit/group permissions remain manual.
+
+Validate KDE portal file pickers and screen sharing, plus an unlocked Secret
+Service provider for apps such as Signal. Verify KWallet's Secret Service
+support/configuration on the installed version or choose another provider;
+the installer does not configure wallets or autostart.
+
+References: [System76 driver guidance](https://system76.com/support/system76-driver/),
+[software roles](https://system76.com/support/system76-software/), and
+[current driver dependencies](https://aur.archlinux.org/packages/system76-driver).
 
 ## Installation
 

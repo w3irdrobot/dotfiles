@@ -50,10 +50,11 @@ class Fixture(unittest.TestCase):
         self.destination = self.home / "projects/github.com/w3irdrobot/dotfiles"
         # Fixture copies replace only fixed host paths, not behavior or host checks.
         # This keeps Linux checks runnable on macOS without production-only test flags.
-        for name in ("install.sh", "lib/dotfiles.sh", "modules/nix.sh"):
+        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "modules/nix.sh"):
             path = self.repo / name
             if path.exists():
                 text = path.read_text().replace("/etc/os-release", str(self.os_release))
+                text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
                 for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
                                   str(self.base / fixed.lstrip("/")), text)

@@ -4,6 +4,8 @@
 
 - Target x86_64 Arch Linux and Manjaro with Bash 5+. Do not run provisioning on
   macOS. Leave the existing desktop, login, and networking settings alone.
+- Primary desktop baseline: Manjaro KDE Plasma on Wayland; preserve Arch support.
+  System76 packages are DMI-gated; activation and firmware updates remain manual.
 - `install.sh` is the downloadable bootstrap; `bin/dotfiles` is the local entry
   point. Keep bootstrap logic small and machine setup in focused modules.
 - `modules/<tool>.conf` describes a tool's group and package names as data, not

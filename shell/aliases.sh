@@ -10,7 +10,7 @@ if command -v fd >/dev/null 2>&1; then alias find="fd"; fi
 if command -v lazygit >/dev/null 2>&1; then alias lg="lazygit"; fi
 if command -v bat >/dev/null 2>&1; then alias cat="bat"; fi
 
-# XFCE uses X11; support an explicitly selected Wayland session too.
+# Plasma Wayland is the baseline; retain clipboard support for X11 sessions.
 if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
 	alias clip="wl-copy"
 else

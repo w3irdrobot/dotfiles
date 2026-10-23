@@ -56,8 +56,12 @@ validate_module_selectors() {
 	done
 }
 
+# shellcheck source=lib/hardware.sh
+source "$ROOT/lib/hardware.sh"
+
 load_modules() {
 	MODULES=() PACKAGES=() STOW_PACKAGES=()
+	detect_system76
 	local file name line key value group package saw_group saw_packages saw_default default_enabled selector
 	local -a module_packages=()
 	local -A seen_packages=() requested_modules=() known_modules=()
@@ -100,7 +104,12 @@ load_modules() {
 			esac
 		done <"$file"
 		((saw_group && saw_packages)) || die "Metadata requires group and packages: $file"
-		if [[ -v requested_modules[$name] ]] || { [[ $default_enabled == true ]] && group_selected "$group"; }; then
+		if [[ $name == system76 && $SYSTEM76_DETECTED == 0 ]]; then
+			[[ ! -v requested_modules[$name] ]] || die 'System76 support requires confirmed System76 DMI vendor information.'
+			continue
+		fi
+		if [[ -v requested_modules[$name] ]] || { [[ $default_enabled == true ]] && group_selected "$group"; } ||
+			{ [[ $name == system76 && $SYSTEM76_DETECTED == 1 ]] && group_selected core; }; then
 			MODULES+=("$name")
 			if [[ -d $ROOT/stow/$name ]]; then STOW_PACKAGES+=("$name"); fi
 			for package in "${module_packages[@]}"; do
@@ -495,6 +504,11 @@ print_next_steps() {
 		return 0
 	fi
 	if [[ $command == link ]]; then printf '  Linking did not install packages. Run dotfiles install with the same selections if tools/dependencies are missing.\n'; fi
+	if module_selected system76; then system76_next_steps; fi
+	if module_selected plasma; then
+		printf "  Log into Plasma (Wayland); verify echo \"\$XDG_SESSION_TYPE\" reports wayland. Setup does not install/switch the desktop session.\n"
+		printf '  Test portal file pickers/screen sharing and an unlocked Secret Service provider (KWallet if supported/configured, otherwise a provider you choose); setup does not configure wallets or autostart.\n'
+	fi
 	printf '  No personal credentials, SSH keys, or wallet data were imported.\n'
 	if module_selected bash; then
 		printf '  Open a new terminal. A custom distro ~/.bash_profile must source ~/.bashrc.\n'

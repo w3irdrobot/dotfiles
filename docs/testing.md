@@ -35,7 +35,7 @@ the guest SSH transport. Clone the migration branch inside the guest; never use 
 the install target. Confirm the guest has a normal non-root user, sudo access,
 networking, systemd, and sufficient disk space before installing. An Arch guest
 tests Arch provisioning; it does **not** validate Manjaro package availability or
-XFCE integration. Use a disposable Manjaro XFCE x86_64 VM or the eventual target
+Plasma/Wayland integration. Use a disposable Manjaro KDE x86_64 VM or the eventual target
 machine for that final rehearsal.
 
 ## Acceptance checklist
@@ -51,7 +51,10 @@ machine for that final rehearsal.
 5. Open a fresh login shell. Verify Nix daemon access, `nix --version`, and flakes
    support; exercise a project's locked dev shell without global Rust/Node tools.
 6. Install the default AI/desktop groups. Verify Ghostty, VSCodium, clipboard
-   behavior under XFCE/X11, Bitwarden's SSH agent, and OpenCode/nono integration.
+   behavior under Plasma/Wayland, Bitwarden's SSH agent, and OpenCode/nono integration.
+   Confirm `XDG_SESSION_TYPE=wayland`, KDE portal file pickers/screen sharing,
+   and Signal persistence with an unlocked Secret Service provider. Test XWayland
+   apps without global forced Electron flags. TTY installation must remain valid.
 7. Interrupt a package install, then rerun. Confirm a partial checkout or Nix
    installation is diagnosed rather than overwritten or falsely marked complete.
    Test an existing upstream Nix install: the installer must not mix installation
@@ -60,11 +63,41 @@ machine for that final rehearsal.
 8. Test config updates with clean, dirty, and diverged Git histories. Test adding
    a new config whose destination already exists. Updates must fail safely.
 9. Run explicit system updates and verify no partial Arch repository upgrade.
-10. Verify no changes to XFCE settings, autologin, networking, Docker-group
+10. Verify no changes to Plasma settings, autologin, networking, Docker-group
     membership, wallets, private keys, or local environment credentials.
+11. On the System76 lemp14, verify DMI detection, package resolution for the
+    installed Manjaro branch, repeat installation, hotkeys, suspend/resume, and
+    battery controls after separately reviewed manual service activation. Check
+    competing power-profile backends without disabling PowerDevil. Confirm setup
+    itself does not activate services, flash firmware, or add privileged groups.
+    A generic VM cannot establish System76 hardware compatibility.
+
+The current baseline is Manjaro KDE/Wayland. The historical XFCE references below
+describe earlier expectations, not completed KDE validation. Manjaro KDE/Wayland
+and lemp14 hardware acceptance remain pending.
 
 Keep the VM until review is complete. Do not automatically destroy it or treat a
 passing container test as equivalent to this rehearsal.
+
+## KDE/System76 installer checks (2026-10-23)
+
+Implemented the accepted Manjaro KDE/Wayland baseline and DMI-gated System76
+package selection. Desktop/session settings, hardware service activation, power
+backend conflict resolution, wallet setup, and firmware updates remain manual.
+`wl-clipboard` was already included; no clipboard package change was needed.
+
+- The full fixture suite ran 375 tests successfully, with three skips: two need
+  GNU Stow and one needs a case-sensitive filesystem.
+- Nine hardware/session tests cover vendor normalization, lemp14 reporting,
+  absent/unreadable DMI, explicit-selector gating, untrusted model text, repeated
+  selection, TTY/X11/Wayland guidance, and a no-provisioning Manjaro CLI dry-run.
+- Scoped Bash syntax, ShellCheck, shfmt, and `git diff --check` passed.
+- Read-only Arch/AUR lookups found all six new package names. This does not prove
+  dependency compatibility on a particular Manjaro branch.
+
+No live provisioning, graphical session, firmware operation, or laptop hardware
+check ran on this macOS host. Complete the KDE/Wayland and lemp14 checklist above
+before treating the new target as hardware-verified.
 
 ## Observed Arch rehearsal (2026-10-14–15)
 
