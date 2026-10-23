@@ -1,198 +1,209 @@
 #!/usr/bin/env bash
-#
-# Bootstrap script for setting up a new machine
-# Usage: curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash
-#
-
+# Public bootstrap: wget -qO- https://dotfiles.w3ird.tech/install.sh | bash
 set -euo pipefail
+if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
 
-if [[ "${DEBUG:-0}" == "1" ]]; then
-    set -x
-fi
+readonly REPOSITORY=https://github.com/w3irdrobot/dotfiles.git
 
-DOTFILES_REPO="w3irdrobot"
+DOTFILES_PHASE='Bootstrap argument validation'
+log() { printf 'dotfiles bootstrap: %s\n' "$*" >&2; }
+phase() {
+	DOTFILES_PHASE=$1
+	log "$1"
+}
+report_exit() {
+	local status=$1
+	if ((status != 0)); then printf 'dotfiles bootstrap: Failure during %s (exit %d).\n' "$DOTFILES_PHASE" "$status" >&2; fi
+}
+trap 'report_exit "$?"' EXIT
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-detect_os() {
-    case "$(uname -s)" in
-        Darwin*) OS="darwin" ;;
-        Linux*)
-            if [[ ! -r /etc/os-release ]]; then
-                log_error "Cannot identify this Linux distribution: /etc/os-release is missing"
-                exit 1
-            fi
-
-            # shellcheck source=/dev/null
-            source /etc/os-release
-            if [[ "${ID:-}" != "pop" || "${VERSION_ID:-}" != "24.04" ]]; then
-                log_error "Unsupported Linux distribution: ${PRETTY_NAME:-unknown}"
-                log_error "This installer supports Pop!_OS 24.04 LTS only."
-                exit 1
-            fi
-            if [[ "$(uname -m)" != "x86_64" ]]; then
-                log_error "Unsupported architecture: $(uname -m) (x86_64 required)"
-                exit 1
-            fi
-            OS="linux"
-            ;;
-        *)
-            log_error "Unsupported operating system: $(uname -s)"
-            exit 1
-            ;;
-    esac
-    log_info "Detected OS: ${PRETTY_NAME:-$OS} ($(uname -m))"
+die() {
+	printf 'dotfiles: %s\n' "$*" >&2
+	exit 1
+}
+run() {
+	printf '+ ' >&2
+	printf '%q ' "$@" >&2
+	printf '\n' >&2
+	if ((! dry_run)); then "$@"; fi
 }
 
-install_chezmoi() {
-    if command -v chezmoi &> /dev/null; then
-        log_info "chezmoi already installed"
-        return
-    fi
-
-    log_info "Installing chezmoi..."
-
-    # Ensure ~/.local/bin exists and is in PATH
-    mkdir -p "$HOME/.local/bin"
-    export PATH="$HOME/.local/bin:$PATH"
-
-    # Use chezmoi's official installer - works on all platforms
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-
-    log_success "chezmoi installed"
+check_platform() {
+	[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || die 'Only x86_64 Linux is supported.'
+	[[ -r /etc/os-release ]] || die 'Missing /etc/os-release.'
+	local distro
+	distro=$(sed -n 's/^ID=//p' /etc/os-release)
+	distro=${distro//\"/}
+	distro=${distro//\'/}
+	[[ $distro == arch || $distro == manjaro ]] || die 'Only Arch and Manjaro are supported.'
+	((EUID != 0)) || die 'Run as your regular user, not root.'
+	[[ ${XDG_CONFIG_HOME:-$HOME/.config} == "$HOME/.config" ]] || die 'Custom XDG_CONFIG_HOME is unsupported; configs deploy to ~/.config. No setup changes applied.'
 }
 
-chezmoi_is_initialized() {
-    local required_data='
-{{ .email }}
-{{ .install_slack }}
-{{ .install_gcloud }}
-{{ .install_nvm }}
-{{ .install_kubernetes_tools }}
-{{ .bitcoin_mount_choice }}
-{{ .bitcoin_mount }}
-{{ .bitcoin_datadir }}
-{{ .electrs_mount_choice }}
-{{ .electrs_mount }}
-{{ .electrs_datadir }}'
-
-    if [[ "$OS" == "linux" ]]; then
-        required_data+='
-{{ .linux_distribution }}
-{{ .linux_version }}
-{{ .linux_codename }}
-{{ .linux_architecture }}
-{{ .install_brave }}
-{{ .install_vscodium }}
-{{ .install_mullvad }}
-{{ .install_signal }}
-{{ .install_bitwarden }}
-{{ .install_discord }}
-{{ .install_spotify }}
-{{ .install_telegram }}
-{{ .install_thunderbird }}
-{{ .install_1password }}
-{{ .install_tor_browser }}'
-    fi
-
-    chezmoi execute-template "$required_data" >/dev/null 2>&1
+check_checkout() {
+	[[ ! -L $destination && -d $destination/.git ]] || die "Not an ordinary repository checkout: $destination"
+	local origin branch
+	origin=$(git -C "$destination" remote get-url origin)
+	case $origin in
+	"$REPOSITORY" | "${REPOSITORY%.git}" | git@github.com:w3irdrobot/dotfiles.git) ;;
+	*) die 'Unexpected origin; expected GitHub w3irdrobot/dotfiles. Inspect origin locally before retrying; refusing update.' ;;
+	esac
+	[[ -z $(git -C "$destination" status --porcelain --untracked-files=all) ]] || die 'Checkout is dirty; save your work before updating.'
+	branch=$(git -C "$destination" symbolic-ref --quiet --short HEAD) || die 'Detached HEAD; select the intended branch yourself.'
+	[[ $branch == "$ref" ]] || die "Checkout is on $branch, not $ref; refusing to switch branches."
+	if ((dry_run)); then
+		run git -C "$destination" fetch origin "refs/heads/$ref:refs/remotes/origin/$ref"
+		printf 'Would verify fast-forward ancestry before updating.\n' >&2
+	else
+		git -C "$destination" fetch origin "refs/heads/$ref:refs/remotes/origin/$ref"
+		git -C "$destination" merge-base --is-ancestor HEAD "refs/remotes/origin/$ref" || die 'Local checkout is ahead or diverged; refusing update.'
+	fi
+	run git -C "$destination" merge --ff-only --no-overwrite-ignore "refs/remotes/origin/$ref"
 }
 
-apply_dotfiles() {
-    log_info "Initializing dotfiles with chezmoi..."
-    log_info "This will install packages and configure your system..."
+# Keep these standalone PATH guards identical to lib/dotfiles.sh; the public
+# bootstrap cannot source checkout files before Git has been installed.
+preflight_native_opencode_paths() {
+	local remaining=${PATH-} directory candidate more
+	# Shell startup prepends this directory even when the installer PATH omits it.
+	check_native_opencode_path "$HOME/.local/bin/opencode" 1
+	while :; do
+		more=0
+		if [[ $remaining == *:* ]]; then
+			directory=${remaining%%:*}
+			remaining=${remaining#*:}
+			more=1
+		else
+			directory=$remaining
+		fi
+		# Empty entries mean the current directory, including a trailing colon.
+		candidate=${directory:-.}/opencode
+		check_native_opencode_path "$candidate" 0
+		((more)) || break
+	done
+}
 
-    if [[ -d "$HOME/.local/share/chezmoi" ]] && chezmoi_is_initialized; then
-        log_info "Dotfiles already initialized, updating..."
-        chezmoi update
-    else
-        if [[ -d "$HOME/.local/share/chezmoi" ]]; then
-            log_info "Previous initialization is incomplete, resuming prompts..."
-        fi
-        chezmoi init --apply "$DOTFILES_REPO"
-    fi
+check_native_opencode_path() {
+	local candidate=$1 explicit=$2 actual native
+	[[ -e $candidate || -L $candidate ]] || return 0
+	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
+	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
+	# and the explicitly protected startup path still require inspection.
+	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
+	[[ $candidate != /usr/bin/opencode ]] || return 0
+	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
+	native=$(realpath -m -- /usr/bin/opencode) || die 'Could not resolve native OpenCode path; inspect it manually.'
+	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the native package: $candidate; inspect and move it manually. Leaving it unchanged."
+}
 
-    log_success "Dotfiles applied"
+bootstrap_git() {
+	# Check unmanaged copies before even querying pacman, including in dry-runs.
+	preflight_native_opencode_paths
+	local guard_opencode=0 query_status metadata repository name version
+	local -a packages=(git ca-certificates)
+	if ((dry_run)); then
+		printf 'Would guard any installed OpenCode against refreshed Extra V2 metadata before installing packages.\n' >&2
+	else
+		if pacman -Qq -- opencode >/dev/null 2>&1; then
+			guard_opencode=1
+		else
+			query_status=$?
+			[[ $query_status == 1 ]] || die 'Cannot determine installed OpenCode ownership; refusing bootstrap package transactions.'
+		fi
+	fi
+	phase 'Git prerequisites: refreshing databases and downloading without installing'
+	run sudo pacman -Syu --downloadonly --needed git ca-certificates
+	phase 'Git prerequisites: validating native OpenCode V2 policy'
+	if ((guard_opencode)); then
+		metadata=$(LC_ALL=C pacman -Si -- extra/opencode) || die 'OpenCode V2 repository metadata is unavailable. Databases/cache were refreshed, but no packages installed; full upgrade pending.'
+		repository=$(printf '%s\n' "$metadata" | sed -n 's/^Repository[[:space:]]*:[[:space:]]*//p')
+		name=$(printf '%s\n' "$metadata" | sed -n 's/^Name[[:space:]]*:[[:space:]]*//p')
+		version=$(printf '%s\n' "$metadata" | sed -n 's/^Version[[:space:]]*:[[:space:]]*//p')
+		if [[ $version == *:* ]]; then
+			[[ $version =~ ^[0-9]+: ]] || die 'Invalid OpenCode package epoch; databases refreshed, no packages installed, full upgrade pending.'
+			version=${version#*:}
+		fi
+		[[ $repository == extra && $name == opencode && $version =~ ^2\.[0-9][[:alnum:].+_-]*$ ]] || die 'Installed OpenCode must remain native Extra V2. Databases/cache refreshed, no packages installed; full upgrade pending. Do not run isolated pacman -S installs.'
+		packages+=(extra/opencode)
+	fi
+	phase 'Git prerequisites: full upgrade using the checked indexes'
+	run sudo pacman -Su --needed -- "${packages[@]}"
 }
 
 main() {
-    echo ""
-    echo "=========================================="
-    echo "   w3irdrobot Dotfiles Bootstrap"
-    echo "=========================================="
-    echo ""
-
-    detect_os
-    install_chezmoi
-    apply_dotfiles
-
-    echo ""
-    log_success "Bootstrap complete!"
-    log_info "Please restart your terminal to use the new shell configuration."
-    print_followups
-    echo ""
+	local destination="$HOME/projects/github.com/w3irdrobot/dotfiles" ref=master dry_run=0
+	local -a setup_args=()
+	while (($#)); do
+		case $1 in
+		--ref)
+			(($# >= 2)) || die '--ref needs a branch'
+			ref=$2
+			shift 2
+			;;
+		--dry-run)
+			dry_run=1
+			setup_args+=(--dry-run)
+			shift
+			;;
+		--groups)
+			(($# >= 2)) || die '--groups needs a value'
+			setup_args+=(--groups "$2")
+			shift 2
+			;;
+		--docker-group)
+			setup_args+=(--docker-group)
+			shift
+			;;
+		--modules)
+			(($# >= 2)) || die '--modules needs a value'
+			[[ -n $2 ]] || die '--modules needs a nonempty value'
+			setup_args+=(--modules "$2")
+			shift 2
+			;;
+		--help | -h)
+			printf 'Usage: install.sh [--ref BRANCH] [--groups core,ai,desktop] [--modules NAME[,NAME]] [--dry-run] [--docker-group]\n'
+			return
+			;;
+		*) die "Unknown argument: $1" ;;
+		esac
+	done
+	phase 'Bootstrap platform validation: Arch/Manjaro x86_64, regular user'
+	check_platform
+	log 'Platform validation passed.'
+	[[ $ref != -* ]] || die 'Invalid branch.'
+	phase 'Git prerequisites: checking the available clone tools'
+	if ! command -v git >/dev/null; then
+		bootstrap_git
+		if ((dry_run)); then
+			printf 'Would clone %s at %s and run bin/setup.\n' "$REPOSITORY" "$ref" >&2
+			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
+			printf 'PLAN ONLY: prerequisites, checkout clone and setup dispatch were not performed.\n'
+			return
+		fi
+	fi
+	log 'Git clone tooling is available.'
+	git check-ref-format "refs/heads/$ref" || die 'Invalid branch.'
+	if [[ -e $destination || -L $destination ]]; then
+		phase 'Checkout update: verifying origin, cleanliness and fast-forward safety'
+		check_checkout
+	else
+		phase 'Checkout clone: creating the public HTTPS checkout'
+		run mkdir -p "$(dirname "$destination")"
+		run git clone --branch "$ref" --single-branch "$REPOSITORY" "$destination"
+		if ((dry_run)); then
+			printf 'Would run bin/setup in the new checkout.\n' >&2
+			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
+			printf 'PLAN ONLY: checkout clone and setup dispatch were not performed.\n'
+			return
+		fi
+	fi
+	[[ -f $destination/bin/setup ]] || die 'Selected ref has no bin/setup.'
+	phase 'Setup dispatch: running the selected checkout entrypoint'
+	bash "$destination/bin/setup" "${setup_args[@]}"
+	if ((dry_run)); then
+		phase 'PLAN ONLY: bootstrap dispatch preview finished; no changes applied'
+	else
+		phase 'Complete: bootstrap checkout and setup dispatch'
+	fi
 }
-
-print_followups() {
-    cat <<'EOF'
-
-Manual follow-ups (no keys or wallet data are stored in dotfiles):
-
-1. Open Bitwarden, sign in, unlock, and enable its SSH agent.
-   On Linux the installer uses the Flatpak agent socket. If you install another
-   build, override SSH_AUTH_SOCK in ~/.config/bash/.variables.
-   Restore/import the SSH keys needed for this next machine; long term keep them
-   in Bitwarden. ~/.ssh/config contains aliases, not private keys. Export the
-   GitHub authentication key's public half to ~/.ssh/github_auth.pub, then check
-   ssh-add -L and ssh -T git@github.com after opening a new terminal.
-
-2. Obtain your API keys/tokens manually. Put their exports in the machine-local
-   ~/.config/bash/.variables (already sourced by ~/.bashrc), not the managed
-   ~/.variables or the dotfiles repository. Keep that local file mode 600:
-     mkdir -p ~/.config/bash
-     (umask 077; touch ~/.config/bash/.variables)
-     chmod 600 ~/.config/bash/.variables
-     EXA_API_KEY        https://dashboard.exa.ai/
-     GITHUB_MCP_TOKEN   GitHub token settings (a token, without "Bearer ")
-     MAPLE_API_KEY      Your Maple Local endpoint credential
-   Export only the variables you need. Disable unused MCP servers/providers in
-   ~/.config/opencode/opencode.jsonc rather than inventing credentials.
-
-3. Close Sparrow before exporting or restoring wallet files. Before leaving the
-   old computer, run secrets_export to create a passphrase-
-   encrypted archive of the GPG/SSH keys you still need and your Sparrow wallets.
-   Keep the archive/passphrase outside Git. After installation, run
-   secrets_import manually to restore it; existing differing keys/wallets are
-   not overwritten. Then open Sparrow and confirm the restored wallets.
-
-4. GPG/YubiKey signing is a manual transition: until the YubiKey is provisioned,
-   transfer the GPG keys you need. Once ready, use its signing subkey and import
-   the public certificate on new machines; do not automatically run keytocard or
-   copy hardware-held private keys. Linux installs GnuPG, scdaemon, PC/SC, and
-   ykman tooling. Check gpg --card-status and choose the signing key per repo.
-   config_git currently configures SSH signing, not YubiKey/OpenPGP signing.
-   For YubiKey signing in a repository, set gpg.format to openpgp,
-   user.signingkey to your signing-subkey fingerprint followed by !, and
-   commit.gpgsign to true. Keep an offline recovery backup of the OpenPGP key.
-
-5. After SSH works, restore the knowledge-base checkout if missing:
-     git clone git@github.com:w3irdrobot/knowledge-base.git \
-       ~/projects/github.com/w3irdrobot/knowledge-base
-   Reuse an existing checkout. Start ai from a repository after completing the
-   Bitwarden/API-key steps. OpenCode uses a private server under nono, and new
-   worktrees live in that repository's ignored .worktrees directory.
-
-Cloud configs, kubeconfigs, and OAuth sessions are not part of this migration.
-No VM rehearsal is required. This installer still targets macOS/Pop!_OS 24.04;
-the separate Arch Linux/Bash rewrite has not started.
-EOF
-}
-
 main "$@"

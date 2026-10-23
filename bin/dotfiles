@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
+
+DOTFILES_PHASE='CLI initialization'
+cli_exit() {
+	local status=$1
+	if ((status != 0)); then printf 'dotfiles: Failure during %s (exit %d).\n' "$DOTFILES_PHASE" "$status" >&2; fi
+}
+trap 'cli_exit "$?"' EXIT
+
+ROOT=$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd -P)
+readonly ROOT
+# shellcheck source=lib/dotfiles.sh
+source "$ROOT/lib/dotfiles.sh"
+
+DOTFILES_PHASE='CLI argument validation'
+
+usage() {
+	printf '%s\n' 'Usage: dotfiles install|link|update configs|update system|update all' \
+		'  [--groups core,ai,desktop] [--modules NAME[,NAME]] [--dry-run] [--docker-group (install only)]' \
+		'Explicit modules are additive, including default=false modules and other groups.' \
+		'Groups: core, ai, desktop (defaults); cloud, bitcoin, hardware (optional).' \
+		'Config updates fast-forward this checkout; system updates never update project flakes.'
+}
+
+main() {
+	DRY_RUN=0 GROUPS_CSV=core,ai,desktop MODULES_CSV='' DOCKER_GROUP=0
+	local command=${1:-} scope='' argument
+	[[ -n $command ]] || {
+		usage >&2
+		exit 2
+	}
+	shift
+	if [[ $command == update ]]; then
+		(($#)) || die 'update needs configs, system, or all'
+		scope=$1
+		shift
+		case $scope in configs | system | all) ;; *) die "Unknown update scope: $scope" ;; esac
+	fi
+	while (($#)); do
+		argument=$1
+		shift
+		case $argument in
+		--groups)
+			(($#)) || die '--groups needs a value'
+			GROUPS_CSV=$1
+			shift
+			;;
+		--dry-run) DRY_RUN=1 ;;
+		--modules)
+			(($#)) || die '--modules needs a value'
+			[[ -n $1 ]] || die '--modules needs a nonempty value'
+			MODULES_CSV=$1
+			shift
+			;;
+		--docker-group) DOCKER_GROUP=1 ;;
+		--help | -h)
+			usage
+			return
+			;;
+		*) die "Unknown argument: $argument" ;;
+		esac
+	done
+	case $command in install | link | update) ;; --help | -h)
+		usage
+		return
+		;;
+	*) die "Unknown command: $command" ;; esac
+	[[ $command == install || $DOCKER_GROUP == 0 ]] || die '--docker-group is only valid with install.'
+	phase "Starting $command${scope:+ $scope}"
+	phase 'Platform validation: checking Arch/Manjaro x86_64 and user context'
+	check_platform
+	validate_groups
+	validate_module_selectors
+	log "Selected groups: $GROUPS_CSV"
+	if [[ -n $MODULES_CSV ]]; then log "Explicit additive modules: $MODULES_CSV"; fi
+	if [[ $command == update && $scope != system ]]; then
+		phase 'Config checkout: verifying origin and applying a safe fast-forward update'
+		update_checkout
+		# Restart against the updated implementation and metadata, exactly once.
+		if ((! DRY_RUN)) && [[ ${DOTFILES_UPDATED:-0} != 1 ]]; then
+			export DOTFILES_UPDATED=1
+			local -a args=(--groups "$GROUPS_CSV")
+			if [[ -n $MODULES_CSV ]]; then args+=(--modules "$MODULES_CSV"); fi
+			if [[ $scope == all ]]; then
+				exec bash "$ROOT/bin/dotfiles" update all "${args[@]}"
+			fi
+			exec bash "$ROOT/bin/dotfiles" update configs "${args[@]}"
+		fi
+	fi
+	load_modules
+	if [[ $command == install ]] && module_selected plasma; then report_desktop_session; fi
+	log "Selected modules (${#MODULES[@]}): ${MODULES[*]}"
+	phase 'Preflight: checking conflicts and setup prerequisites'
+	case $command:$scope in
+	install:)
+		preflight_links
+		preflight_link_modules
+		preflight_custom_modules
+		preflight_docker_membership
+		install_packages
+		setup_modules
+		link_configs
+		docker_membership
+		;;
+	link:)
+		preflight_links
+		preflight_link_modules
+		link_configs
+		;;
+	update:configs)
+		preflight_links
+		preflight_link_modules
+		link_configs 0
+		;;
+	update:system) update_system ;;
+	update:all)
+		preflight_links
+		preflight_link_modules
+		update_system
+		link_configs 0
+		;;
+	esac
+	if ((DRY_RUN)); then
+		phase "PLAN ONLY: $command${scope:+ $scope} dry-run finished; no changes applied"
+		printf 'PLAN ONLY: no changes applied. No setup completion or post-install actions are claimed.\n'
+	else
+		phase "Complete: $command${scope:+ $scope}"
+		print_next_steps "$command" "$scope"
+	fi
+}
+main "$@"

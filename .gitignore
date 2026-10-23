@@ -3,6 +3,8 @@ dracula-pro
 paru
 machine_export
 .last_run
+/.worktrees/
+/local/
 
 # VSCodium - ignore everything except settings and keybindings
 .config/VSCodium/*

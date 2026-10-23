@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+main() (
+	# Both outputs stay private even when the invoking shell uses umask 022.
+	umask 077
+	local output
+	for output in localhost.key localhost.crt; do
+		if [[ -e $output || -L $output ]]; then
+			printf 'Refusing existing certificate output: %s\n' "$output" >&2
+			return 1
+		fi
+	done
+	openssl req -x509 -out localhost.crt -keyout localhost.key \
+		-newkey rsa:2048 -nodes -sha256 \
+		-subj '/CN=localhost' -extensions EXT -config <(
+			printf '[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth'
+		)
+)
+
+main "$@"
