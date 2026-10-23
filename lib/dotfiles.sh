@@ -549,11 +549,10 @@ update_checkout() {
 	case $origin in https://github.com/w3irdrobot/dotfiles.git | https://github.com/w3irdrobot/dotfiles | git@github.com:w3irdrobot/dotfiles.git) ;; *) die 'Unexpected origin; expected GitHub w3irdrobot/dotfiles. Inspect origin locally before retrying; refusing update.' ;; esac
 	[[ -z $(git -C "$ROOT" status --porcelain --untracked-files=all) ]] || die 'Checkout is dirty; save your work before updating configs.'
 	branch=$(git -C "$ROOT" symbolic-ref --quiet --short HEAD) || die 'Detached HEAD; select a branch yourself.'
+	run git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 	if ((DRY_RUN)); then
-		run git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 		log 'Would verify fast-forward ancestry; preview uses current checkout metadata.'
 	else
-		git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 		git -C "$ROOT" merge-base --is-ancestor HEAD "refs/remotes/origin/$branch" || die 'Local checkout is ahead or diverged; refusing update.'
 	fi
 	run git -C "$ROOT" merge --ff-only --no-overwrite-ignore "refs/remotes/origin/$branch"

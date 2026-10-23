@@ -309,17 +309,28 @@ class Fixture(unittest.TestCase):
         self.assertEqual({}, self.snapshot())
         self.assertFalse(any(c[0] == "stow" and "--simulate" not in c for c in self.calls()))
 
-    def test_config_update_preserves_explicit_opt_ins_after_restart(self):
+    def test_config_updates_preserve_scope_and_opt_ins_after_one_restart(self):
         self.opt_in_modules()
         self.git_fixture()
         self.mock("stow", "sys.exit(0)")
-        result = self.run_cli(
-            "update", "configs", "--groups", "core", "--modules", "fixture-desktop"
-        )
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertTrue(any(c[0] == "git" and "fetch" in c for c in self.calls()))
-        self.assert_stow_selection(("fixture-core", "fixture-desktop"), ("fixture-cloud",))
-        self.assertEqual({}, self.snapshot())
+        self.mock("sudo", "sys.exit(0)")
+        self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
+        self.mock("paru", "print('paru v2.1.0') if '--version' in sys.argv else None")
+        for scope in ("configs", "all"):
+            with self.subTest(scope=scope):
+                self.log.unlink(missing_ok=True)
+                result = self.run_cli(
+                    "update", scope, "--groups", "core", "--modules", "fixture-desktop"
+                )
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                fetches = [c for c in self.calls() if c[0] == "git" and "fetch" in c]
+                self.assertEqual(1, len(fetches), self.calls())
+                self.assertEqual(scope == "all", any(c[0] == "sudo" for c in self.calls()))
+                self.assertIn(f"Complete: update {scope}", result.stderr)
+                self.assert_stow_selection(
+                    ("fixture-core", "fixture-desktop"), ("fixture-cloud",)
+                )
+                self.assertEqual({}, self.snapshot())
 
     def test_default_groups_exclude_cloud(self):
         self.minimal_modules()
