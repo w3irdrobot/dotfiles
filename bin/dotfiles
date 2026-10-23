@@ -83,10 +83,7 @@ main() {
 			export DOTFILES_UPDATED=1
 			local -a args=(--groups "$GROUPS_CSV")
 			if [[ -n $MODULES_CSV ]]; then args+=(--modules "$MODULES_CSV"); fi
-			if [[ $scope == all ]]; then
-				exec bash "$ROOT/bin/dotfiles" update all "${args[@]}"
-			fi
-			exec bash "$ROOT/bin/dotfiles" update configs "${args[@]}"
+			exec bash "$ROOT/bin/dotfiles" update "$scope" "${args[@]}"
 		fi
 	fi
 	load_modules

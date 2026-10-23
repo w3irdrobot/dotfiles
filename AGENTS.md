@@ -15,9 +15,9 @@
   interactive functions that affect the caller's shell.
 - Bash deploys only `~/.bashrc`. Its loader sources helpers from repo `shell/`,
   never home-level helper symlinks. Optional machine-local shell overrides live
-   in `~/.config/bash/variables.sh` for environment settings; optional non-secret
-   init/alias/function hooks remain in ignored `local/bash/`. Never read or migrate
-   real credentials automatically.
+  in `~/.config/bash/variables.sh` for environment settings; optional non-secret
+  init/alias/function hooks remain in ignored `local/bash/`. Never read or migrate
+  real credentials automatically.
 - Default groups are core, AI, and desktop. Cloud/container, Bitcoin, and
   hardware-security groups are optional. Project toolchains belong in project
   Nix environments, not global Rustup/NVM installations.
@@ -51,6 +51,16 @@
 - Pin and verify standalone upstream artifacts. Treat AUR PKGBUILDs as executable
   third-party code requiring review, not trusted data.
 
+## Documentation
+
+- Write developer-to-developer: direct, conversational, and concrete. Lead with
+  the intended use and runnable examples; keep the install command near the top
+  of `README.md`.
+- Explain behavior and responsibility before constraints. State safety rules
+  once near the relevant workflow, preserving their exact meaning.
+- Link detailed contracts and dated validation evidence rather than repeating
+  them. Keep current instructions separate from historical results and open work.
+
 ## Bash and verification
 
 - Executable scripts use strict mode, optional `DEBUG=1` tracing, quoted
@@ -64,6 +74,6 @@
   checks and missing tools honestly; mocks do not validate real installation.
 - Follow `docs/testing.md` for a separate Linux VM rehearsal. Do not install VM
   software, launch VMs, or change the host without approval.
-- Pages publishes the standalone bootstrap only from `master`. Migration PRs
-  must not deploy or merge automatically. Search for a PR template before opening
+- Pages publishes the standalone bootstrap only from `master`. PRs must not
+  deploy or merge automatically. Search for a PR template before opening
   a PR and include verified checks plus remaining Linux/Manjaro acceptance work.

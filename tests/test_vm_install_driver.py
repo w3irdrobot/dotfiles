@@ -466,6 +466,7 @@ class InstallDriver(unittest.TestCase):
         remote = shlex.split(command[-1])
         self.assertEqual(["bash", "--noprofile", "--norc", "-c"], remote[:-1])
         script = remote[-1]
+        self.assertIn('symbolic-ref --quiet --short HEAD)" = master ] || fail', script)
         argv = shlex.split(script.splitlines()[-1])
         self.assertEqual(["exec", "bash", "--noprofile", "--norc", "bin/dotfiles", "install",
                           "--groups", "core", "--modules", ",".join(modules)], argv)
