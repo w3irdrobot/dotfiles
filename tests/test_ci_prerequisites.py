@@ -19,9 +19,9 @@ class Prerequisites(unittest.TestCase):
                 self.assertEqual(group, fields["group"])
                 self.assertIn("diffutils", fields["packages"].split())
 
-    def test_arch_fixture_runner_supplies_cmp(self):
+    def test_fedora_fixture_runner_supplies_cmp(self):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text()
-        install = re.search(r"pacman -Syu --noconfirm --needed (.*?) &&", workflow)
+        install = re.search(r"dnf install --assumeyes (.*?) &&", workflow)
         self.assertIsNotNone(install)
         self.assertIn("diffutils", install.group(1).split())
 

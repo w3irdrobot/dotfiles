@@ -3,51 +3,36 @@
 Run `just validate` for shell checks and disposable fixture tests. They cover
 argument handling, conflict safety, repeated runs, and failure paths without
 provisioning the developer's machine. See [test coverage](../tests/README.md).
-Real package resolution, AUR builds, Nix daemon operation, and desktop integration
+Real RPM dependency resolution, Nix daemon operation, and desktop integration
 need a Linux rehearsal.
 
 ## Verified scope
 
-The preserved x86_64 Arch guest passed core installation and repeat installation,
-link/config/system/update-all commands, locked Nix development, native OpenCode
-API startup, and reboot persistence on 2026-10-14–15. Later checks covered the
-full-default repeat install, Brave package installation, nono runtime-pack setup,
-and private environment-file isolation. Details and commit checkpoints are below.
-
-**Manjaro KDE/Wayland and System76 lemp14 hardware acceptance remain pending.**
-The headless Arch guest establishes package and CLI behavior, not graphical
-integration, Manjaro branch compatibility, personal sign-ins, or laptop behavior.
-Earlier XFCE expectations are historical, not the current desktop target.
+**Fedora KDE Plasma Desktop 44 and System76 lemp14 hardware acceptance are
+pending.** The target changed on 2026-10-25; earlier Arch/Manjaro results below
+are historical evidence, not Fedora acceptance. The Arch-only VM drivers and
+paru build fixtures have been removed with that backend.
 
 ## Disposable Linux VM
 
-[Lima](https://lima-vm.io/docs/) supports an Arch Linux template. On an ARM Mac,
-use an x86_64 QEMU guest, not Arch Linux ARM. Emulation is slow. Install Lima,
-QEMU, and guest agents separately with approval; the dotfiles installer does not
-install VM software on macOS.
+Use the regular Fedora KDE Plasma Desktop 44 x86_64 ISO, not Kinoite/Atomic.
+Verify the ISO checksum/signature, install into a disposable VM with systemd,
+Btrfs root, and a regular user with sudo, then take a hypervisor snapshot.
+Keep host-home mounts, personal SSH keys, and agent forwarding disabled.
+On an ARM Mac, an x86_64 guest needs an emulator; Rosetta is not an x86_64 kernel.
+Install or launch VM software only with approval. No Fedora VM image or automated
+prompt-approval driver is currently checked in.
 
-The checked-in Lima 2.2.1 configuration pins the Arch image and checksum, uses
-6 GiB RAM and a 40 GiB disk, and disables host mounts, personal public-key
-loading, agent forwarding, and containerd. Guest SSH uses localhost port 60022.
-Use a dedicated state directory:
+Transfer or clone the reviewed Fedora branch inside the guest. Local changes
+are not served by the public bootstrap until published. Run:
 
 ```bash
-export LIMA_HOME="$HOME/.lima-dotfiles-test"
-# Create once; preserve an existing instance.
-limactl create --name=dotfiles-arch --yes tests/vm/arch-x86_64.yaml
-limactl start --yes --timeout=30m dotfiles-arch
-limactl shell dotfiles-arch
+bash bin/dotfiles install --dry-run
+bash bin/dotfiles install
 ```
 
-Tart requires the guest architecture to match the host. Rosetta translates apps
-inside ARM guests, not an x86_64 kernel; it cannot replace this rehearsal on an
-ARM Mac. See [Tart's architecture check](https://github.com/openai/tart/blob/main/Sources/tart/VM.swift).
-
-Clone the branch under review inside the guest. Keep host home mounts disabled
-and confirm a normal non-root user, sudo access, networking, systemd, sufficient
-disk space, and a snapshot before installing. Use a separate disposable Manjaro
-KDE x86_64 VM or the target machine for the desktop checks. Keep the VM until
-review is complete; VM deletion is a separate, approved action.
+Review package plans and signing keys interactively. Keep the VM until review is
+complete; deleting it is a separate approved action.
 
 ## Acceptance checklist
 
@@ -57,8 +42,8 @@ review is complete; VM deletion is a separate, approved action.
 3. Test an existing `.bashrc`, a dangling config link, and a conflicting parent
    path. Each must stop with the original path untouched.
 4. Back up and resolve conflicts manually. Install core, then repeat it. Verify
-   repository-first package ownership and stable links; Bitwarden, OpenCode V2,
-   and Nix must be native packages.
+   Fedora RPM ownership and stable links. Native Nix must belong to `nix-core`;
+   OpenCode must be the pinned verified upstream V2 binary, not the V1 COPR RPM.
 5. Open a fresh login shell. Check `nix --version`, daemon access, flakes support,
    and a project's locked dev shell without global Rust/Node toolchains.
 6. Install the default groups. Test Ghostty, VSCodium, clipboard behavior,
@@ -68,52 +53,54 @@ review is complete; VM deletion is a separate, approved action.
    confirm TTY installation still works.
 7. Interrupt installation and rerun. Partial checkouts and upstream/partial Nix
    installs must be diagnosed, not overwritten or marked complete. Repository
-   OpenCode V1/V3 must stop upgrades before package installation.
+   OpenCode shadows or modified pinned binaries must stop before installation.
 8. Test config updates with clean, dirty, and diverged histories, plus a new
    config whose destination already exists. Confirm local work survives refusal.
 9. Run system updates and verify full native upgrades rather than partial ones.
    On Btrfs, confirm the pre-upgrade snapshot exists and rollback notes name the
-   correct device and subvolumes; a failed snapshot must stop before `pacman -Su`.
+   correct device and subvolumes; a failed snapshot must stop before DNF upgrade.
+   Fedora normally has separate `/boot` and EFI partitions: a root-only rollback
+   is not a complete kernel/boot rollback. Rehearse recovery from live media.
 10. Confirm setup leaves desktop settings, autologin, networking, Docker-group
     membership (unless requested), wallets, keys, and local credentials alone.
-11. On lemp14, verify DMI detection, Manjaro package resolution, repeat install,
+11. On lemp14, verify DMI detection, Fedora/COPR dependency resolution, repeat install,
     hotkeys, suspend/resume, and battery controls after manually reviewed service
     activation. Resolve power-backend conflicts while keeping PowerDevil.
     Confirm setup itself activates no System76 services, flashes no firmware,
     and adds no privileged groups. A generic VM cannot verify these checks.
 
-## Controlled VM drivers
+12. Verify the explicit manual application report against
+    [package sources](packages.md). Configuration links alone must not be treated
+    as an installed Bitwarden, Signal, Telegram, Discord, or Nerd Font.
 
-The drivers in `tests/vm/` target the isolated rehearsal guest. They validate
-guest identity and reviewed inputs, cap known approvals, and stop at unexpected
-prompts. They are test infrastructure, not general unattended installers.
+## Fedora port local checks, 2026-10-25
 
-The drivers target `master`. For a real run after merging, manually prepare a
-clean guest checkout at the reviewed published commit. The bootstrap driver also
-requires `~/install-dotfiles.sh` in the guest to match its checked-in
-`BOOTSTRAP_SHA`; review and refresh that pin whenever `install.sh` changes.
-The driver does not download or switch branches for you.
+On the macOS development host, `just validate` passed Bash syntax, ShellCheck,
+shfmt, and **266 fixture tests (263 passed, three skipped)**. Skips were the two
+real GNU Stow checks (Stow unavailable) and one case-sensitive-filename fixture
+on this case-insensitive filesystem. `python3 scripts/check-packages.py` passed
+offline syntax validation for all 73 RPM names; `git diff --check` passed.
 
-`run-bootstrap.py --expect-conflict` verifies the bootstrap hash and approves
-each known Git-prerequisite pacman prompt once. It then expects the unmanaged
-`.bashrc` refusal. Noninteractive SSH or pre-fed answers are not substitutes for
-this controlling-terminal workflow.
+New fixtures cover Fedora release rejection; shared bat/VSCodium platform
+validation; full-default no-op dry-runs; DNF refresh/query/transaction ordering;
+metadata-only caching with RPM downloads allowed; missing names and command
+failures; selected-source conflicts and repeat setup; native Nix package policy;
+and pinned OpenCode archive/binary checks, failed-download retry, no-clobber
+publication, V2 reporting, and PATH shadows. Existing snapshot fixtures now use
+Fedora's `root` subvolume and RPM inventories.
 
-For a core run, supply the published commit and reviewed local recipe hash:
+Separate read-only HTTPS metadata inspection found all 73 module RPM names for
+x86_64/noarch in Fedora 44 and the selected repositories. The pinned OpenCode
+2.1.4 artifact matched registry integrity and its recorded archive/binary hashes.
+See [migration evidence](fedora-migration.md#read-only-package-evidence-2026-10-25).
 
-```bash
-LIMA_HOME="$HOME/.lima-dotfiles-test" python3 -B tests/vm/run-install.py \
-  --commit FULL40SHA --recipe-sha256 RECIPE_SHA256
-```
+No Fedora container/VM was launched, no real DNF dependency solve or transaction
+was run, and no Linux binary was executed on the host. The updated Fedora CI
+jobs have not been run here. Fedora install/reinstall, native Nix operation,
+OpenCode/nono execution, KDE integration, and boot recovery still need the Linux
+rehearsal above; laptop boot/suspend/power checks require the Lemur Pro.
 
-The driver checks a clean checkout, handles no-op native transactions, and stops
-at AUR review. Secret Service, JACK, and font provider selections require their
-explicit approval flags. The observed guest used `gnome-keyring`, `pipewire-jack`,
-and `noto-fonts`; those are VM choices, not production defaults.
-`run-vscodium.py` exercises a separately reviewed VSCodium build.
-A review stop or partially installed transaction is not a completed setup.
-
-## Recorded results
+## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old
 commits. Superseded failures remain useful regression context; Git history holds

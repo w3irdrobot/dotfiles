@@ -2,9 +2,9 @@
 
 ## Scope and ownership
 
-- Target x86_64 Arch Linux and Manjaro with Bash 5+. Do not run provisioning on
+- Target x86_64 Fedora KDE Plasma Desktop 44 with Bash 5+. Do not run provisioning on
   macOS. Leave the existing desktop, login, and networking settings alone.
-- Primary desktop baseline: Manjaro KDE Plasma on Wayland; preserve Arch support.
+- Primary desktop baseline: Fedora 44 KDE Plasma on Wayland; no Arch support.
   System76 packages are DMI-gated; activation and firmware updates remain manual.
 - `install.sh` is the downloadable bootstrap; `bin/dotfiles` is the local entry
   point. Keep bootstrap logic small and machine setup in focused modules.
@@ -21,15 +21,17 @@
 - Default groups are core, AI, and desktop. Cloud/container, Bitcoin, and
   hardware-security groups are optional. Project toolchains belong in project
   Nix environments, not global Rustup/NVM installations.
-- Prefer official repository packages over AUR and upstream installers for the
-  same application. Bitwarden, OpenCode V2, and Nix use repository packages.
-  Keep the OpenCode V2 guard; do not freeze one package during a partial upgrade.
+- Prefer Fedora repository packages, then documented vendor RPMs and selected
+  COPRs. Explicitly report applications requiring manual installation.
+  OpenCode V2 uses a pinned upstream binary until a verified Fedora 44 V2 RPM is
+  available; Nix uses Fedora nix/nix-daemon. Keep OpenCode artifact/hash and PATH
+  checks; never silently replace a conflicting executable.
   Nix daemon configuration is explicit; never mix upstream and repository Nix.
 
 ## Safety
 
 - Run as the normal user; use narrowly scoped privilege escalation only where
-  required. AUR builds must not run as root. No unattended upgrades.
+  required. Keep DNF package and key confirmation interactive. No unattended upgrades.
 - Refuse unmanaged destination conflicts, including dangling symlinks and
   conflicting parent paths. Never use Stow adoption, force replacement, or
   automatic deletion. Explain manual conflict resolution instead.
@@ -48,8 +50,8 @@
   marked as plans. Do not emit installer-style progress logs during shell startup.
 - Do not modify live nono profiles/packages or execute bootstrap/setup scripts
   merely to validate syntax. Source-controlled profiles are configuration data.
-- Pin and verify standalone upstream artifacts. Treat AUR PKGBUILDs as executable
-  third-party code requiring review, not trusted data.
+- Pin and verify standalone upstream artifacts. Third-party RPM repositories and
+  COPRs are explicit trust decisions; never disable package signature checks.
 
 ## Documentation
 
@@ -76,4 +78,4 @@
   software, launch VMs, or change the host without approval.
 - Pages publishes the standalone bootstrap only from `master`. PRs must not
   deploy or merge automatically. Search for a PR template before opening
-  a PR and include verified checks plus remaining Linux/Manjaro acceptance work.
+  a PR and include verified checks plus remaining Fedora/Lemur Pro acceptance work.

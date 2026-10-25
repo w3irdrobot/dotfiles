@@ -19,11 +19,15 @@ run() {
 check_platform() {
 	[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || die 'Only x86_64 Linux is supported.'
 	[[ -r /etc/os-release ]] || die 'Missing /etc/os-release.'
-	local distro
+	local distro version
 	distro=$(sed -n 's/^ID=//p' /etc/os-release)
 	distro=${distro//\"/}
 	distro=${distro//\'/}
-	[[ $distro == arch || $distro == manjaro ]] || die 'Only Arch and Manjaro are supported.'
+	version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release)
+	version=${version//\"/}
+	version=${version//\'/}
+	[[ $distro == fedora && $version == 44 ]] || die 'Only Fedora KDE Plasma Desktop 44 is supported.'
+	[[ ! -e /run/ostree-booted ]] || die 'Fedora Atomic desktops are unsupported; use the regular KDE Plasma Desktop installation.'
 	((EUID != 0)) || die 'Run as your regular user, not root.'
 	[[ $HOME == /* && -d $HOME ]] || die 'HOME must be an existing absolute directory.'
 	[[ ${XDG_CONFIG_HOME:-$HOME/.config} == "$HOME/.config" ]] || die 'Custom XDG_CONFIG_HOME is unsupported; configs deploy to ~/.config. No setup changes applied.'
@@ -60,9 +64,9 @@ validate_module_selectors() {
 source "$ROOT/lib/hardware.sh"
 
 load_modules() {
-	MODULES=() PACKAGES=() STOW_PACKAGES=()
+	MODULES=() PACKAGES=() STOW_PACKAGES=() MANUAL_MODULES=()
 	detect_system76
-	local file name line key value group package saw_group saw_packages saw_default default_enabled selector
+	local file name line key value group package saw_group saw_packages saw_default default_enabled selector manual
 	local -a module_packages=()
 	local -A seen_packages=() requested_modules=() known_modules=()
 	for selector in "${REQUESTED_MODULES[@]}"; do requested_modules[$selector]=1; done
@@ -72,7 +76,7 @@ load_modules() {
 		name=${name%.conf}
 		[[ $name =~ ^[a-z0-9][a-z0-9_-]*$ ]] || die "Invalid module name: $name"
 		known_modules[$name]=1
-		group='' saw_group=0 saw_packages=0 saw_default=0 default_enabled=true
+		group='' saw_group=0 saw_packages=0 saw_default=0 default_enabled=true manual=''
 		module_packages=()
 		while IFS= read -r line || [[ -n $line ]]; do
 			[[ -n $line && $line != \#* ]] || continue
@@ -80,6 +84,10 @@ load_modules() {
 			key=${line%%=*}
 			value=${line#*=}
 			case $key in
+			manual)
+				[[ -z $manual && -n $value ]] || die "Invalid or duplicate manual guidance in $file"
+				manual=$value
+				;;
 			default)
 				((! saw_default)) || die "Duplicate default in $file"
 				saw_default=1
@@ -111,6 +119,10 @@ load_modules() {
 		if [[ -v requested_modules[$name] ]] || { [[ $default_enabled == true ]] && group_selected "$group"; } ||
 			{ [[ $name == system76 && $SYSTEM76_DETECTED == 1 ]] && group_selected core; }; then
 			MODULES+=("$name")
+			if [[ -n $manual ]]; then
+				MANUAL_MODULES+=("$name: $manual")
+				log "Manual application setup required: $name: $manual"
+			fi
 			if [[ -d $ROOT/stow/$name ]]; then STOW_PACKAGES+=("$name"); fi
 			for package in "${module_packages[@]}"; do
 				if [[ ! -v seen_packages[$package] ]]; then
@@ -385,8 +397,7 @@ create_btrfs_snapshot() {
 	done
 	state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/upgrades/$name
 	mkdir -p -- "$state" || die "Could not create upgrade state directory: $state"
-	pacman -Q >"$state/packages-before.txt" || die 'Could not record installed packages before upgrading.'
-	pacman -Qqm >"$state/foreign-before.txt" 2>/dev/null || true
+	rpm -qa --qf '%{NAME} %{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort >"$state/packages-before.txt" || die 'Could not record installed RPM packages before upgrading.'
 	{
 		printf 'snapshot=%s\n' "$name"
 		printf 'source=%s\n' "$source"
@@ -405,7 +416,7 @@ begin_system_upgrade() {
 	DOTFILES_UPGRADE_SNAPSHOT='' DOTFILES_UPGRADE_STATE='' DOTFILES_UPGRADE_BEFORE=''
 	local fstype
 	if ((DRY_RUN)); then
-		log 'Would verify Btrfs snapshot support, free space, and pacman state, then create a read-only pre-upgrade snapshot.'
+		log 'Would verify Btrfs snapshot support, free space, and RPM state, then create a read-only pre-upgrade snapshot.'
 		return 0
 	fi
 	command -v findmnt >/dev/null || die 'findmnt is required to verify upgrade safety; refusing the package transaction.'
@@ -416,8 +427,7 @@ begin_system_upgrade() {
 	fi
 	command -v btrfs >/dev/null || die 'btrfs-progs is required to snapshot this Btrfs root; refusing the package transaction.'
 	command -v df >/dev/null || die 'df is required to check free space before upgrading; refusing the package transaction.'
-	[[ ! -e /var/lib/pacman/db.lck ]] || die 'A pacman database lock exists. Finish or repair the interrupted transaction before upgrading.'
-	pacman -Dk >/dev/null 2>&1 || die 'The pacman database failed its consistency check (pacman -Dk); repair it before upgrading.'
+	rpm --verifydb || die 'The RPM database failed its consistency check; repair it before upgrading.'
 	check_upgrade_free_space
 	create_btrfs_snapshot
 }
@@ -425,13 +435,13 @@ begin_system_upgrade() {
 end_system_upgrade() {
 	local before=${DOTFILES_UPGRADE_BEFORE:-} changed
 	[[ -n $before && -f $before ]] || return 0
-	if ! pacman -Dk >/dev/null 2>&1; then
-		log 'Warning: the pacman database failed its consistency check after the upgrade. Run pacman -Dk before rebooting.'
+	if ! rpm --verifydb; then
+		log 'Warning: the RPM database failed its consistency check after the upgrade. Inspect it before rebooting.'
 	fi
 	changed=$(awk '
 		NR == FNR { before[$1] = $2; next }
-		$1 ~ /^(linux(-|$)|mkinitcpio|systemd|grub|refind|nvidia|linux-firmware)/ && before[$1] != $2 { print $1 }
-	' "$before" <(pacman -Q 2>/dev/null) | LC_ALL=C sort -u)
+		$1 ~ /^(kernel|dracut|systemd|grub2|shim|akmod|kmod|nvidia|linux-firmware)/ && before[$1] != $2 { print $1 }
+	' "$before" <(rpm -qa --qf '%{NAME} %{EPOCHNUM}:%{VERSION}-%{RELEASE}.%{ARCH}\n') | LC_ALL=C sort -u)
 	if [[ -n $changed ]]; then
 		log "Boot-critical packages changed: $changed"
 		log 'Reboot before relying on the updated kernel, initramfs, bootloader, or graphics stack.'
@@ -441,155 +451,8 @@ end_system_upgrade() {
 	DOTFILES_UPGRADE_BEFORE='' DOTFILES_UPGRADE_STATE='' DOTFILES_UPGRADE_SNAPSHOT=''
 }
 
-install_packages() {
-	phase 'Package preflight: native ownership and helper health'
-	# Full upgrades also affect unselected applications; reject unmanaged PATH
-	# copies before downloads, without executing them (including in dry-runs).
-	preflight_native_opencode_paths
-	if group_selected core || ((${#PACKAGES[@]})); then validate_existing_paru; fi
-	local package guard_opencode=0 query_status need_nix=0
-	local -a baseline=(git stow wget ca-certificates xz)
-	local -a official=() aur=() targets=()
-	local -A transaction_seen=()
-	if module_selected nix; then need_nix=1; fi
-	for package in "${PACKAGES[@]}"; do
-		if [[ $package == nix ]]; then need_nix=1; fi
-	done
-	# Before even download-only transactions, reject upstream/partial Nix if
-	# selected or potentially required by a missing helper's Rust bootstrap.
-	if ((need_nix)) || { ! command -v paru >/dev/null && { group_selected core || ((${#PACKAGES[@]})); }; }; then
-		preflight_nix
-	fi
-	if module_selected opencode; then guard_opencode=1; fi
-	for package in "${PACKAGES[@]}"; do
-		if [[ $package == opencode ]]; then guard_opencode=1; fi
-	done
-	if ((DRY_RUN)); then
-		log 'Dry-run uses cached indexes only. After download-only synchronization, the real guard checks Extra/OpenCode V2 whenever selected or already installed.'
-	else
-		# Query package ownership, not PATH: system upgrades include unselected apps.
-		if pacman -Qq -- opencode >/dev/null 2>&1; then
-			guard_opencode=1
-		else
-			query_status=$?
-			[[ $query_status == 1 ]] || die 'Could not determine installed OpenCode package ownership; refusing the repository upgrade.'
-		fi
-	fi
-	# Refresh and download the full upgrade, but install nothing until V2 is checked.
-	phase 'Database refresh: downloading the full upgrade without installing packages'
-	run sudo pacman -Syu --downloadonly --needed "${baseline[@]}"
-	phase 'Repository policy: checking native packages and OpenCode V2'
-	if ((guard_opencode && DRY_RUN)); then
-		if pacman -Si -- extra/opencode >/dev/null 2>&1; then
-			log 'Cached Extra/OpenCode metadata is available; its V2 suitability will be checked only after an actual refresh.'
-		else
-			log 'Extra/OpenCode is missing from the cached indexes; a real refresh and successful V2 guard are required, never an AUR fallback.'
-		fi
-	fi
-	if ((guard_opencode && ! DRY_RUN)); then
-		if ! guard_native_opencode_repository; then
-			die 'OpenCode must remain native Extra V2. Repository databases/cache were refreshed, but no packages were installed; a full upgrade is still pending. Do not run isolated pacman -S installs against these refreshed databases.'
-		fi
-	fi
-	phase 'Package sources: resolving official repositories and AUR'
-	for package in "${PACKAGES[@]}"; do
-		if [[ $package == opencode ]]; then
-			# The guard, not generic AUR fallback, owns this dependency. An explicit
-			# Extra target also prevents a higher-priority repository substituting it.
-			official+=(extra/opencode)
-		elif [[ $package == nix ]]; then
-			# Required native dependency; never classify Nix as an AUR fallback.
-			need_nix=1
-		elif pacman -Si -- "$package" >/dev/null 2>&1; then
-			official+=("$package")
-		else
-			aur+=("$package")
-		fi
-	done
-	if ((guard_opencode)) && [[ ! " ${official[*]} " == *' extra/opencode '* ]]; then official+=(extra/opencode); fi
-	# Include helper prerequisites in the same full transaction, rather than
-	# installing them separately against newly refreshed repository databases.
-	if { group_selected core || ((${#aur[@]})); } && ! command -v paru >/dev/null; then
-		if pacman -Si -- paru >/dev/null 2>&1; then
-			official+=(paru)
-		else
-			official+=(base-devel openssl)
-			need_nix=1
-		fi
-	fi
-	if ((need_nix)); then
-		if ((DRY_RUN)); then
-			log 'Native repository Nix is required; availability must be verified against refreshed indexes before a real full upgrade.'
-			official+=(nix)
-		else
-			require_native_nix_repository
-			official+=("$NIX_REPOSITORY_TARGET")
-		fi
-	fi
-	for package in "${baseline[@]}" "${official[@]}"; do
-		if [[ ! -v transaction_seen[$package] ]]; then
-			targets+=("$package")
-			transaction_seen[$package]=1
-		fi
-	done
-	# No second -y: use exactly the indexes inspected by the guard, with a full -u.
-	log "Official package targets (${#targets[@]}): ${targets[*]}"
-	if ((${#aur[@]})); then log "AUR package targets (${#aur[@]}): ${aur[*]}"; else log 'AUR package targets: none.'; fi
-	phase 'Upgrade protection: checking Btrfs snapshots and free space'
-	begin_system_upgrade
-	phase 'Full upgrade: installing against the checked repository indexes'
-	run sudo pacman -Su --needed -- "${targets[@]}"
-	if ((need_nix)); then
-		phase 'Native Nix: bootstrap configuration before linking'
-		setup_nix --bootstrap
-	fi
-	phase 'AUR setup: preparing the helper and selected packages'
-	if group_selected core || ((${#aur[@]})); then
-		ensure_paru
-	else
-		log 'No AUR helper changes required for this selection.'
-	fi
-	if ((${#aur[@]})); then
-		phase 'AUR packages: installing the selected dependencies'
-		run paru -S --needed -- "${aur[@]}"
-	fi
-}
-
-guard_native_opencode_repository() {
-	local metadata repository name version
-	if ! metadata=$(LC_ALL=C pacman -Si -- extra/opencode); then
-		log 'Official Extra/OpenCode metadata is unavailable; no AUR fallback.'
-		return 1
-	fi
-	repository=$(printf '%s\n' "$metadata" | sed -n 's/^Repository[[:space:]]*:[[:space:]]*//p')
-	name=$(printf '%s\n' "$metadata" | sed -n 's/^Name[[:space:]]*:[[:space:]]*//p')
-	version=$(printf '%s\n' "$metadata" | sed -n 's/^Version[[:space:]]*:[[:space:]]*//p')
-	[[ $repository == extra && $name == opencode ]] || {
-		log 'OpenCode must come from native Extra under the name opencode.'
-		return 1
-	}
-	if [[ $version == *:* ]]; then
-		[[ $version =~ ^[0-9]+: ]] || {
-			log 'Invalid OpenCode package epoch.'
-			return 1
-		}
-		version=${version#*:}
-	fi
-	[[ $version =~ ^2\.[0-9][[:alnum:].+_-]*$ ]] || {
-		log "Native Extra OpenCode must remain V2; found $version."
-		return 1
-	}
-}
-
-require_native_nix_repository() {
-	local metadata repository name
-	metadata=$(LC_ALL=C pacman -Si -- nix) || die 'Native Nix is unavailable. Repository databases were refreshed but no packages were installed; a full upgrade remains pending. No AUR/upstream fallback.'
-	repository=$(printf '%s\n' "$metadata" | sed -n 's/^Repository[[:space:]]*:[[:space:]]*//p')
-	name=$(printf '%s\n' "$metadata" | sed -n 's/^Name[[:space:]]*:[[:space:]]*//p')
-	[[ $name == nix ]] || die 'Unexpected Nix repository metadata; no packages installed and a full upgrade remains pending.'
-	case $repository in core | extra | multilib) ;; *) die 'Nix must be available from an official repository. No packages installed; full upgrade remains pending. No AUR/upstream fallback.' ;; esac
-	NIX_REPOSITORY_TARGET=$repository/nix
-}
+# shellcheck source=lib/fedora.sh
+source "$ROOT/lib/fedora.sh"
 
 # Keep these PATH guards identical to their standalone copies in install.sh.
 preflight_native_opencode_paths() {
@@ -614,30 +477,15 @@ preflight_native_opencode_paths() {
 
 check_native_opencode_path() {
 	local candidate=$1 explicit=$2 actual native
+	local managed=$HOME/.local/share/dotfiles/opencode/2.1.4/opencode
 	[[ -e $candidate || -L $candidate ]] || return 0
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
 	# and the explicitly protected startup path still require inspection.
 	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
-	[[ $candidate != /usr/bin/opencode ]] || return 0
 	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
-	native=$(realpath -m -- /usr/bin/opencode) || die 'Could not resolve native OpenCode path; inspect it manually.'
-	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the native package: $candidate; inspect and move it manually. Leaving it unchanged."
-}
-
-# shellcheck source=modules/paru.sh
-source "$ROOT/modules/paru.sh"
-
-validate_existing_paru() {
-	command -v paru >/dev/null || return 0
-	if ((DRY_RUN)); then
-		log 'Would check that the existing paru reports a valid version before package transactions.'
-		return 0
-	fi
-	local version
-	version=$(paru --version) || die 'Existing paru cannot run; repair or remove the broken helper before continuing.'
-	version=${version%%$'\n'*}
-	[[ $version =~ ^paru[[:space:]]v[0-9]+\.[0-9]+(\.[0-9]+)?([[:space:]]|$) ]] || die 'Existing paru reports an unexpected version; repair the helper before continuing.'
+	native=$(realpath -m -- "$managed") || die 'Could not resolve managed OpenCode path; inspect it manually.'
+	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate; inspect and move it manually. Leaving it unchanged."
 }
 
 # shellcheck source=modules/nix.sh
@@ -647,7 +495,7 @@ preflight_custom_modules() {
 	local module
 	for module in "${MODULES[@]}"; do
 		case $module in
-		opencode) preflight_native_opencode_paths ;;
+		opencode) bash "$ROOT/modules/opencode.sh" --check ;;
 		nono) bash "$ROOT/modules/$module.sh" --check ;;
 		esac
 	done
@@ -690,16 +538,9 @@ preflight_docker_membership() {
 }
 
 update_system() {
-	phase 'System update preflight: custom paths and helper health'
+	phase 'System update preflight: native paths and module prerequisites'
 	preflight_custom_modules
-	validate_existing_paru
 	install_packages
-	if command -v paru >/dev/null; then
-		phase 'AUR update: upgrading installed AUR packages'
-		# Native paru is upgraded by the full pacman transaction above. Foreign
-		# paru must never rebuild from a mutable AUR recipe; review a frozen pin.
-		run paru -Sua --ignore paru
-	fi
 	end_system_upgrade
 	setup_modules
 	log 'Nix and native applications are repository-managed; project flake.lock updates remain project-owned.'
@@ -708,6 +549,7 @@ update_system() {
 print_next_steps() {
 	local command=$1 scope=${2:-} variables=$HOME/.config/bash/variables.sh
 	printf '\nNext steps:\n'
+	print_manual_modules
 	if [[ $command == update ]]; then
 		printf '  Restart affected apps; reopen your terminal for shell/config changes.\n'
 		printf '  Reboot if the update reported boot-critical package changes.\n'

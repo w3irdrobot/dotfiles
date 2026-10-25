@@ -1,15 +1,15 @@
 # shellcheck shell=bash
 # Sourced helpers: the CLI owns strict mode, package transactions, and Stow.
-# Arch ships the daemon units, nixbld sysusers, and daemon-socket tmpfiles.
-# https://archlinux.org/packages/extra/x86_64/nix/files/
+# Fedora splits the native client (nix-core) and daemon (nix-daemon).
+# https://fedoraproject.org/wiki/Changes/Nix_package_tool
 
 nix_package_owned() {
 	local owner status
-	if owner=$(pacman -Qqo -- /usr/bin/nix 2>/dev/null); then
-		[[ $owner == nix ]]
+	if owner=$(rpm -qf --qf '%{NAME}\n' /usr/bin/nix 2>/dev/null); then
+		[[ $owner == nix-core ]]
 	else
 		status=$?
-		[[ $status == 1 ]] || die 'Could not inspect native Nix package ownership; repair the pacman database.'
+		[[ $status == 1 ]] || die 'Could not inspect native Nix package ownership; repair the RPM database.'
 		return 1
 	fi
 }
@@ -24,11 +24,11 @@ preflight_nix() {
 		die 'Unmanaged or partial Nix installation detected; inspect and repair it manually before installing native Nix. Never mix installation methods.'
 	fi
 	local status
-	if pacman -Qq nix >/dev/null 2>&1; then
+	if rpm -q nix-core >/dev/null 2>&1; then
 		die 'Installed nix package is missing its owned native binary; repair it before continuing.'
 	else
 		status=$?
-		[[ $status == 1 ]] || die 'Could not inspect the installed nix package; repair the pacman database.'
+		[[ $status == 1 ]] || die 'Could not inspect the installed nix package; repair the RPM database.'
 	fi
 }
 

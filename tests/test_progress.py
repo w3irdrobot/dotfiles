@@ -25,7 +25,7 @@ class Progress(unittest.TestCase):
         for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
             self.env[name] = self.sentinel
         self.mock("stow", "sys.exit(0)")
-        self.mock("sudo", "sys.exit(0)")
+        self.mock("sudo", "[print(a) for a in sys.argv[1:] if not a.startswith('-')] if 'repoquery' in sys.argv else None")
         self.mock("pacman", """if '-Qq' in sys.argv:
     sys.exit(1)
 sys.exit(0 if '-Si' in sys.argv else 97)""")
@@ -56,9 +56,9 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assert_ordered(result.stderr, (
             "Starting install", "Platform validation:", "Selected groups: cloud",
             "Selected modules (1): fixture-cloud", "Preflight:", "Package preflight:",
-            "Database refresh:", "Repository policy:", "Package sources:",
-            "Official package targets", "AUR package targets: none", "Full upgrade:",
-            "AUR setup:", "Module configuration: fixture-cloud",
+            "RPM sources:", "Repository refresh:",
+            "RPM package targets", "Full Fedora update:",
+            "Selected Fedora applications:", "Module configuration: fixture-cloud",
             "Preparing module: fixture-cloud", "Module preparation finished: fixture-cloud",
             "Configuration links: verifying", "Config link preparation: fixture-cloud",
             "Config links ready: fixture-cloud", "Dotfiles launcher:", "Complete: install",

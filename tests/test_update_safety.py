@@ -93,6 +93,23 @@ class UpdateSafety(unittest.TestCase):
             self.assertEqual(str((self.repo / "bin/dotfiles").resolve()), os.readlink(launcher))
         self.assertFalse((self.repo / "stow/fixture-core/.local/bin/dotfiles").exists())
 
+    def test_launcher_is_on_path_and_works_outside_the_checkout(self):
+        self.minimal_modules()
+        self.mock_linking()
+        result = self.run_cli("link", "--groups", "core")
+        self.assertEqual(0, result.returncode, result.stderr)
+        environment = self.env | {
+            "PATH": str(self.home / ".local/bin") + os.pathsep + self.env["PATH"],
+        }
+        before = self.snapshot()
+        result = subprocess.run(
+            ["dotfiles", "--help"], cwd=self.base, env=environment,
+            capture_output=True, text=True, timeout=20,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("Usage: dotfiles", result.stdout)
+        self.assertEqual(before, self.snapshot())
+
     def test_launcher_conflict_precedes_packages(self):
         self.minimal_modules()
         launcher = self.home / ".local/bin/dotfiles"
@@ -121,29 +138,27 @@ class UpdateSafety(unittest.TestCase):
         self.assertEqual([], list(external.iterdir()))
         self.assertFalse(any(call[0] == "sudo" for call in self.calls()))
 
-    def test_existing_broken_paru_stops_before_transactions(self):
+    def test_obsolete_arch_helpers_are_not_executed(self):
         self.minimal_modules()
         self.mock_linking()
         for body in ("sys.exit(42)", 'print("not the expected AUR helper")'):
             with self.subTest(body=body):
                 self.mock("paru", body)
-                result = self.run_cli("install", "--groups", "core")
-                self.assert_failed(result, "repair")
-                self.assertFalse(any(call[0] in ("sudo", "pacman", "makepkg")
+                result = self.run_cli("install", "--groups", "core", "--dry-run")
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertFalse(any(call[0] in ("sudo", "pacman", "makepkg", "paru")
                                      for call in self.calls()))
                 self.assertEqual({}, self.snapshot())
 
-    def test_existing_paru_accepts_nonpinned_valid_version(self):
+    def test_fedora_dry_run_does_not_require_arch_tools(self):
         self.minimal_modules()
         self.mock_linking()
         self.mock("paru", 'print("paru v42.8.1 - libalpm v99.0.0")')
-        self.mock("sudo", "sys.exit(0)")
-        self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
-        result = self.run_cli("install", "--groups", "core")
+        result = self.run_cli("install", "--groups", "core", "--dry-run")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(any(call == ["paru", "--version"] for call in self.calls()))
+        self.assertFalse(any(call[0] == "paru" for call in self.calls()))
         self.assertFalse(any(call[0] == "makepkg" for call in self.calls()))
-        self.assertTrue((self.home / ".local/bin/dotfiles").is_symlink())
+        self.assertFalse((self.home / ".local/bin/dotfiles").exists())
 
     def ssh_fixture(self):
         self.minimal_modules()

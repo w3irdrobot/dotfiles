@@ -18,6 +18,8 @@ class OpenCodePath(unittest.TestCase):
     run_cli = test_dotfiles.Fixture.run_cli
     minimal_modules = test_dotfiles.Fixture.minimal_modules
     fake_native = test_custom_modules.CustomModules.fake_native
+    binary = test_custom_modules.CustomModules.binary
+    pin = test_custom_modules.CustomModules.pin
     fake_repository = test_custom_modules.CustomModules.fake_repository
     run_module = test_custom_modules.CustomModules.run_module
 
@@ -35,7 +37,7 @@ class OpenCodePath(unittest.TestCase):
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
 
-    def assert_refused_read_only(self, result, before, diagnostic="shadows the native package"):
+    def assert_refused_read_only(self, result, before, diagnostic="shadows the pinned binary"):
         self.assert_failed(result, diagnostic)
         self.assertEqual(before, self.snapshot())
         self.assertFalse((self.home / "shadow-ran").exists())
@@ -43,7 +45,7 @@ class OpenCodePath(unittest.TestCase):
         self.assertFalse(any(c[0] in ("opencode", "sudo", "pacman", "wget", "curl", "paru")
                              for c in self.calls()), self.calls())
 
-    def assert_guard_refused(self, diagnostic="shadows the native package"):
+    def assert_guard_refused(self, diagnostic="shadows the pinned binary"):
         before = self.snapshot()
         self.assert_refused_read_only(self.guard(), before, diagnostic)
 

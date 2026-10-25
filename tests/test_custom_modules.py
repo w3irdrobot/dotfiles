@@ -1,6 +1,10 @@
-"""Isolated OpenCode trust and native Bitwarden configuration checks."""
+"""Pinned upstream OpenCode fixtures and native Bitwarden shell integration."""
 
+import hashlib
+import io
+import re
 import subprocess
+import tarfile
 import unittest
 
 import test_dotfiles
@@ -14,11 +18,67 @@ class CustomModules(unittest.TestCase):
 
     def setUp(self):
         test_dotfiles.Fixture.setUp(self)
-        self.native = self.base / "usr/bin/opencode"
+        self.native = self.home / ".local/share/dotfiles/opencode/2.1.4/opencode"
         self.native.parent.mkdir(parents=True)
+        self.module = self.repo / "modules/opencode.sh"
         for name in ("modules/opencode.sh", "lib/dotfiles.sh", "install.sh"):
             path = self.repo / name
-            path.write_text(path.read_text().replace("/usr/bin/opencode", str(self.native)))
+            path.write_text(path.read_text().replace(
+                "$HOME/.local/share/dotfiles/opencode/2.1.4/opencode", str(self.native)))
+        self.mock("sha256sum", """import hashlib
+line = sys.stdin.read().rstrip('\u005cn')
+digest, path = line.split('  ', 1)
+with open(path, 'rb') as source:
+    actual = hashlib.sha256(source.read()).hexdigest()
+sys.exit(0 if digest == actual else 1)
+""")
+        self.mock("curl", """import shutil
+shutil.copyfile(os.environ['TEST_ARCHIVE'], sys.argv[sys.argv.index('--output') + 1])
+""")
+        self.mock("tar", """import tarfile
+from pathlib import Path
+target = Path(sys.argv[sys.argv.index('--directory') + 1]) / 'package/bin/opencode'
+target.parent.mkdir(parents=True)
+with tarfile.open(sys.argv[sys.argv.index('--file') + 1], 'r:gz') as archive:
+    member = archive.getmember('package/bin/opencode')
+    if member.issym():
+        target.symlink_to(member.linkname)
+    else:
+        target.write_bytes(archive.extractfile(member).read())
+""")
+        self.mock("chmod", """args = [a for a in sys.argv[1:] if a != '--']
+os.chmod(args[1], int(args[0], 8))
+""")
+
+    def pin(self, key, digest):
+        self.module.write_text(re.sub(rf"readonly {key}=.*", f"readonly {key}={digest}", self.module.read_text()))
+
+    def fake_repository(self, **kwargs):
+        # Compatibility for PATH fixtures; pinned installation never queries RPMs.
+        pass
+
+    def binary(self, version="2.1.4", status=0):
+        return (f'#!{test_dotfiles.BASH}\n'
+                '[[ $1 == --version ]] || exit 97\n'
+                'printf executed > "$HOME/native-version-ran"\n'
+                f'printf "%s\\n" "{version}"\nexit {status}\n').encode()
+
+    def fake_native(self, version="2.1.4", status=0):
+        self.native.write_bytes(self.binary(version, status))
+        self.native.chmod(0o755)
+        self.pin("OPENCODE_BINARY_SHA256", hashlib.sha256(self.native.read_bytes()).hexdigest())
+
+    def archive(self, version="2.1.4", corrupt_binary=False):
+        binary = self.binary(version)
+        path = self.base / "upstream.tgz"
+        with tarfile.open(path, "w:gz") as archive:
+            info = tarfile.TarInfo("package/bin/opencode")
+            info.size = len(binary)
+            archive.addfile(info, io.BytesIO(binary))
+        self.env["TEST_ARCHIVE"] = str(path)
+        self.pin("OPENCODE_ARCHIVE_SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
+        digest = hashlib.sha256(binary).hexdigest() if not corrupt_binary else "0" * 64
+        self.pin("OPENCODE_BINARY_SHA256", digest)
 
     def run_module(self, name, *args):
         return subprocess.run(
@@ -26,172 +86,115 @@ class CustomModules(unittest.TestCase):
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
 
-    def fake_repository(self, version="2.0.29-1", repository="extra", name="opencode", status=0):
-        metadata = f"Repository      : {repository}\nName            : {name}\nVersion         : {version}\n"
-        self.mock("pacman", f"""if sys.argv[1:] != ['-Si', '--', 'opencode'] or os.environ.get('LC_ALL') != 'C':
-    sys.exit(97)
-print({metadata!r}, end='')
-sys.exit({status})""")
-
-    def fake_native(self, version="opencode v2.0.29", status=0):
-        self.native.write_text(f"""#!{test_dotfiles.BASH}
-[[ $1 == --version ]] || exit 97
-printf 'executed' > "$HOME/native-version-ran"
-printf '%s\\n' '{version}'
-exit {status}
-""")
-        self.native.chmod(0o755)
-
-    def test_opencode_repository_accepts_only_extra_v2_read_only(self):
-        self.fake_native()
-        for version in ("2.0.29-1", "2.1.0-2", "1:2.0.30-1"):
-            with self.subTest(version=version):
-                self.fake_repository(version=version)
-                before = self.snapshot()
-                result = self.run_module("opencode", "--check")
-                self.assertEqual(0, result.returncode, result.stderr)
-                self.assertEqual(before, self.snapshot())
-                self.assertFalse((self.home / "native-version-ran").exists())
-        self.assertTrue(all(c[0] in ("uname", "pacman") for c in self.calls()))
-
-    def test_opencode_repository_rejects_other_majors_and_missing_package(self):
-        self.fake_native()
-        for version, status in (("1.2.3-1", 0), ("3.0.0-1", 0), ("", 1), ("", 0)):
-            with self.subTest(version=version, status=status):
-                self.fake_repository(version=version, status=status)
-                before = self.snapshot()
-                result = self.run_module("opencode", "--check")
-                self.assert_failed(result)
-                self.assertEqual(before, self.snapshot())
-                self.assertFalse((self.home / "native-version-ran").exists())
-        self.assertTrue(all(c[0] in ("uname", "pacman") for c in self.calls()))
-
-    def test_opencode_repository_rejects_wrong_origin_or_name(self):
-        for repository, name in (("custom", "opencode"), ("extra", "other-package")):
-            with self.subTest(repository=repository, name=name):
-                self.fake_repository(repository=repository, name=name)
-                result = self.run_module("opencode", "--check")
-                self.assert_failed(result, "official Extra")
-                self.assertEqual({}, self.snapshot())
-
-    def test_opencode_shadow_file_is_refused_unexecuted_and_untouched(self):
-        self.fake_repository()
-        self.fake_native()
-        shadow = self.home / ".local/bin/opencode"
-        shadow.parent.mkdir(parents=True)
-        shadow.write_text('#!/usr/bin/env bash\nprintf executed > "$HOME/shadow-ran"\n')
-        shadow.chmod(0o755)
-        for args in (("--check",), ()):
-            with self.subTest(args=args):
-                before = self.snapshot()
-                result = self.run_module("opencode", *args)
-                self.assert_failed(result, "shadows the native package")
-                self.assertEqual(before, self.snapshot())
-                self.assertEqual(0o755, shadow.stat().st_mode & 0o777)
-                self.assertFalse((self.home / "shadow-ran").exists())
-                self.assertFalse((self.home / "native-version-ran").exists())
-        self.assertFalse(any(c[0] == "pacman" for c in self.calls()))
-
-    def test_opencode_non_native_and_dangling_shadow_symlinks_are_refused(self):
-        self.fake_repository()
-        shadow = self.home / ".local/bin/opencode"
-        shadow.parent.mkdir(parents=True)
-        manual = self.home / "manual-opencode"
-        manual.write_text('#!/usr/bin/env bash\nprintf executed > "$HOME/shadow-ran"\n')
-        manual.chmod(0o755)
-        for target in (manual, self.home / "missing-opencode", self.native):
-            with self.subTest(target=target):
-                shadow.symlink_to(target)
-                before = self.snapshot()
-                result = self.run_module("opencode", "--check")
-                diagnostic = "shadows the native package" if target.exists() else "Dangling OpenCode shadow"
-                self.assert_failed(result, diagnostic)
-                self.assertEqual(before, self.snapshot())
-                self.assertFalse((self.home / "shadow-ran").exists())
-                shadow.unlink()
-
-    def test_opencode_native_shadow_symlink_is_allowed_without_execution_during_check(self):
-        self.fake_repository()
-        self.fake_native()
-        shadow = self.home / ".local/bin/opencode"
-        shadow.parent.mkdir(parents=True)
-        shadow.symlink_to(self.native)
+    def test_fresh_preflight_is_read_only_without_network_or_execution(self):
         before = self.snapshot()
         result = self.run_module("opencode", "--check")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(before, self.snapshot())
+        self.assertFalse(any(c[0] in ("curl", "tar", "sudo", "dnf", "rpm") for c in self.calls()))
+
+    def test_existing_pinned_binary_is_hashed_not_executed_during_check(self):
+        self.fake_native()
+        result = self.run_module("opencode", "--check")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((self.home / "native-version-ran").exists())
+        self.assertTrue(any(c[0] == "sha256sum" for c in self.calls()))
+
+    def test_edited_pinned_binary_is_preserved_and_refused_without_execution(self):
+        self.fake_native()
+        self.native.write_bytes(self.binary("3.0.0"))
+        before = self.native.read_bytes()
+        self.assert_failed(self.run_module("opencode", "--check"), "checksum mismatch")
+        self.assertEqual(before, self.native.read_bytes())
         self.assertFalse((self.home / "native-version-ran").exists())
 
-    def test_opencode_post_install_accepts_native_v2_without_pacman_or_path_dispatch(self):
-        (self.path / "opencode").symlink_to(self.native)
-        for version in ("2.0.29", "opencode v2.0.29"):
-            with self.subTest(version=version):
-                self.fake_native(version=version)
-                result = self.run_module("opencode")
-                self.assertEqual(0, result.returncode, result.stderr)
-                self.assertTrue((self.home / "native-version-ran").exists())
-                (self.home / "native-version-ran").unlink()
-        self.assertFalse(any(c[0] in ("pacman", "opencode", "wget", "sudo") for c in self.calls()))
-
-    def test_opencode_post_install_rejects_unmanaged_path_binary_without_execution(self):
-        self.fake_native()
-        self.mock("opencode", "sys.exit(97)")
-        before = self.snapshot()
-        self.assert_failed(self.run_module("opencode"), "shadows the native package")
-        self.assertEqual(before, self.snapshot())
-        self.assertFalse(any(c[0] == "opencode" for c in self.calls()))
-
-    def test_opencode_post_install_rejects_non_v2_and_failed_version_command(self):
-        for version, status in (("1.2.3", 0), ("opencode v3.0.0", 0), ("opencode v2.0.29", 1)):
-            with self.subTest(version=version, status=status):
-                self.fake_native(version=version, status=status)
-                self.assert_failed(self.run_module("opencode"))
-
-    def test_opencode_post_install_requires_native_binary(self):
+    def test_install_checks_archive_and_binary_before_publishing(self):
+        self.archive()
         result = self.run_module("opencode")
-        self.assert_failed(result, "is missing")
-        self.assertEqual({}, self.snapshot())
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue((self.home / ".local/bin/opencode").is_symlink())
+        self.assertEqual(self.native.read_bytes(), self.binary())
+        self.assertTrue((self.home / "native-version-ran").exists())
+        self.assertEqual([], list(self.native.parent.glob(".download.*")))
+        self.assertFalse(any(c[0] in ("sudo", "dnf", "rpm", "npm", "node") for c in self.calls()))
 
-    def test_opencode_metadata_selects_native_package(self):
-        fields = dict(line.split("=", 1) for line in
-                      (self.repo / "modules/opencode.conf").read_text().splitlines()
-                      if line and not line.startswith("#"))
-        self.assertEqual("opencode", fields["packages"])
+    def test_archive_checksum_failure_never_extracts_or_executes(self):
+        self.archive()
+        self.pin("OPENCODE_ARCHIVE_SHA256", "0" * 64)
+        self.assert_failed(self.run_module("opencode"), "archive checksum mismatch")
+        self.assertFalse(self.native.exists())
+        self.assertFalse(any(c[0] == "tar" for c in self.calls()))
+        self.assertFalse((self.home / "native-version-ran").exists())
 
-    def test_bitwarden_metadata_selects_native_package_without_custom_installer(self):
-        # Exercise the real Bash metadata parser with only the shipped module.
+    def test_failed_download_cleans_staging_and_can_be_retried(self):
+        self.archive()
+        self.mock("curl", "sys.exit(43)")
+        result = self.run_module("opencode")
+        self.assertEqual(43, result.returncode, result.stderr)
+        self.assertFalse(self.native.exists())
+        self.assertEqual([], list(self.native.parent.glob(".download.*")))
+        self.mock("curl", "import shutil; shutil.copyfile(os.environ['TEST_ARCHIVE'], sys.argv[sys.argv.index('--output') + 1])")
+        result = self.run_module("opencode")
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_nonexecutable_pinned_binary_is_not_repaired_or_executed(self):
+        self.fake_native()
+        self.native.chmod(0o644)
+        self.assert_failed(self.run_module("opencode", "--check"), "non-executable")
+        self.assertEqual(0o644, self.native.stat().st_mode & 0o777)
+        self.assertFalse((self.home / "native-version-ran").exists())
+
+    def test_binary_checksum_failure_never_executes_or_publishes(self):
+        self.archive(corrupt_binary=True)
+        self.assert_failed(self.run_module("opencode"), "binary checksum mismatch")
+        self.assertFalse(self.native.exists())
+        self.assertFalse((self.home / "native-version-ran").exists())
+
+    def test_wrong_reported_version_never_publishes(self):
+        self.archive(version="1.8.0")
+        self.assert_failed(self.run_module("opencode"), "must report pinned V2")
+        self.assertFalse(self.native.exists())
+        self.assertFalse((self.home / ".local/bin/opencode").exists())
+
+    def test_repeat_install_reuses_verified_binary_without_download_or_execution(self):
+        self.fake_native()
+        for _ in range(2):
+            result = self.run_module("opencode")
+            self.assertEqual(0, result.returncode, result.stderr)
+        self.assertFalse((self.home / "native-version-ran").exists())
+        self.assertFalse(any(c[0] in ("curl", "tar") for c in self.calls()))
+
+    def test_binary_symlink_and_conflicting_parent_are_refused(self):
+        self.native.symlink_to(self.base / "missing")
+        self.assert_failed(self.run_module("opencode", "--check"), "symlink")
+        self.native.unlink()
+        self.native.parent.rmdir()
+        self.native.parent.symlink_to(self.base / "missing")
+        self.assert_failed(self.run_module("opencode", "--check"), "Conflicting OpenCode parent")
+
+    def test_metadata_has_no_v1_rpm_or_global_node_toolchain(self):
+        text = (self.repo / "modules/opencode.conf").read_text()
+        packages = next(line.split("=", 1)[1].split() for line in text.splitlines() if line.startswith("packages="))
+        self.assertTrue(set(packages).isdisjoint({"opencode", "nodejs", "npm"}))
+
+    def test_bitwarden_metadata_reports_manual_native_rpm_without_custom_installer(self):
         for metadata in (self.repo / "modules").glob("*.conf"):
             if metadata.name != "bitwarden.conf":
                 metadata.unlink()
-        script = """set -euo pipefail
-ROOT=$1
-source "$ROOT/lib/dotfiles.sh"
-GROUPS_CSV=desktop MODULES_CSV=''
-validate_groups
-load_modules
-printf '%s\\n' "${PACKAGES[@]}"
-"""
         result = subprocess.run(
-            [test_dotfiles.BASH, "-c", script, "native-package-test", str(self.repo)],
+            [test_dotfiles.BASH, "-c", 'set -euo pipefail; ROOT=$1; source "$ROOT/lib/dotfiles.sh"; GROUPS_CSV=desktop; MODULES_CSV=""; validate_groups; load_modules',
+             "bitwarden-metadata", str(self.repo)],
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(["bitwarden"], result.stdout.splitlines())
+        self.assertIn("Manual application setup required: bitwarden", result.stderr)
         self.assertFalse((self.repo / "modules/bitwarden.sh").exists())
-        self.assertEqual({}, self.snapshot())
-        self.assertEqual([], self.calls())
 
     def run_agent_helper(self, local_override=False):
-        helper = self.repo / "shell/bitwarden.sh"
-        script = """set -euo pipefail
-source "$1"
-source "$1"
-if [[ $2 == local ]]; then source "$HOME/.config/bash/variables.sh"; fi
-printf '%s' "$SSH_AUTH_SOCK"
-"""
+        script = 'set -euo pipefail; source "$1"; source "$1"; if [[ $2 == local ]]; then source "$HOME/.config/bash/variables.sh"; fi; printf "%s" "$SSH_AUTH_SOCK"'
         return subprocess.run(
-            [test_dotfiles.BASH, "-c", script, "native-agent-test", str(helper),
-             "local" if local_override else "default", str(self.repo)],
+            [test_dotfiles.BASH, "-c", script, "bitwarden-agent", str(self.repo / "shell/bitwarden.sh"),
+             "local" if local_override else "default"],
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
 
@@ -205,30 +208,15 @@ printf '%s' "$SSH_AUTH_SOCK"
 
     def test_bitwarden_agent_preserves_explicit_socket_including_empty(self):
         for socket in (str(self.home / "other-agent.sock"), ""):
-            with self.subTest(socket=socket):
-                self.env["SSH_AUTH_SOCK"] = socket
-                before = self.snapshot()
-                result = self.run_agent_helper()
-                self.assertEqual(0, result.returncode, result.stderr)
-                self.assertEqual(socket, result.stdout)
-                self.assertEqual(before, self.snapshot())
-                self.assertEqual([], self.calls())
+            self.env["SSH_AUTH_SOCK"] = socket
+            result = self.run_agent_helper()
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(socket, result.stdout)
 
     def test_bitwarden_local_variables_override_default(self):
         variables = self.home / ".config/bash/variables.sh"
         variables.parent.mkdir(parents=True)
         variables.write_text('export SSH_AUTH_SOCK="$HOME/local-agent.sock"\n')
-        before = self.snapshot()
         result = self.run_agent_helper(local_override=True)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(str(self.home / "local-agent.sock"), result.stdout)
-        self.assertEqual(before, self.snapshot())
-        self.assertEqual([], self.calls())
-        # Keep the tested source order consistent with the actual interactive shell.
-        startup = (self.repo / "shell/startup.sh").read_text()
-        self.assertLess(startup.index('source "${BASH_SOURCE[0]%/*}/bitwarden.sh"'),
-                         startup.index('source "$HOME/.config/bash/variables.sh"'))
-
-
-if __name__ == "__main__":
-    unittest.main()

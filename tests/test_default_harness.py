@@ -70,7 +70,7 @@ printf 'stow:%s\\n' "${STOW_PACKAGES[@]}"
     def test_default_desktop_includes_brave(self):
         selected = self.selected(groups="desktop")
         self.assertIn("brave", selected)
-        self.assertIn("package:brave-bin", selected)
+        self.assertIn("package:brave-browser", selected)
 
     def test_removed_modules_reject_explicit_selectors(self):
         for module in ("claude-code", "spotify"):

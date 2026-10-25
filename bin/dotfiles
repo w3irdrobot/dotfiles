@@ -75,7 +75,7 @@ main() {
 	*) die "Unknown command: $command" ;; esac
 	[[ $command == install || $DOCKER_GROUP == 0 ]] || die '--docker-group is only valid with install.'
 	phase "Starting $command${scope:+ $scope}"
-	phase 'Platform validation: checking Arch/Manjaro x86_64 and user context'
+	phase 'Platform validation: checking Fedora 44 x86_64 and user context'
 	check_platform
 	validate_groups
 	validate_module_selectors

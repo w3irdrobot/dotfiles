@@ -28,7 +28,7 @@ detect_system76() {
 
 report_desktop_session() {
 	case ${XDG_SESSION_TYPE:-} in
-	wayland) log 'Desktop session: Wayland. Manjaro KDE Plasma is the expected baseline.' ;;
+	wayland) log 'Desktop session: Wayland. Fedora 44 KDE Plasma is the expected baseline.' ;;
 	x11) log 'Desktop session: X11. Select Plasma (Wayland) at login for the expected baseline; setup will not switch sessions.' ;;
 	*)
 		if [[ -n ${WAYLAND_DISPLAY:-} ]]; then
@@ -43,7 +43,7 @@ report_desktop_session() {
 system76_next_steps() {
 	printf '  System76: packages selected for %s; no services were activated or firmware flashed by this installer. Review package hooks separately.\n' "$SYSTEM76_MODEL"
 	printf '  Before activating system76-power, inspect competing backends:\n'
-	printf '    systemctl status power-profiles-daemon.service tlp.service auto-cpufreq.service\n'
+	printf '    systemctl status tuned.service tuned-ppd.service power-profiles-daemon.service tlp.service auto-cpufreq.service\n'
 	printf '  Resolve backend conflicts manually; keep Plasma PowerDevil (desktop power management).\n'
 	printf '  Inspect packaged units with systemctl cat system76.service system76-firmware-daemon.service com.system76.PowerDaemon.service before enabling the services you want.\n'
 	printf '  Review firmware-manager permissions/polkit locally; no privileged group membership was added. Firmware updates remain manual.\n'

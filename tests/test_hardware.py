@@ -113,7 +113,7 @@ printf 'PACKAGES: %s\\n' "${PACKAGES[*]}"
 
     def test_system76_cli_dry_run_plans_packages_without_provisioning(self):
         self.dmi("System76")
-        self.os_release.write_text('ID=manjaro\n')
+        self.os_release.write_text('ID=fedora\nVERSION_ID=44\n')
         (self.path / "paru").unlink()
         self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
         self.mock("stow", "sys.exit(0)")
