@@ -118,7 +118,9 @@ Unsandboxed tools are outside these file-access protections.
 Keep Git identity/signing overrides in `~/.gitconfig_local` and imported SSH host
 definitions in `~/.ssh/config.local`, not the symlinked repository configs. Sign
 in to Bitwarden and enable its SSH agent manually. Bash defaults to
-`~/.bitwarden-ssh-agent.sock` only when `SSH_AUTH_SOCK` is unset.
+`~/.bitwarden-ssh-agent.sock` only when `SSH_AUTH_SOCK` is unset. When the agent
+holds the private keys, keep only the `.pub` files in `~/.ssh`; `secrets_export`
+archives those public halves instead of failing on missing private keys.
 
 Keys, tokens, authentication stores, and wallet data stay outside Git. The
 [`secrets_export` / `secrets_import` guide](docs/secrets.md) covers the separate
@@ -155,6 +157,14 @@ Nix itself updates through pacman/paru. Each project owns its `flake.lock` updat
 Nix garbage collection is separate maintenance. Nono version/digest changes need
 a reviewed repository change and another install run. Resolve conflicting older
 links manually rather than replacing unmanaged or dangling destinations.
+
+On Btrfs roots, system updates create a read-only pre-upgrade snapshot and refuse
+the package transaction if one cannot be created. The last five `dotfiles-*`
+snapshots are retained, package state is recorded under
+`~/.local/state/dotfiles/upgrades/`, and boot-critical package changes print a
+reboot warning. See [protected system upgrades](docs/upgrades.md) for checks and
+live-media rollback steps. Separate `/boot`, `/efi`, and `/boot/efi` partitions
+are not included in the root snapshot.
 
 ### Sandboxed AI sessions
 

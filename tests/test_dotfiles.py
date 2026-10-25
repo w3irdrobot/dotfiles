@@ -68,6 +68,8 @@ class Fixture(unittest.TestCase):
             if target:
                 (self.path / name).symlink_to(target)
         self.mock("uname", 'print("Linux" if "-s" in sys.argv else "x86_64")')
+        # Fixture hosts use a non-Btrfs root, so upgrade snapshot tests opt in.
+        self.mock("findmnt", 'print("ext4") if "FSTYPE" in sys.argv else print("/")')
         for name in ("sudo", "pacman", "yay", "paru", "makepkg", "curl", "wget",
                      "brew", "nix-env", "systemctl", "chsh", "flatpak", "git", "stow"):
             self.mock(name, "sys.exit(97)")

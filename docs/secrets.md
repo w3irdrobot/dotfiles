@@ -18,17 +18,24 @@ Flatten and review these unsupported forms manually before exporting:
 - Hostname canonicalization.
 - Identity paths requiring expansions or ambiguous quoting.
 
-Use absolute or `~/` identity paths. Default and agent-only identities are not
-inferred. Archives use flat key filenames, so basename collisions—including
-public-key companions and reserved entries—stop export before staging or changing
-an existing archive. Rename colliding keys and update the config yourself.
+Use absolute or `~/` identity paths. Default identities are not inferred. When
+Bitwarden's SSH agent holds the private half, an explicitly referenced private
+path whose file is absent is exported from its `.pub` companion instead; the
+archive then contains public material only. Export fails only when both the
+private file and its public companion are missing. Explicit `.pub` identities
+export without adding a `.pub.pub` entry.
+
+Archives use flat key filenames, so basename collisions—including public-key
+companions and reserved entries—stop export before staging or changing an
+existing archive. Rename colliding keys and update the config yourself.
 
 Import restores names from archived `IdentityFile` entries, including names other
-than `id_*`. Missing explicitly referenced private keys stop import; public
-companions are optional. Explicit private identities use mode `0600` even when
-their filename ends in `.pub`; public companions use `0644`. Existing differing
-files are warned about and skipped rather than overwritten. Review the restore
-summary and adjust identity paths that differ on the destination.
+than `id_*`. Agent-only archives are valid: a missing private key is accepted
+when its public companion is archived. Import fails when neither half is present.
+Private key content is restored as `0600`, even when the filename ends in `.pub`;
+public content uses `0644`. Existing differing files are warned about and skipped
+rather than overwritten. Review the restore summary and adjust identity paths that
+differ on the destination.
 
 ## USB selection
 

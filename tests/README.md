@@ -12,6 +12,10 @@ Linux host paths in **fixture copies only** are redirected to fixture os-release
 Nix, and systemd paths; production files and the real home are never changed.
 Run tests as a regular user: the production CLI intentionally refuses root.
 
+Upgrade snapshot fixtures model Btrfs devices, top-level mounts, snapshot
+pruning, low disk space, failure-before-transaction, and boot-package reporting
+without touching the host filesystem.
+
 Tests cover parser rejection, unsupported hosts/distributions, dry-run home
 immutability/no network/sudo, metadata-as-data, Stow conflict refusal, selected
 groups, repeat linking, dirty/diverged/wrong-origin update refusal, failed

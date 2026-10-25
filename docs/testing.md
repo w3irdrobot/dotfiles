@@ -72,6 +72,8 @@ review is complete; VM deletion is a separate, approved action.
 8. Test config updates with clean, dirty, and diverged histories, plus a new
    config whose destination already exists. Confirm local work survives refusal.
 9. Run system updates and verify full native upgrades rather than partial ones.
+   On Btrfs, confirm the pre-upgrade snapshot exists and rollback notes name the
+   correct device and subvolumes; a failed snapshot must stop before `pacman -Su`.
 10. Confirm setup leaves desktop settings, autologin, networking, Docker-group
     membership (unless requested), wallets, keys, and local credentials alone.
 11. On lemp14, verify DMI detection, Manjaro package resolution, repeat install,
