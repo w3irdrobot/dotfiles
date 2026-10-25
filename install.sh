@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Public bootstrap: wget -qO- https://dotfiles.w3ird.tech/install.sh | bash
+# Download and review https://dotfiles.w3ird.tech/install.sh, then run bash install.sh.
 set -euo pipefail
 if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
 
@@ -51,11 +51,10 @@ check_checkout() {
 	[[ -z $(git -C "$destination" status --porcelain --untracked-files=all) ]] || die 'Checkout is dirty; save your work before updating.'
 	branch=$(git -C "$destination" symbolic-ref --quiet --short HEAD) || die 'Detached HEAD; select the intended branch yourself.'
 	[[ $branch == "$ref" ]] || die "Checkout is on $branch, not $ref; refusing to switch branches."
+	run git -C "$destination" fetch origin "refs/heads/$ref:refs/remotes/origin/$ref"
 	if ((dry_run)); then
-		run git -C "$destination" fetch origin "refs/heads/$ref:refs/remotes/origin/$ref"
 		printf 'Would verify fast-forward ancestry before updating.\n' >&2
 	else
-		git -C "$destination" fetch origin "refs/heads/$ref:refs/remotes/origin/$ref"
 		git -C "$destination" merge-base --is-ancestor HEAD "refs/remotes/origin/$ref" || die 'Local checkout is ahead or diverged; refusing update.'
 	fi
 	run git -C "$destination" merge --ff-only --no-overwrite-ignore "refs/remotes/origin/$ref"

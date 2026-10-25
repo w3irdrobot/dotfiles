@@ -1,4 +1,4 @@
-# Validation boundaries
+# Tests
 
 Run `just validate` (Bash syntax, ShellCheck, shfmt, and Python stdlib tests).
 CI pins shfmt 3.14.1 from the official mvdan/sh release and verifies its SHA256
@@ -11,6 +11,10 @@ managers, sudo, network clients, and Git network operations are mocked. Fixed
 Linux host paths in **fixture copies only** are redirected to fixture os-release,
 Nix, and systemd paths; production files and the real home are never changed.
 Run tests as a regular user: the production CLI intentionally refuses root.
+
+Upgrade snapshot fixtures model Btrfs devices, top-level mounts, snapshot
+pruning, low disk space, failure-before-transaction, and boot-package reporting
+without touching the host filesystem.
 
 Tests cover parser rejection, unsupported hosts/distributions, dry-run home
 immutability/no network/sudo, metadata-as-data, Stow conflict refusal, selected
@@ -39,7 +43,7 @@ lookup batches as absent from both sources, not mislabeled as AUR-only failures.
 CI performs remote metadata checks only for master pushes. PR validation has
 read-only checkout permissions, no persisted credentials, and no deployment.
 
-## Required manual VM validation (not proven by mocks or containers)
+## Linux rehearsal
 
 Use a disposable x86_64 Arch/Manjaro VM with systemd, a snapshot, and a regular
 user with sudo. Do not run these installation checks on a workstation.
@@ -55,5 +59,6 @@ user with sudo. Do not run these installation checks on a workstation.
 - Exercise failed downloads/checksums, cancelled AUR review, and interrupted
   provisioning. Confirm failures stop subsequent phases and preserve local work.
 
-Record VM release, commands, observed results, and remaining gaps separately.
-No VM installation has been validated by this test suite.
+Record the VM release, commands, results, and remaining gaps in
+[the rehearsal guide](../docs/testing.md). It also records the completed Arch
+checks; Manjaro KDE/Wayland and System76 hardware acceptance remain pending.

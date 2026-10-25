@@ -1,6 +1,7 @@
 """Offline VM driver checks: no Lima, SSH, installer, or host credentials."""
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -30,6 +31,10 @@ def metadata():
 
 
 class VMDriver(unittest.TestCase):
+    def test_bootstrap_pin_matches_reviewed_repository_script(self):
+        script = Path(__file__).resolve().parents[1] / "install.sh"
+        self.assertEqual(driver.BOOTSTRAP_SHA, hashlib.sha256(script.read_bytes()).hexdigest())
+
     def test_safe_metadata_and_lima_omitted_empty_mounts(self):
         row = metadata()
         driver.validate_metadata(json.dumps(row))
@@ -148,7 +153,7 @@ class VMDriver(unittest.TestCase):
         self.assertEqual(["bash", "--noprofile", "--norc", "-c"], remote[:-1])
         self.assertIn(driver.BOOTSTRAP_SHA, remote[-1])
         self.assertIn('exec bash --noprofile --norc "$HOME/install-dotfiles.sh"', remote[-1])
-        self.assertIn("--ref rewrite/arch-bash --groups core", remote[-1])
+        self.assertIn("--ref master --groups core", remote[-1])
         for option in ("ControlMaster=no", "ControlPath=none", "ForwardAgent=no",
                        "IdentityAgent=none", "BatchMode=yes", "PermitLocalCommand=no"):
             self.assertIn(option, command)

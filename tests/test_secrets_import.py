@@ -240,13 +240,23 @@ printf '%s:%s:%s\\n' "$imported" "$skipped" "$failed"
                           for name in names},
                          {tuple(line.split("\t")) for line in result.stdout.splitlines()})
 
-    def test_missing_explicit_identity_refuses_before_any_ssh_publication(self):
+    def test_agent_only_public_identity_is_restored_without_a_private_key(self):
         archive = self.base / "archive"
         archive.mkdir()
         (archive / "ssh_config").write_text(
             "Host fixture\n IdentityFile ~/.ssh/github_auth\n")
-        for name in ("github_auth.pub", "id_legacy"):
-            (archive / name).write_text("SYNTHETIC MUST NOT BE IMPORTED\n")
+        (archive / "github_auth.pub").write_text(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFIXTURE fixture\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("public\tgithub_auth.pub\n", result.stdout)
+
+    def test_missing_private_and_public_identity_refuses_before_publication(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth\n")
+        (archive / "id_legacy").write_text("SYNTHETIC MUST NOT BE IMPORTED\n")
         result = self.call("list_archive_ssh_keys", archive)
         self.assertEqual(2, result.returncode)
         self.assertEqual("", result.stdout)
@@ -268,7 +278,7 @@ main
         self.assertEqual(["config"], [path.name for path in self.ssh.iterdir()])
         self.assertEqual([], list(self.base.glob("tmp.*")))
 
-    def test_optional_public_companion_can_be_absent_even_for_pub_named_identity(self):
+    def test_public_named_identity_is_restored_as_public(self):
         archive = self.base / "archive"
         archive.mkdir()
         (archive / "ssh_config").write_text(
@@ -278,10 +288,10 @@ main
             (archive / name).write_text("SYNTHETIC IDENTITY FIXTURE\n")
         result = self.call("list_archive_ssh_keys", archive)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual({"private\tgithub_auth", "private\tconfigured.pub"},
+        self.assertEqual({"private\tgithub_auth", "public\tconfigured.pub"},
                          set(result.stdout.splitlines()))
 
-    def test_explicit_identity_role_wins_over_public_companion_role(self):
+    def test_public_suffix_and_private_content_decide_roles(self):
         archive = self.base / "archive"
         archive.mkdir()
         (archive / "ssh_config").write_text(
@@ -291,8 +301,22 @@ main
             (archive / name).write_text("SYNTHETIC IDENTITY FIXTURE\n")
         result = self.call("list_archive_ssh_keys", archive)
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual({"private\tgithub_auth", "private\tgithub_auth.pub",
-                          "public\tgithub_auth.pub.pub"}, set(result.stdout.splitlines()))
+        self.assertEqual({"private\tgithub_auth", "public\tgithub_auth.pub"},
+                         set(result.stdout.splitlines()))
+
+    def test_private_content_under_public_name_stays_private(self):
+        archive = self.base / "archive"
+        archive.mkdir()
+        (archive / "ssh_config").write_text(
+            "Host fixture\n IdentityFile ~/.ssh/github_auth.pub\n")
+        key = archive / "github_auth.pub"
+        key.write_text("-----BEGIN OPENSSH PRIVATE KEY-----\nFIXTURE\n")
+        result = self.call("list_archive_ssh_keys", archive)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("private\tgithub_auth.pub\n", result.stdout)
+        dest = self.ssh / "github_auth.pub"
+        self.assertEqual(0, self.call("import_ssh_key", key, dest, "private").returncode)
+        self.assertEqual(0o600, dest.stat().st_mode & 0o777)
 
     def test_archived_key_links_and_reserved_references_are_refused(self):
         archive = self.base / "archive"
@@ -345,11 +369,17 @@ main
             ' IdentityFile "~/.ssh/arbitrary key"\n IdentityFile ~/.ssh/id_legacy\n'
             ' IdentityFile ~/.ssh/configured.pub\n')
         expected = {}
-        private_names = {"github_auth", "arbitrary key", "id_legacy", "configured.pub"}
-        for name in private_names:
+        modes = {}
+        for name in ("github_auth", "arbitrary key", "id_legacy"):
             for suffix in ("", ".pub"):
                 expected[name + suffix] = f"SYNTHETIC {name}{suffix} CONTENT\n".encode()
+                modes[name + suffix] = 0o600 if not suffix else 0o644
                 (self.ssh / (name + suffix)).write_bytes(expected[name + suffix])
+        # An explicit .pub identity is public-only; the old exporter also
+        # copied a meaningless ".pub.pub" companion.
+        expected["configured.pub"] = b"SYNTHETIC configured.pub CONTENT\n"
+        modes["configured.pub"] = 0o644
+        (self.ssh / "configured.pub").write_bytes(expected["configured.pub"])
         result = subprocess.run(
             [BASH, "--noprofile", "--norc"], input=export + '''
 check_deps() { :; }
@@ -383,8 +413,7 @@ main
         for name, data in expected.items():
             dest = restore / ".ssh" / name
             self.assertEqual(data, dest.read_bytes())
-            self.assertEqual(0o600 if name in private_names else 0o644,
-                             dest.stat().st_mode & 0o777)
+            self.assertEqual(modes[name], dest.stat().st_mode & 0o777)
             self.assertNotIn(data.decode().strip(), first.stdout + first.stderr)
         self.assertFalse((restore / ".ssh/ssh_config").exists())
         conflict = restore / ".ssh/github_auth"
@@ -392,7 +421,7 @@ main
         second = self.run_bash(body)
         self.assertEqual(0, second.returncode, second.stdout + second.stderr)
         self.assertEqual("EXISTING DIFFERENT FIXTURE\n", conflict.read_text())
-        self.assertIn("8 SSH key(s) skipped", second.stdout)
+        self.assertIn("7 SSH key(s) skipped", second.stdout)
         self.assertEqual([], list(self.base.glob("tmp.*")))
 
 

@@ -231,6 +231,216 @@ link_configs() {
 	fi
 }
 
+check_upgrade_free_space() {
+	# A full upgrade needs room for downloads, unpacked packages, and snapshot
+	# metadata. Refuse before touching the package database when it is too tight.
+	local target minimum available
+	while IFS='|' read -r target minimum; do
+		[[ -d $target ]] || continue
+		available=$(df -Pk "$target" 2>/dev/null | awk 'NR == 2 { print $4 }')
+		[[ $available =~ ^[0-9]+$ ]] || die "Could not determine free space for $target; refusing the package transaction."
+		((available >= minimum * 1024)) || die "Only $((available / 1024)) MiB free on $target; at least ${minimum} MiB is required before upgrading."
+	done <<'EOF'
+/|2048
+/boot|256
+/efi|64
+/boot/efi|64
+EOF
+}
+
+prune_dotfiles_snapshots() {
+	local parent=$1 current=$2 keep=${DOTFILES_SNAPSHOT_KEEP:-5}
+	local entry name
+	local -a snapshots=()
+	[[ $keep =~ ^[1-9][0-9]*$ ]] || die "Invalid DOTFILES_SNAPSHOT_KEEP: $keep"
+	for entry in "$parent"/dotfiles-*; do
+		[[ -d $entry ]] || continue
+		name=${entry##*/}
+		[[ $name != "$current" ]] || continue
+		snapshots+=("$name")
+	done
+	((${#snapshots[@]} >= keep)) || return 0
+	# Timestamp names sort chronologically. Keep the current snapshot plus the
+	# newest (keep - 1) older ones; delete only this repository's snapshots.
+	local sorted=''
+	sorted=$(printf '%s\n' "${snapshots[@]}" | LC_ALL=C sort)
+	snapshots=()
+	while IFS= read -r name; do snapshots+=("$name"); done <<<"$sorted"
+	local excess index
+	excess=$((${#snapshots[@]} - keep + 1))
+	for ((index = 0; index < excess; index++)); do
+		name=${snapshots[index]}
+		run sudo btrfs subvolume delete "$parent/$name" || log "Warning: could not prune old snapshot $name; delete it manually."
+	done
+}
+
+write_upgrade_rollback_notes() {
+	local state=$1 name=$2 source=$3 root_top=$4 snapshot_top=$5 boot_separate=$6
+	{
+		printf 'Pre-upgrade Btrfs snapshot: %s\n' "$name"
+		printf 'Created: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+		printf 'Device: %s\n' "$source"
+		printf 'Root subvolume: %s\n' "$root_top"
+		printf 'Snapshot at the Btrfs top level: %s\n' "$snapshot_top"
+		printf '\nRollback requires live media and a mounted Btrfs top level.\n'
+		printf 'Open any LUKS container first if the device is encrypted.\n'
+		printf '  mount -o subvolid=5 %q /mnt\n' "$source"
+		printf '  mv /mnt/%s /mnt/%s.broken-%s\n' "$root_top" "$root_top" "$name"
+		printf '  btrfs subvolume snapshot /mnt/%s /mnt/%s\n' "$snapshot_top" "$root_top"
+		printf '  umount /mnt\n'
+		printf '\nIf fstab or the bootloader pins a subvolid instead of a subvolume name,\n'
+		printf 'update that id after recreating the root subvolume.\n'
+		if ((boot_separate)); then
+			printf '\nA separate /boot or EFI partition is not part of this snapshot.\n'
+			printf 'After restoring, chroot and reinstall the kernel or restore your boot backup.\n'
+		fi
+		printf '\nPackages installed before the upgrade are recorded in packages-before.txt.\n'
+	} >"$state/rollback.txt" || die "Could not write rollback notes in $state."
+}
+
+create_btrfs_snapshot() {
+	local source fsroot root_top snapshots_target snapshots_type snapshots_source
+	local parent='' parent_top='' temp='' mounted=0 name timestamp snapshot_top
+	local state boot_separate=0
+	source=$(findmnt -n -o SOURCE --target / 2>/dev/null) || die 'Could not determine the Btrfs root device; refusing the package transaction.'
+	source=${source%%\[*}
+	fsroot=$(findmnt -n -o FSROOT --target / 2>/dev/null) || die 'Could not determine the Btrfs root subvolume; refusing the package transaction.'
+	[[ $fsroot == /* && $fsroot != / ]] || die 'The Btrfs root is the filesystem top level, not a subvolume; configure a root subvolume before upgrading.'
+	root_top=${fsroot#/}
+	timestamp=$(date +%Y%m%d-%H%M%S)
+	name=dotfiles-$timestamp-$$
+	# Prefer an already-mounted snapshot subvolume, such as @snapshots.
+	if [[ -d /.snapshots ]]; then
+		snapshots_target=$(findmnt -n -o TARGET --target /.snapshots 2>/dev/null || true)
+		snapshots_type=$(findmnt -n -o FSTYPE --target /.snapshots 2>/dev/null || true)
+		snapshots_source=$(findmnt -n -o SOURCE --target /.snapshots 2>/dev/null || true)
+		snapshots_source=${snapshots_source%%\[*}
+		if [[ $snapshots_target == /.snapshots && $snapshots_type == btrfs && $snapshots_source == "$source" ]]; then
+			parent=/.snapshots
+			parent_top=$(findmnt -n -o FSROOT --target /.snapshots)
+			parent_top=${parent_top#/}
+			# Snapshots nested inside the root subvolume would move with it during
+			# rollback. Fall back to a top-level @snapshots subvolume instead.
+			if [[ $parent_top == "$root_top" || $parent_top == "$root_top/"* ]]; then
+				parent=''
+				parent_top=''
+			fi
+		fi
+	fi
+	if [[ -z $parent ]]; then
+		temp=$(sudo mktemp -d /run/dotfiles-btrfs.XXXXXXXX) || die 'Could not create a temporary Btrfs top-level mountpoint; refusing the package transaction.'
+		if ! run sudo mount -o subvolid=5 -- "$source" "$temp"; then
+			sudo rmdir "$temp" >/dev/null 2>&1 || true
+			die "Could not mount the Btrfs top level from $source; refusing the package transaction."
+		fi
+		mounted=1
+		if [[ -e $temp/@.snapshots ]] && sudo btrfs subvolume show "$temp/@.snapshots" >/dev/null 2>&1; then
+			# Reuse an existing top-level snapshot subvolume even when it is not
+			# currently mounted at /.snapshots.
+			parent=$temp/@.snapshots
+			parent_top=@.snapshots
+		elif [[ ! -e $temp/@snapshots ]]; then
+			if ! run sudo btrfs subvolume create "$temp/@snapshots"; then
+				sudo umount "$temp" >/dev/null 2>&1 || true
+				sudo rmdir "$temp" >/dev/null 2>&1 || true
+				die 'Could not create the @snapshots subvolume; refusing the package transaction.'
+			fi
+			parent=$temp/@snapshots
+			parent_top=@snapshots
+		elif ! sudo btrfs subvolume show "$temp/@snapshots" >/dev/null 2>&1; then
+			sudo umount "$temp" >/dev/null 2>&1 || true
+			sudo rmdir "$temp" >/dev/null 2>&1 || true
+			die 'The Btrfs @snapshots path exists but is not a subvolume; refusing the package transaction.'
+		else
+			parent=$temp/@snapshots
+			parent_top=@snapshots
+		fi
+	fi
+	if ! run sudo btrfs subvolume snapshot -r "$(if ((mounted)); then printf '%s/%s' "$temp" "$root_top"; else printf /; fi)" "$parent/$name"; then
+		if ((mounted)); then
+			sudo umount "$temp" >/dev/null 2>&1 || true
+			sudo rmdir "$temp" >/dev/null 2>&1 || true
+		fi
+		die 'Could not create the pre-upgrade Btrfs snapshot; refusing the package transaction.'
+	fi
+	if ! sudo btrfs subvolume show "$parent/$name" >/dev/null 2>&1; then
+		if ((mounted)); then
+			sudo umount "$temp" >/dev/null 2>&1 || true
+			sudo rmdir "$temp" >/dev/null 2>&1 || true
+		fi
+		die 'The pre-upgrade snapshot could not be verified; refusing the package transaction.'
+	fi
+	prune_dotfiles_snapshots "$parent" "$name"
+	if ((mounted)); then
+		run sudo umount "$temp" || die "Could not unmount $temp; unmount it manually before upgrading."
+		sudo rmdir "$temp" >/dev/null 2>&1 || true
+	fi
+	if [[ -n $parent_top ]]; then snapshot_top=$parent_top/$name; else snapshot_top=$name; fi
+	local mountpoint
+	for mountpoint in /boot /boot/efi /efi; do
+		[[ -d $mountpoint ]] || continue
+		if [[ $(findmnt -n -o TARGET --target "$mountpoint" 2>/dev/null || true) == "$mountpoint" ]]; then
+			boot_separate=1
+		fi
+	done
+	state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/upgrades/$name
+	mkdir -p -- "$state" || die "Could not create upgrade state directory: $state"
+	pacman -Q >"$state/packages-before.txt" || die 'Could not record installed packages before upgrading.'
+	pacman -Qqm >"$state/foreign-before.txt" 2>/dev/null || true
+	{
+		printf 'snapshot=%s\n' "$name"
+		printf 'source=%s\n' "$source"
+		printf 'root_subvolume=%s\n' "$root_top"
+		printf 'snapshot_top=%s\n' "$snapshot_top"
+	} >"$state/snapshot.txt"
+	write_upgrade_rollback_notes "$state" "$name" "$source" "$root_top" "$snapshot_top" "$boot_separate"
+	DOTFILES_UPGRADE_SNAPSHOT=$name
+	DOTFILES_UPGRADE_STATE=$state
+	DOTFILES_UPGRADE_BEFORE=$state/packages-before.txt
+	log "Pre-upgrade Btrfs snapshot ready: $name"
+	log "Rollback notes: $state/rollback.txt"
+}
+
+begin_system_upgrade() {
+	DOTFILES_UPGRADE_SNAPSHOT='' DOTFILES_UPGRADE_STATE='' DOTFILES_UPGRADE_BEFORE=''
+	local fstype
+	if ((DRY_RUN)); then
+		log 'Would verify Btrfs snapshot support, free space, and pacman state, then create a read-only pre-upgrade snapshot.'
+		return 0
+	fi
+	command -v findmnt >/dev/null || die 'findmnt is required to verify upgrade safety; refusing the package transaction.'
+	fstype=$(findmnt -n -o FSTYPE --target / 2>/dev/null) || die 'Could not determine the root filesystem type; refusing the package transaction.'
+	if [[ $fstype != btrfs ]]; then
+		log "Root filesystem is $fstype, not btrfs; no pre-upgrade snapshot will be created."
+		return 0
+	fi
+	command -v btrfs >/dev/null || die 'btrfs-progs is required to snapshot this Btrfs root; refusing the package transaction.'
+	command -v df >/dev/null || die 'df is required to check free space before upgrading; refusing the package transaction.'
+	[[ ! -e /var/lib/pacman/db.lck ]] || die 'A pacman database lock exists. Finish or repair the interrupted transaction before upgrading.'
+	pacman -Dk >/dev/null 2>&1 || die 'The pacman database failed its consistency check (pacman -Dk); repair it before upgrading.'
+	check_upgrade_free_space
+	create_btrfs_snapshot
+}
+
+end_system_upgrade() {
+	local before=${DOTFILES_UPGRADE_BEFORE:-} changed
+	[[ -n $before && -f $before ]] || return 0
+	if ! pacman -Dk >/dev/null 2>&1; then
+		log 'Warning: the pacman database failed its consistency check after the upgrade. Run pacman -Dk before rebooting.'
+	fi
+	changed=$(awk '
+		NR == FNR { before[$1] = $2; next }
+		$1 ~ /^(linux(-|$)|mkinitcpio|systemd|grub|refind|nvidia|linux-firmware)/ && before[$1] != $2 { print $1 }
+	' "$before" <(pacman -Q 2>/dev/null) | LC_ALL=C sort -u)
+	if [[ -n $changed ]]; then
+		log "Boot-critical packages changed: $changed"
+		log 'Reboot before relying on the updated kernel, initramfs, bootloader, or graphics stack.'
+	fi
+	log "Pre-upgrade snapshot retained: $DOTFILES_UPGRADE_SNAPSHOT"
+	log "Rollback notes: $DOTFILES_UPGRADE_STATE/rollback.txt"
+	DOTFILES_UPGRADE_BEFORE='' DOTFILES_UPGRADE_STATE='' DOTFILES_UPGRADE_SNAPSHOT=''
+}
+
 install_packages() {
 	phase 'Package preflight: native ownership and helper health'
 	# Full upgrades also affect unselected applications; reject unmanaged PATH
@@ -325,6 +535,8 @@ install_packages() {
 	# No second -y: use exactly the indexes inspected by the guard, with a full -u.
 	log "Official package targets (${#targets[@]}): ${targets[*]}"
 	if ((${#aur[@]})); then log "AUR package targets (${#aur[@]}): ${aur[*]}"; else log 'AUR package targets: none.'; fi
+	phase 'Upgrade protection: checking Btrfs snapshots and free space'
+	begin_system_upgrade
 	phase 'Full upgrade: installing against the checked repository indexes'
 	run sudo pacman -Su --needed -- "${targets[@]}"
 	if ((need_nix)); then
@@ -488,6 +700,7 @@ update_system() {
 		# paru must never rebuild from a mutable AUR recipe; review a frozen pin.
 		run paru -Sua --ignore paru
 	fi
+	end_system_upgrade
 	setup_modules
 	log 'Nix and native applications are repository-managed; project flake.lock updates remain project-owned.'
 }
@@ -497,6 +710,7 @@ print_next_steps() {
 	printf '\nNext steps:\n'
 	if [[ $command == update ]]; then
 		printf '  Restart affected apps; reopen your terminal for shell/config changes.\n'
+		printf '  Reboot if the update reported boot-critical package changes.\n'
 		if [[ $scope == configs ]]; then printf '  Config updates do not install new dependencies. Rerun dotfiles install with the same selections when needed.\n'; fi
 		printf '  Selections are explicit on each command: repeat --groups %s' "$GROUPS_CSV"
 		if [[ -n ${MODULES_CSV:-} ]]; then printf ' --modules %s' "$MODULES_CSV"; fi
@@ -549,11 +763,10 @@ update_checkout() {
 	case $origin in https://github.com/w3irdrobot/dotfiles.git | https://github.com/w3irdrobot/dotfiles | git@github.com:w3irdrobot/dotfiles.git) ;; *) die 'Unexpected origin; expected GitHub w3irdrobot/dotfiles. Inspect origin locally before retrying; refusing update.' ;; esac
 	[[ -z $(git -C "$ROOT" status --porcelain --untracked-files=all) ]] || die 'Checkout is dirty; save your work before updating configs.'
 	branch=$(git -C "$ROOT" symbolic-ref --quiet --short HEAD) || die 'Detached HEAD; select a branch yourself.'
+	run git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 	if ((DRY_RUN)); then
-		run git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 		log 'Would verify fast-forward ancestry; preview uses current checkout metadata.'
 	else
-		git -C "$ROOT" fetch origin "refs/heads/$branch:refs/remotes/origin/$branch"
 		git -C "$ROOT" merge-base --is-ancestor HEAD "refs/remotes/origin/$branch" || die 'Local checkout is ahead or diverged; refusing update.'
 	fi
 	run git -C "$ROOT" merge --ff-only --no-overwrite-ignore "refs/remotes/origin/$branch"

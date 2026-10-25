@@ -1,9 +1,8 @@
 # Project environments with Nix
 
-The machine installer installs the repository Nix package, enables its daemon,
-and enables `nix-command` and `flakes` through user configuration.
-It does not install a global Rust/Node toolchain or manage project lockfiles.
-Pacman/paru still owns workstation applications and system packages.
+The installer adds the repository Nix package, enables its daemon, and turns on
+`nix-command` and `flakes` through user configuration. Each project owns its
+toolchains and lockfiles; pacman/paru owns workstation apps and system packages.
 
 A project can start with a `flake.nix` like this:
 
@@ -39,7 +38,7 @@ native libraries to each project rather than installing development headers on
 every workstation.
 
 `nix flake update` changes the project's dependency pins. Review and test that
-change before committing it; the dotfiles update command must not do it for you.
+change before committing it; dotfiles updates leave project pins alone.
 Nix evaluation/builds are also a code-execution trust boundary: review unfamiliar
 flakes and binary-cache settings before using them.
 

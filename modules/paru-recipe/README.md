@@ -2,8 +2,8 @@
 
 Repository paru takes priority. Otherwise, the reviewed local `PKGBUILD` builds
 [upstream commit 7830fac148f8cd2143307386ead67d7ffd2efa33](https://github.com/Morganamilo/paru/commit/7830fac148f8cd2143307386ead67d7ffd2efa33),
-the upstream HEAD inspected on 2026-10-14. The latest release remains v2.1.0;
-the fallback uses a post-release commit with a committed libalpm-16 lock instead
+the upstream HEAD inspected on 2026-10-14. At that review, the latest release was
+v2.1.0; the fallback uses a post-release commit with a committed libalpm-16 lock instead
 of the AUR 2.1.0-2 recipe's dependency updates.
 
 Verified by downloading the commit archive and hashing its unmodified bytes:
@@ -41,10 +41,9 @@ supplies rustc 1.98.1 and Cargo 1.98.0 only for this build. Both Nix derivations
 are named/versioned 1.98.1, but the bundled Cargo executable reports 1.98.0;
 these executable versions were verified in the Arch VM, including with only
 native `/usr/bin` on PATH. The recipe checks each executable version separately.
-This verifies the toolchain bundle, not dependency fetching or compilation.
-Native `base-devel`, `git`,
-`pacman`, and `openssl` must already satisfy makepkg's normal dependency checks.
-No global Rust/Cargo packages, `--nodeps`, or automatic dependency installs.
+Native `base-devel`, `git`, `pacman`, and `openssl` must already satisfy makepkg's
+normal dependency checks. The build uses no global Rust/Cargo packages,
+`--nodeps`, or automatic dependency installs.
 The recipe enforces native compiler/linker flags inside `build()`, after makepkg
 configuration/drop-ins have loaded, and clears encoded Cargo flags there too.
 The launcher isolates makepkg's package, source, source-package, log, and build
@@ -52,5 +51,6 @@ destinations in its fresh scratch directory, and uses `--force --install` so
 a matching package in a configured global cache cannot skip the verified build.
 The compiler/linker and pkg-config search use native `/usr` paths; the recipe
 rejects ELF Nix-store runtime references before makepkg installs the package.
-The binary's native runtime linkage still needs an actual Arch VM build and
-`ldd` verification; fixture tests are not that verification.
+The [Arch rehearsal](../../docs/testing.md#recorded-results) verified the frozen
+build and native runtime linkage with `ldd`. New source, lock, or toolchain pins
+need another VM build; fixture tests alone cannot establish that compatibility.

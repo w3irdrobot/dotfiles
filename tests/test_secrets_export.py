@@ -267,6 +267,31 @@ Match all
         result = self.export_fixture()
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
+    def test_agent_only_public_identity_is_exported_without_private_key(self):
+        self.write_config("Host fixture\n IdentityFile ~/.ssh/id_agent\n")
+        (self.ssh / "id_agent.pub").write_text(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFIXTURE fixture\n")
+        result = self.export_fixture()
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        with tarfile.open(next(self.base.glob("secrets-*.tar.gz.gpg"))) as archive:
+            names = set(archive.getnames())
+            self.assertIn("./id_agent.pub", names)
+            self.assertNotIn("./id_agent", names)
+            config = archive.extractfile("./ssh_config").read().decode()
+            self.assertIn("identityfile ~/.ssh/id_agent", config)
+
+    def test_explicit_public_identity_does_not_archive_pub_pub(self):
+        self.write_config("Host fixture\n IdentityFile ~/.ssh/id_agent.pub\n")
+        (self.ssh / "id_agent.pub").write_text(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFIXTURE fixture\n")
+        (self.ssh / "id_agent.pub.pub").write_text("not a real companion\n")
+        result = self.export_fixture()
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        with tarfile.open(next(self.base.glob("secrets-*.tar.gz.gpg"))) as archive:
+            names = set(archive.getnames())
+            self.assertIn("./id_agent.pub", names)
+            self.assertNotIn("./id_agent.pub.pub", names)
+
     def test_case_folded_names_cannot_overwrite_on_case_insensitive_filesystems(self):
         # Separate directories make this fixture work on either filesystem type.
         for directory, name in (("one", "id_fixture"), ("two", "ID_FIXTURE")):

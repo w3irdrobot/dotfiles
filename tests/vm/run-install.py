@@ -259,7 +259,7 @@ cd -- "$root"
 git_safe() { git -c core.fsmonitor=false -c core.untrackedCache=false -c core.hooksPath=/dev/null "$@"; }
 [ "$(git_safe rev-parse --show-toplevel)" = "$root" ] || fail
 [ "$(git_safe rev-parse --verify HEAD)" = ''' + shlex.quote(commit) + r''' ] || fail
-[ "$(git_safe symbolic-ref --quiet --short HEAD)" = rewrite/arch-bash ] || fail
+[ "$(git_safe symbolic-ref --quiet --short HEAD)" = master ] || fail
 case "$(git_safe remote get-url origin)" in
     https://github.com/w3irdrobot/dotfiles.git|https://github.com/w3irdrobot/dotfiles|git@github.com:w3irdrobot/dotfiles.git) ;;
     *) fail ;;

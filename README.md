@@ -1,224 +1,137 @@
 # Dotfiles
 
-Linux workstation setup using Bash, paru, repository-packaged Nix,
-and GNU Stow. The primary target is **x86_64 Manjaro KDE Plasma on Wayland**;
-Arch Linux remains supported by the installer.
-macOS and Pop!_OS/COSMIC provisioning have been removed; earlier setups remain in
-Git history. The installer does not change your desktop session settings.
+My Linux workstation setup: Bash, paru, repository-packaged Nix, and GNU Stow.
+The primary target is **x86_64 Manjaro KDE Plasma on Wayland**. The installer also
+supports x86_64 Arch Linux with Bash 5+; it leaves desktop, login, and networking
+settings to you.
 
-Start with the Manjaro KDE edition rather than converting an XFCE installation.
-Select **Plasma (Wayland)** at login and verify `echo "$XDG_SESSION_TYPE"` prints
-`wayland`. Installation from a TTY is supported; X11 sessions receive guidance,
-not an automatic session change. The desktop group installs KDE portal support;
-the KDE edition supplies Plasma, KWin, PowerDevil, and login/session management.
-Clipboard helpers prefer Wayland with an X11 fallback. XWayland applications can
-still run inside Plasma Wayland; no global Electron/Ozone flags are forced.
+## Install
 
-### System76 hardware
-
-On confirmed System76 hardware, selecting `core` (including the default install)
-or `hardware` also selects `system76-driver`, `system76-firmware`,
-`system76-power`, and the `firmware-manager` GUI. The planned laptop is a Lemur
-Pro **lemp14**; this model's real hardware behavior has not yet been verified.
-Detection reads `/sys/class/dmi/id/sys_vendor` without sudo, normalizes known
-System76 vendor names, and reports a safe product name. Other manufacturers and
-unavailable DMI information skip these packages. `--modules system76` also
-requires a confirmed System76 vendor; it cannot bypass the hardware check.
-
-Packages follow the normal repository-first, reviewed AUR installation flow.
-Manjaro branch compatibility must be checked at installation; no forced or partial
-upgrades. No extra DKMS packages are selected: modern kernels include
-`system76_acpi`. Thelio I/O, OLED, NVIDIA, and GNOME extensions are not generic
-Lemur requirements.
-
-The installer does not activate System76 services, add privileged groups, change
-graphics/boot settings, or flash firmware. Review package hooks and packaged
-units before manual activation. Check `power-profiles-daemon`, TLP, and
-`auto-cpufreq` before enabling `system76-power`; resolve competing backends
-yourself. Keep Plasma's PowerDevil desktop power management. Firmware updates
-and any firmware-manager polkit/group permissions remain manual.
-
-Validate KDE portal file pickers and screen sharing, plus an unlocked Secret
-Service provider for apps such as Signal. Verify KWallet's Secret Service
-support/configuration on the installed version or choose another provider;
-the installer does not configure wallets or autostart.
-
-References: [System76 driver guidance](https://system76.com/support/system76-driver/),
-[software roles](https://system76.com/support/system76-software/), and
-[current driver dependencies](https://aur.archlinux.org/packages/system76-driver).
-
-## Installation
-
-Run as your normal user, not root. You need networking and sudo access. Package
-installation and upstream/AUR code execution deserve review before running.
-Package transactions remain interactive. Paru's initial PKGBUILD build requires
-a controlling terminal and explicit approval. Manjaro can lag Arch repositories;
-AUR package existence does not guarantee compatibility with your Manjaro branch.
-Stop and investigate a dependency conflict rather than forcing a partial upgrade.
-
-The published bootstrap remains at
-`https://dotfiles.w3ird.tech/install.sh`. **Until this branch is reviewed and
-merged, that URL still serves the old installer.** For branch testing, download
-the migration version instead:
+Download the bootstrap, review it, then run it as your normal user:
 
 ```bash
-wget -O install.sh https://raw.githubusercontent.com/w3irdrobot/dotfiles/rewrite/arch-bash/install.sh
+wget -O install.sh https://dotfiles.w3ird.tech/install.sh
 less install.sh
-bash install.sh --ref rewrite/arch-bash
+bash install.sh
 ```
 
-Do not pipe an unreviewed download directly into a root shell. The bootstrap
-clones the public repository over HTTPS; a fresh machine does not need GitHub SSH
-keys. A normal checkout lives at
-`~/projects/github.com/w3irdrobot/dotfiles`. Keep that directory: your config
-symlinks point into it. Do not delete or move it after installation.
+You need networking, sudo access, and a terminal for interactive package and AUR
+review. Start with Manjaro's KDE edition rather than converting an XFCE install.
+Manjaro can lag Arch: check dependency conflicts against your branch instead of
+forcing a partial upgrade.
 
-## Layout
+The bootstrap clones `master` over HTTPS, so a fresh machine needs no GitHub SSH
+keys. It uses `~/projects/github.com/w3irdrobot/dotfiles`. Keep that checkout in
+place: your configuration symlinks point into it. Existing destination files,
+including a distribution's `.bashrc`, stop installation. Back them up and move
+them yourself before rerunning; the installer does not adopt or overwrite them.
+Links into this checkout can be reused; unrelated or dangling links and
+conflicting parent paths stop setup too.
+Custom `XDG_CONFIG_HOME` paths are rejected because configs deploy to `~/.config`.
 
-```text
-install.sh             downloadable bootstrap
-bin/dotfiles           local install/link/update command
-lib/                   shared installer helpers
-modules/<tool>.conf    tool group and package dependencies
-modules/<tool>.sh      custom setup where packages are insufficient
-stow/<tool>/           that tool's home-shaped configuration
-shell/                 shell helpers sourced directly from this checkout
-examples/              safe templates for machine-local settings
-tests/                 disposable fixtures, not live-machine setup
-```
+To test another branch, download that branch's `install.sh` from GitHub, review
+it, and pass `--ref BRANCH`. The public URL follows `master`.
 
-Core workstation, AI tools, and desktop applications are the default groups.
-OpenCode is the AI harness.
-Cloud/container, Bitcoin, and hardware-security tools are opt-in groups. Nix
-provides project environments; language toolchains and native build dependencies
-should live in project flakes instead of being installed globally. AUR's own
-build prerequisites are still system packages.
+## Choose what to install
 
-Package ownership prefers official Arch/Manjaro repositories, then suitable AUR
-packages. Bitwarden, OpenCode, and Nix use native repository packages, not
-Flatpak/npm/upstream installers. Nono is currently an explicit, checksum-verified
-upstream exception. The Nix module enables its packaged daemon and supplies
-user-level flakes configuration; it does not overwrite global Nix settings or
-mix a pre-existing upstream installation with the repository package.
-Brave is included in the desktop group via AUR's `brave-bin`, built/installed
-through paru and then tracked by pacman. It is not an official-repository target.
+The default groups are `core`, `ai`, and `desktop`. Cloud/container tools,
+Bitcoin applications, and hardware-security tools are opt-in through `cloud`,
+`bitcoin`, and `hardware`. Group selection replaces the defaults; explicit
+modules add to the selected groups, including tools disabled by default.
 
-From the checkout, use:
+From the checkout:
 
 ```bash
 bash bin/dotfiles install --dry-run
 bash bin/dotfiles install
 bash bin/dotfiles link
-# Group selection replaces the defaults; include core/ai/desktop if desired.
 bash bin/dotfiles install --groups core,ai,desktop,cloud
-```
-
-Some applications retain their previous off-by-default choices. Explicit module
-selection enables them without enabling an entire additional group:
-
-```bash
 bash bin/dotfiles install --modules slack
 ```
 
-The optional Bitcoin group installs native Bitcoin Core and Sparrow. Bitcoin's
-package hooks create standard system users/directories, but this installer does
-not start its service or configure mounted storage. Electrs installation, Tor,
-custom storage paths, and service management remain manual. Do not start those
-configs until their prerequisites and storage settings have been reviewed.
-Mullvad uses Extra;
-logging in, connecting, and daemon/service setup remain manual.
+`link` only prepares configuration links; it does not install packages. Repeat
+your `--groups` and `--modules` choices on later commands: selections are not saved.
+Successful install/link runs also provide a `~/.local/bin/dotfiles` launcher.
 
-## Conflicts and local settings
+Dry-runs print a plan without applying it. Normal runs log phases and commands,
+then print selection-specific next steps after success. `DEBUG=1` enables shell
+tracing, which can expose data processed by external commands: avoid it around
+credentials and redact traces before sharing them.
 
-Existing destination files are **not adopted, overwritten, or deleted**. This
-includes the `.bashrc` a distribution may create for you. Read the conflict
-report, back up the conflicting file yourself, then rerun. Existing symlinks
-belonging to this checkout may be reused; unrelated or dangling links must not
-be replaced silently.
+Packages come from official repositories first, then reviewed AUR builds through
+paru. Bitwarden, OpenCode V2, and Nix use native repository packages. Brave uses
+AUR's `brave-bin`. Nono is a checksum-pinned upstream binary. If repository paru
+is unavailable, the installer builds the [frozen fallback](modules/paru-recipe/README.md)
+with a Nix-supplied Rust toolchain and native libraries.
 
-Only `~/.bashrc` is deployed for Bash. It resolves its symlink back to this repo
-and loads `shell/startup.sh`, which sources init, variables, aliases, functions,
-prompt, and the Bitwarden helper at top level. No `.init`, `.functions`,
-`.variables`, `.aliases`,
-`.prompt`, `.bash_profile`, or `.hushlogin` links are created in home. Your
-distribution's existing login profile stays untouched; if you have a custom
-login profile, make sure it loads `~/.bashrc` for interactive Bash sessions.
-The installer requires unset/default `XDG_CONFIG_HOME` (`$HOME/.config`) and
-rejects a custom path before changing the machine; Stow's home-shaped tree does
-not relocate application configs.
+Nix supplies project development environments rather than global Rust/Node
+toolchains. Its module enables the packaged daemon and user-level flakes support,
+while preserving global settings. Existing upstream Nix installations require
+manual resolution before setup. See [project environments](docs/nix-projects.md).
 
-Put machine-specific environment overrides, secret or non-secret, in one file:
-**`~/.config/bash/variables.sh`** (fixed location, independent of `XDG_CONFIG_HOME`).
-Interactive Bash sources it after repo defaults, including Bitwarden, and after
-optional non-secret `local/bash/{init,aliases,functions}.sh` hooks. Checkout-local
-`local/bash/variables.sh` is no longer sourced. Move any existing settings manually;
-the installer never reads, creates, adopts, links, or modifies the private file.
-See `examples/local-variables.sh` for a commented template; create your own file
-with owner-only permissions (`0600`, ideally a `0700` parent directory).
+The Bitcoin group installs native Bitcoin Core and Sparrow. Review Tor, storage
+paths, and service configuration before using the supplied configs; electrs
+installation and wallet/key migration remain manual. Mullvad login, connection,
+and daemon setup are also manual. Docker-group membership requires an explicit
+`install --docker-group` and grants root-equivalent access.
 
-Managed nono profiles explicitly deny `~/.config/bash`. This protects file access,
-not values already exported into child processes: **AI processes can inherit
-exported secrets**. Prefer credential injection where available; do not assume
-Bitwarden injection is configured. Bash disables xtrace/verbose output while
-sourcing the file; do not re-enable tracing, print secrets, or install debug traps
-inside it. Unsandboxed tools are not protected by the nono rule. Other old home
-override files remain untouched and are not sourced. Keep Git overrides in
-`~/.gitconfig_local`. Never commit keys, tokens, wallet data, or authentication
-stores. Sign in to your password manager and configure SSH signing manually.
-Wallet/key migration remains manual and separate from workstation installation.
-Imported SSH host definitions belong in the machine-local `~/.ssh/config.local`,
-not the symlinked repository config.
-`secrets_export` follows that include at the top of the main config, accepting
-both whitespace and `keyword=value` syntax. It flattens each selected host's
-applicable global, wildcard/negated, repeated-host, and `Match all` settings in
-their original order, collecting all explicit identity files. It never runs
-`ssh -G` or config commands. Other/nested/conditional includes, conditional
-`Match`, hostname canonicalization, and identity paths requiring expansions or
-ambiguous quoting are refused; flatten/review those configs manually first.
-Use absolute or `~/` identity paths. Default/agent-only identities are not inferred.
-The archive uses flat key filenames: basename collisions (including public-key
-companions and reserved entries) stop export before staging or touching an
-existing archive. Rename colliding keys and update the config manually. Review
-the archive selection and verify a restore before wiping the source machine;
-key paths that differ on the destination still need manual adjustment.
-SSH import uses the archived `IdentityFile` entries to restore nonstandard key
-names too, not just `id_*`. Missing explicitly referenced private keys stop import;
-public companions are optional. Continue to test a restore before deleting originals.
-Explicit private identities stay mode `0600` even if their filename ends in `.pub`;
-public companions use `0644`. Existing differing files are warned about and skipped,
-not overwritten—check the restore summary before retiring the source machine.
-USB selection keeps exact mountpoints separate from displayed labels; failed
-discovery or an invalid picker selection aborts rather than selecting another path.
-Bitwarden's native Linux SSH-agent socket is `~/.bitwarden-ssh-agent.sock`.
-Enable the agent in the desktop app after signing in. An existing `SSH_AUTH_SOCK`
-is preserved; use your local shell override if you want Bitwarden to replace it.
-Its Secret Service provider is selected through package dependencies, without
-forcing session-service configuration.
+## Desktop and hardware
 
-The installer logs each phase and command, then prints selection-specific next
-steps after successful completion. Dry-runs are labelled as plans, not successful
-installations. Normal progress logs do not dump your environment or credential
-values. Optional `DEBUG=1` command tracing can expose data processed by external
-commands; avoid it around credentials and redact traces before sharing them.
+Select **Plasma (Wayland)** at login and check that `echo "$XDG_SESSION_TYPE"`
+prints `wayland`. TTY installation works too; an X11 session receives guidance
+rather than an automatic switch. The KDE edition supplies Plasma, KWin,
+PowerDevil, and login/session management. The desktop group adds KDE portal
+support. Clipboard helpers prefer Wayland with an X11 fallback, and XWayland
+apps can run without global Electron/Ozone flags.
+
+Test portal file pickers, screen sharing, and an unlocked Secret Service provider
+for apps such as Signal. Use KWallet if its installed version supports your setup,
+or choose another provider. Wallet configuration and autostart are yours to manage.
+
+On confirmed System76 hardware, `core` or `hardware` selects the driver, firmware,
+power, and firmware-manager packages. DMI detection gates explicit
+`--modules system76` too. Service activation, competing power backends, permissions,
+and firmware updates need manual review. See [System76 setup](docs/system76.md).
+Manjaro KDE/Wayland and Lemur Pro lemp14 hardware acceptance remain pending;
+[the testing guide](docs/testing.md) records the verified Arch scope.
+
+## Local settings and credentials
+
+Bash deploys only `~/.bashrc`, which loads helpers directly from this checkout's
+`shell/` directory. Keep your distribution's login profile; a custom profile
+should source `~/.bashrc` for interactive Bash sessions.
+
+Put machine-specific environment overrides in **`~/.config/bash/variables.sh`**.
+Interactive Bash loads it last, after repository defaults, the Bitwarden helper,
+and optional non-secret `local/bash/{init,aliases,functions}.sh` hooks. Use
+[`examples/local-variables.sh`](examples/local-variables.sh) as a template, with
+mode `0600` and ideally a `0700` parent directory. Setup never creates, reads, or
+changes the private file. Move legacy `local/bash/variables.sh` settings yourself;
+that file and old home-level helper files are no longer sourced.
+
+Managed nono profiles deny `~/.config/bash`, but **exported secrets can still
+reach AI child processes**. Prefer credential injection where available; Bitwarden
+injection is not configured automatically. Bash suppresses xtrace/verbose output
+while sourcing private overrides. Keep tracing and debug traps out of that file.
+Unsandboxed tools are outside these file-access protections.
+
+Keep Git identity/signing overrides in `~/.gitconfig_local` and imported SSH host
+definitions in `~/.ssh/config.local`, not the symlinked repository configs. Sign
+in to Bitwarden and enable its SSH agent manually. Bash defaults to
+`~/.bitwarden-ssh-agent.sock` only when `SSH_AUTH_SOCK` is unset. When the agent
+holds the private keys, keep only the `.pub` files in `~/.ssh`; `secrets_export`
+archives those public halves instead of failing on missing private keys.
+
+Keys, tokens, authentication stores, and wallet data stay outside Git. The
+[`secrets_export` / `secrets_import` guide](docs/secrets.md) covers the separate
+migration workflow and its SSH limitations. For disposable localhost certificates,
+run `generate_local_cert` in an empty directory; it uses a private umask and
+refuses existing outputs or symlinks.
 
 ## Updates
 
-When no native paru package is available, bootstrap uses the reviewed local
-`modules/paru-recipe/PKGBUILD`, not the mutable AUR recipe. Its upstream source
-and committed `Cargo.lock` are checksum-pinned: fetching uses `--locked`, building
-uses `--frozen`, and lockfile changes stop the build. Rust/Cargo are build-only
-Nix tools; paru links against native libraries. The fallback currently requires
-libalpm 16. Supporting another ABI requires a reviewed source/lock pin change,
-not an installation-time dependency update.
-Installer AUR upgrades exclude paru; native repository upgrades still include
-it. See [the frozen fallback notes](modules/paru-recipe/README.md) for the
-explicitly reviewed helper replacement workflow.
-
-Symlinks reflect your **local checkout**, not new GitHub commits. Config updates
-must fetch a clean, non-diverged checkout and link any new configs; system updates
-run a full pacman/AUR upgrade through paru. Neither action should run unattended
-or discard your local changes. Update-all is an explicit combination, not an
-automatic login hook.
+Symlinks follow your local checkout, not new GitHub commits. Update configs,
+packages, or both explicitly:
 
 ```bash
 bash bin/dotfiles update configs
@@ -226,55 +139,68 @@ bash bin/dotfiles update system
 bash bin/dotfiles update all
 ```
 
-Config-only updates do not install new dependency modules. Rerun `install` when a
-config change introduces a new package or setup action. Use the same `--groups`
-and `--modules` choices on subsequent runs; selections are explicit, not saved as
-hidden machine state. Updating symlinked config content can still require
-restarting the affected application.
+Config updates verify the repository origin and require a clean, non-diverged
+checkout before fast-forwarding and linking. They preserve local work and do not
+install new dependencies. Rerun `install` with the same selections when a config
+change adds a package or setup action, and restart affected apps afterward.
 
-AI setup installs and pins nono's `nolabs-ai/opencode@0.4.0` runtime pack.
-Existing package/profile conflicts stop setup; the installer never uses force
-to replace registry-managed assets.
-This downloads nono's OpenCode integration pack, including the base sandbox
-profile inherited by the repo's custom profiles. It is separate from installing
-the nono executable and is required before using the sandboxed `ai` helper.
-Run `ai` from a project directory. Its dev profile grants the current directory;
-granting all of `$HOME` would conflict with Linux credential protections.
-`ai setup` grants the dotfiles checkout, not the entire owner namespace. Both
-setup and dev sessions that can edit dotfiles can change shell startup code that
-will later run outside the sandbox. Treat those edits as trusted code and review
-them before opening a new shell; sandboxing cannot remove that persistence risk.
-Application, model-provider, and MCP sign-ins are separate personal authentication
-steps, not installer failures. Configure only the services you actually use.
+System updates perform a full native upgrade and AUR upgrade through paru.
+Repository OpenCode must stay on major V2; incompatible versions stop the
+transaction before package installation rather than freezing one package during
+a partial upgrade. Unmanaged OpenCode executables on `PATH` are refused without
+running them; aliases must resolve to native `/usr/bin/opencode`. Inspect and move
+conflicts manually. AUR upgrades exclude paru so the frozen fallback cannot be
+replaced by an unreviewed recipe. Native paru still
+updates in the full repository transaction.
 
-Nix's executable updates through pacman/paru; garbage collection remains an
-explicit maintenance action. Each project's
-`flake.lock` controls its dependency updates; see [project Nix environments](docs/nix-projects.md).
-OpenCode stays on V2: repository versions outside major 2 stop installation or
-system updates rather than being silently accepted. A newer patch/minor V2
-release is allowed. A future V3 transition requires a deliberate policy change.
-Unmanaged OpenCode executables on `PATH` (including npm/Bun installations) are
-refused without executing them; only aliases resolving to native `/usr/bin/opencode`
-are accepted. Inspect and move conflicting installations manually.
+Nix itself updates through pacman/paru. Each project owns its `flake.lock` updates;
+Nix garbage collection is separate maintenance. Nono version/digest changes need
+a reviewed repository change and another install run. Resolve conflicting older
+links manually rather than replacing unmanaged or dangling destinations.
 
-`generate_local_cert` uses a private umask for both localhost outputs and refuses
-existing key/certificate files or symlinks. Run it in an empty working directory.
+On Btrfs roots, system updates create a read-only pre-upgrade snapshot and refuse
+the package transaction if one cannot be created. The last five `dotfiles-*`
+snapshots are retained, package state is recorded under
+`~/.local/state/dotfiles/upgrades/`, and boot-critical package changes print a
+reboot warning. See [protected system upgrades](docs/upgrades.md) for checks and
+live-media rollback steps. Separate `/boot`, `/efi`, and `/boot/efi` partitions
+are not included in the root snapshot.
 
-Nono is a pinned upstream binary, not an AUR package. Upgrade its
-version/digest through a reviewed repo change, then rerun setup. If a changed
-pin conflicts with an older managed link, inspect and resolve that link manually;
-the installer must not silently replace an unmanaged or dangling destination.
+### Sandboxed AI sessions
 
-## Validation
+AI setup installs nono and pins its `nolabs-ai/opencode@0.4.0` runtime pack. The
+pack supplies the base sandbox integration inherited by the custom profiles;
+registry-managed conflicts stop setup instead of forcing replacement.
 
-See the `justfile` for local lint/test recipes and
-[the VM rehearsal guide](docs/testing.md) for actual Linux installation checks.
-Fixture tests cannot establish AUR build success, Nix daemon operation, Manjaro
-package availability, or desktop integration. Do not run operational installers
-on macOS merely to test syntax.
+Run `ai` from a project directory. Its dev profile grants that directory;
+`ai setup` grants the dotfiles checkout. Broad `$HOME` access conflicts with
+credential protections. Sessions allowed to edit dotfiles can also change shell
+code that later runs outside the sandbox: review those edits before opening a
+new shell. Application, provider, and MCP sign-ins are separate manual steps.
+Configure only the services you use.
 
-The Pages workflow publishes only from `master`; migration pull requests do not
-deploy. Moving the public endpoint to `install.w3ird.tech` requires a separate
-DNS/Pages change. Nothing in this migration changes DNS automatically.
-The repository's Pages settings must retain `dotfiles.w3ird.tech`, valid DNS,
-and HTTPS enforcement; a `CNAME` artifact does not configure an Actions deployment.
+## Repository layout
+
+```text
+install.sh             downloadable bootstrap
+bin/dotfiles           local install/link/update command
+lib/                   shared installer helpers
+modules/<tool>.conf    group and package metadata (data, not shell)
+modules/<tool>.sh      custom setup beyond package installation
+stow/<tool>/           home-shaped configuration
+shell/                 helpers sourced directly from this checkout
+examples/              templates for machine-local settings
+tests/                 disposable fixtures and VM drivers
+```
+
+## Validation and publishing
+
+Run `just validate` for shell lint and fixture tests. See [test coverage](tests/README.md)
+and [the Linux rehearsal guide](docs/testing.md) for what those checks establish
+and what still needs a real machine. Provisioning is Linux-only; syntax checks
+and disposable fixtures are safe on macOS.
+
+The Pages workflow publishes the bootstrap from `master` only. The public
+endpoint is `dotfiles.w3ird.tech`; Pages settings need that domain, valid DNS,
+and HTTPS enforcement. A `CNAME` artifact alone does not configure an Actions
+deployment. Moving to `install.w3ird.tech` would be a separate DNS/Pages change.

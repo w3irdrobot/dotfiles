@@ -5,7 +5,13 @@ if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
 DOTFILES_PHASE='CLI initialization'
 cli_exit() {
 	local status=$1
-	if ((status != 0)); then printf 'dotfiles: Failure during %s (exit %d).\n' "$DOTFILES_PHASE" "$status" >&2; fi
+	if ((status != 0)); then
+		printf 'dotfiles: Failure during %s (exit %d).\n' "$DOTFILES_PHASE" "$status" >&2
+		if [[ -n ${DOTFILES_UPGRADE_STATE:-} ]]; then
+			printf 'dotfiles: Pre-upgrade snapshot retained: %s\n' "$DOTFILES_UPGRADE_SNAPSHOT" >&2
+			printf 'dotfiles: Rollback notes: %s/rollback.txt\n' "$DOTFILES_UPGRADE_STATE" >&2
+		fi
+	fi
 }
 trap 'cli_exit "$?"' EXIT
 
@@ -83,10 +89,7 @@ main() {
 			export DOTFILES_UPDATED=1
 			local -a args=(--groups "$GROUPS_CSV")
 			if [[ -n $MODULES_CSV ]]; then args+=(--modules "$MODULES_CSV"); fi
-			if [[ $scope == all ]]; then
-				exec bash "$ROOT/bin/dotfiles" update all "${args[@]}"
-			fi
-			exec bash "$ROOT/bin/dotfiles" update configs "${args[@]}"
+			exec bash "$ROOT/bin/dotfiles" update "$scope" "${args[@]}"
 		fi
 	fi
 	load_modules
@@ -100,6 +103,7 @@ main() {
 		preflight_custom_modules
 		preflight_docker_membership
 		install_packages
+		end_system_upgrade
 		setup_modules
 		link_configs
 		docker_membership

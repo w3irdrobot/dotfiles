@@ -25,7 +25,7 @@ VM_HOME = Path("/Users/alex/.lima-dotfiles-test")
 INSTANCE = "dotfiles-arch"
 VM_DIR = VM_HOME / INSTANCE
 SSH_CONFIG = VM_DIR / "ssh.config"
-BOOTSTRAP_SHA = "af06b1115fa185b2609f63a01039457e298dac91de233e0538b858c4e0d1522e"
+BOOTSTRAP_SHA = "7c7e26825f3020aeb16b22dcc6120078bdeaeb9db14189319c5ad4f518f8c720"
 PROMPTS = (
     ":: Proceed with download? [Y/n]",
     ":: Proceed with installation? [Y/n]",
@@ -124,7 +124,7 @@ def ssh_command():
         '{ printf "Guest bootstrap checksum mismatch; refusing execution.\\n" >&2; exit 65; }; '
         'printf "Guest bootstrap checksum verified.\\n"; '
         'exec bash --noprofile --norc "$HOME/install-dotfiles.sh" '
-        '--ref rewrite/arch-bash --groups core'
+        '--ref master --groups core'
     )
     options = (
         "ControlMaster=no", "ControlPath=none", "ControlPersist=no",
