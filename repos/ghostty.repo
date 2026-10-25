@@ -1,0 +1,9 @@
+[dotfiles-ghostty]
+name=Ghostty (scottames COPR)
+baseurl=https://download.copr.fedorainfracloud.org/results/scottames/ghostty/fedora-$releasever-$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/scottames/ghostty/pubkey.gpg
+includepkgs=ghostty
+skip_if_unavailable=0
+priority=110
