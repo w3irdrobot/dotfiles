@@ -48,20 +48,38 @@ change; do not invoke OpenCode's self-updater on the pinned file. DNF does not
 update this binary. For an AI-only selection without the managed Bash config,
 ensure `~/.local/bin` is on PATH in your own shell.
 
+## Pinned native Bitwarden
+
+Selecting Bitwarden installs the native upstream x86_64 RPM using the version,
+URL, and SHA256 in `modules/bitwarden-release.json` (currently **2026.10.1**).
+The download must match both the checksum and expected RPM identity before the
+protected DNF upgrade/install flow. A verified cache is reused; conflicting files
+are not overwritten. Equal/newer installed versions are kept, not downgraded.
+
+Run `dotfiles check-updates` for installed, reviewed-pin, and published stable
+desktop versions. `dotfiles update system/all` also checks when Bitwarden is
+selected or installed. These checks do not change pins or install releases.
+Network/metadata errors report unknown status; optional notices do not fail a
+completed OS update. Dry-runs make no release/download requests.
+
+To update, review the official desktop release, update all three pin fields in
+a repository change, then rerun install/update with Bitwarden selected. There is
+no configured Bitwarden DNF repository or unattended updater. SHA256 pinning is
+artifact integrity verification, not an independent vendor signature; the
+reviewed RPM had no RSA/PGP signing tag. Dotfiles does not disable DNF signature
+policy; if local policy rejects the artifact, investigate rather than bypass it.
+
+Sign in and enable its SSH agent manually; the socket remains
+`~/.bitwarden-ssh-agent.sock`. No vault/login import is performed. A Flatpak
+changes that integration and is not a transparent replacement. Fedora's
+`libsecret` alone is not an unlocked Secret Service provider.
+
 ## Manual applications
 
 The first Fedora port keeps these module selections and configuration links but
 does **not** install the application. The installer prints this list for selected
 modules both during selection and in successful follow-up instructions.
 
-- **Bitwarden:** download the native Linux x86_64 RPM from
-  [Bitwarden](https://bitwarden.com/download/). Review/verify the release and
-  install the local RPM with `sudo dnf install ./<downloaded-file>.rpm`.
-  Enable its SSH agent after signing in; the existing socket is
-  `~/.bitwarden-ssh-agent.sock`. There is no official DNF repository, so later
-  native RPM releases require a separate manual update. A Flatpak changes the
-  socket location and is not a transparent replacement. Fedora's `libsecret`
-  library alone is not an unlocked Secret Service provider.
 - **Nerd Fonts:** Fedora's ordinary JetBrains Mono and Fira Code fonts are
   installed, but the configured Nerd Font family names and prompt glyphs require
   the patched fonts from [Nerd Fonts](https://www.nerdfonts.com/font-downloads).

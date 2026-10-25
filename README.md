@@ -68,6 +68,7 @@ users. Keep the checkout in place because the launcher and config links use it.
 | `dotfiles update configs` | Safely fast-forward the checkout and relink configs |
 | `dotfiles update system` | Update Fedora RPMs and run selected tool setup; no Git update |
 | `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, and config links |
+| `dotfiles check-updates` | Report installed/pinned/published Bitwarden desktop versions; no installation |
 | `dotfiles secrets export` | Interactively export selected GPG/SSH/Sparrow material to an encrypted archive |
 | `dotfiles secrets import` | Interactively restore an archive with the existing conflict protections |
 | `dotfiles --help` | Show usage and options |
@@ -93,8 +94,13 @@ are added only for selected modules. Existing conflicting definitions stop setup
 OpenCode V2 and nono use pinned, checksum-verified upstream binaries. Arch,
 pacman, paru, and AUR are no longer supported.
 
+Bitwarden uses a pinned, checksum-verified native upstream RPM. Run
+`dotfiles check-updates` for new desktop-release notices; system/all updates
+also check when it is selected or installed. New pins require review, not an
+automatic latest-version install. Sign-in and SSH-agent activation stay manual.
+
 **Some selected modules currently require manual application installation**, most
-notably Bitwarden's native RPM, Signal, Discord, Telegram, lazygit, and Nerd Fonts.
+notably Signal, Discord, Telegram, lazygit, and Nerd Fonts.
 Their configs still link; setup reports exactly which applications it did not
 install. See [package sources and manual steps](docs/packages.md), including RPM
 update responsibilities. This is not a claim that every previous app is automated.
@@ -125,8 +131,10 @@ or choose another provider. Wallet configuration and autostart are yours to mana
 
 On confirmed System76 hardware, `core` or `hardware` selects the driver, firmware,
 power, and firmware-manager packages. DMI detection gates explicit
-`--modules system76` too. Service activation, competing power backends, permissions,
-and firmware updates need manual review. See [System76 setup](docs/system76.md).
+`--modules system76` too. Install/system-update shows a service activation plan
+and asks before enabling daemons or masking competing power backends. Plasma
+PowerDevil stays intact; firmware flashing and privileged groups remain manual.
+See [System76 setup](docs/system76.md).
 Fedora KDE/Wayland and Lemur Pro lemp14 hardware acceptance remain pending;
 [the testing guide](docs/testing.md) separates current checks from historical Arch results.
 

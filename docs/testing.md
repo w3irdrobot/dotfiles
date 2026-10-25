@@ -47,7 +47,10 @@ complete; deleting it is a separate approved action.
 5. Open a fresh login shell. Check `nix --version`, daemon access, flakes support,
    and a project's locked dev shell without global Rust/Node toolchains.
 6. Install the default groups. Test Ghostty, VSCodium, clipboard behavior,
-   Bitwarden's SSH agent, and OpenCode/nono. In Plasma Wayland, check session type,
+    Bitwarden's RPM ownership, native launcher/SSH agent, and OpenCode/nono.
+    Run `dotfiles check-updates`; verify installed/pinned/published versions,
+    visible network-failure status, reviewed-pin updates, and no downgrades.
+    In Plasma Wayland, check session type,
    portal file pickers/screen sharing, and Signal persistence with an unlocked
    Secret Service provider. Test XWayland apps without global Electron flags and
    confirm TTY installation still works.
@@ -64,19 +67,21 @@ complete; deleting it is a separate approved action.
 10. Confirm setup leaves desktop settings, autologin, networking, Docker-group
     membership (unless requested), wallets, keys, and local credentials alone.
 11. On lemp14, verify DMI detection, Fedora/COPR dependency resolution, repeat install,
-    hotkeys, suspend/resume, and battery controls after manually reviewed service
-    activation. Resolve power-backend conflicts while keeping PowerDevil.
-    Confirm setup itself activates no System76 services, flashes no firmware,
-    and adds no privileged groups. A generic VM cannot verify these checks.
+     hotkeys, suspend/resume, and battery controls after confirmed service
+     activation. Check decline/no-terminal behavior before accepting the plan,
+     daemon health and wake enablement afterward, repeat-run idempotence, and
+     power-backend recovery failures. Keep PowerDevil. Confirm no firmware
+     flashing, privileged groups, or user notification timer changes.
+     A generic VM cannot verify the hardware behavior.
 
 12. Verify the explicit manual application report against
     [package sources](packages.md). Configuration links alone must not be treated
-    as an installed Bitwarden, Signal, Telegram, Discord, or Nerd Font.
+     as an installed Signal, Telegram, Discord, or Nerd Font.
 
 ## Fedora port local checks, 2026-10-25
 
 On the macOS development host, `just validate` passed Bash syntax, ShellCheck,
-shfmt, and **275 fixture tests (272 passed, three skipped)**. Skips were the two
+shfmt, and **309 fixture tests (306 passed, three skipped)**. Skips were the two
 real GNU Stow checks (Stow unavailable) and one case-sensitive-filename fixture
 on this case-insensitive filesystem. `python3 scripts/check-packages.py` passed
 offline syntax validation for all 73 RPM names; `git diff --check` passed.
@@ -96,6 +101,22 @@ help/previews, cross-platform dispatch without provisioning, and suppression of
 DEBUG/inherited tracing. They use stub scripts and synthetic data; no real keys,
 wallets, authentication stores, or secret archives were read. The longer-budget
 full run completed successfully after the earlier 120-second rerun timed out.
+
+Bitwarden/System76 follow-up fixtures cover checked native RPM preparation and
+cache reuse/conflicts, no downgrades, installed ownership, public desktop-release
+filtering/pagination/errors, read-free previews, terminal confirmation/decline,
+unit ownership/overrides, persistent backend masking, health checks, repeat runs,
+and partial activation/recovery failures. The initial expanded run exposed a
+duplicate Python fixture symlink; that fixture setup was corrected before the
+successful full rerun. These tests use only synthetic RPM bytes and systemd state.
+
+Read-only inspection verified the Bitwarden 2026.10.1 RPM SHA256 against the pin
+and its identity `bitwarden|2026.10.1|1|x86_64`; its header had digest tags but no
+RSA/PGP signing tag. Actual System76 Fedora RPM payloads confirmed the firmware,
+power, and wake unit names documented in [System76 setup](system76.md), and no
+driver `system76.service`. No package scripts were executed. A live public API
+check reported stable desktop 2026.10.1 and the matching reviewed digest; installed
+RPM status was correctly unknown on macOS, where RPM is unavailable.
 
 Separate read-only HTTPS metadata inspection found all 73 module RPM names for
 x86_64/noarch in Fedora 44 and the selected repositories. The pinned OpenCode

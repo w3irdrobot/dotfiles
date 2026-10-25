@@ -20,7 +20,6 @@ class NonoPack(unittest.TestCase):
 
     def setUp(self):
         test_dotfiles.Fixture.setUp(self)
-        (self.path / "python3").symlink_to(shutil.which("python3"))
         (self.path / "cmp").symlink_to(shutil.which("cmp"))
         self.config = self.home / ".config"
         self.root = self.config / "nono/packages/nolabs-ai/opencode"

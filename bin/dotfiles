@@ -31,6 +31,7 @@ usage() {
 	printf '%s\n' 'Usage: dotfiles install|link|update configs|update system|update all' \
 		'  [--groups core,ai,desktop] [--modules NAME[,NAME]] [--dry-run] [--docker-group (install only)]' \
 		'       dotfiles secrets export|import [--dry-run]' \
+		'       dotfiles check-updates [--dry-run]' \
 		'Explicit modules are additive, including default=false modules and other groups.' \
 		'Groups: core, ai, desktop (defaults); cloud, bitcoin, hardware (optional).' \
 		'Config updates fast-forward this checkout; system updates never update project flakes.'
@@ -82,6 +83,28 @@ manage_secrets() {
 	DEBUG=0 exec bash -- "$helper"
 }
 
+manage_update_check() {
+	local preview=0 help=0
+	while (($#)); do
+		case $1 in
+		--dry-run) preview=1 ;;
+		--help | -h) help=1 ;;
+		*) die 'check-updates accepts only --dry-run or --help.' ;;
+		esac
+		shift
+	done
+	if ((help)); then
+		printf '%s\n' 'Usage: dotfiles check-updates [--dry-run]' \
+			'Compare installed/pinned Bitwarden with the latest published stable desktop RPM.' \
+			'Read-only: no installation, authentication, or pin changes.'
+	elif ((preview)); then
+		printf 'PLAN ONLY: would query installed/pinned Bitwarden and public desktop releases; no network requests or changes applied.\n'
+	else
+		[[ -f $ROOT/scripts/check-updates.py && ! -L $ROOT/scripts/check-updates.py ]] || die 'Missing repository release checker or unexpected symlink.'
+		exec python3 "$ROOT/scripts/check-updates.py"
+	fi
+}
+
 main() {
 	DRY_RUN=0 GROUPS_CSV=core,ai,desktop MODULES_CSV='' DOCKER_GROUP=0
 	local command=${1:-} scope='' argument
@@ -92,6 +115,10 @@ main() {
 	shift
 	if [[ $command == secrets ]]; then
 		manage_secrets "$@"
+		return
+	fi
+	if [[ $command == check-updates ]]; then
+		manage_update_check "$@"
 		return
 	fi
 	if [[ $command == update ]]; then

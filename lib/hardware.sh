@@ -41,10 +41,7 @@ report_desktop_session() {
 }
 
 system76_next_steps() {
-	printf '  System76: packages selected for %s; no services were activated or firmware flashed by this installer. Review package hooks separately.\n' "$SYSTEM76_MODEL"
-	printf '  Before activating system76-power, inspect competing backends:\n'
-	printf '    systemctl status tuned.service tuned-ppd.service power-profiles-daemon.service tlp.service auto-cpufreq.service\n'
-	printf '  Resolve backend conflicts manually; keep Plasma PowerDevil (desktop power management).\n'
-	printf '  Inspect packaged units with systemctl cat system76.service system76-firmware-daemon.service com.system76.PowerDaemon.service before enabling the services you want.\n'
+	printf '  System76 packages selected for %s. Install/update offers confirmed power/firmware service activation; linking alone does not activate services.\n' "$SYSTEM76_MODEL"
+	printf '  Review the activation output; if deferred, rerun install/update in a terminal. Resolve unknown backend conflicts manually; keep Plasma PowerDevil.\n'
 	printf '  Review firmware-manager permissions/polkit locally; no privileged group membership was added. Firmware updates remain manual.\n'
 }

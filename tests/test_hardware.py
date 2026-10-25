@@ -95,7 +95,7 @@ printf 'PACKAGES: %s\\n' "${PACKAGES[*]}"
         for _ in range(2):
             result = self.helper(tail='system76_next_steps\n')
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn("Resolve backend conflicts manually", result.stdout)
+            self.assertIn("backend conflicts manually", result.stdout)
             self.assertIn("PowerDevil", result.stdout)
             self.assertEqual(before, self.snapshot())
         self.assertFalse(any(call[0] in ("sudo", "systemctl", "pacman", "paru")

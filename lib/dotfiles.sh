@@ -453,6 +453,8 @@ end_system_upgrade() {
 
 # shellcheck source=lib/fedora.sh
 source "$ROOT/lib/fedora.sh"
+# shellcheck source=lib/bitwarden.sh
+source "$ROOT/lib/bitwarden.sh"
 
 # Keep these PATH guards identical to their standalone copies in install.sh.
 preflight_native_opencode_paths() {
@@ -495,6 +497,8 @@ preflight_custom_modules() {
 	local module
 	for module in "${MODULES[@]}"; do
 		case $module in
+		bitwarden) preflight_bitwarden ;;
+		system76) bash "$ROOT/modules/system76.sh" --check ;;
 		opencode) bash "$ROOT/modules/opencode.sh" --check ;;
 		nono) bash "$ROOT/modules/$module.sh" --check ;;
 		esac
@@ -511,6 +515,8 @@ setup_modules() {
 			log 'SSH permission changes are deferred until config-link preflight finishes.'
 		elif [[ $module == nix ]]; then
 			setup_nix --bootstrap
+		elif [[ $module == bitwarden ]]; then
+			if ((! DRY_RUN)); then validate_bitwarden_install; fi
 		elif [[ -f $ROOT/modules/$module.sh ]]; then
 			run bash "$ROOT/modules/$module.sh"
 		fi
@@ -543,7 +549,8 @@ update_system() {
 	install_packages
 	end_system_upgrade
 	setup_modules
-	log 'Nix and native applications are repository-managed; project flake.lock updates remain project-owned.'
+	check_bitwarden_release_notice
+	log 'DNF manages repository RPMs; standalone pins and project flake.lock updates remain explicitly reviewed.'
 }
 
 print_next_steps() {

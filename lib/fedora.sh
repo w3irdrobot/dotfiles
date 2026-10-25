@@ -58,6 +58,7 @@ install_packages() {
 	preflight_native_opencode_paths
 	preflight_repositories
 	if module_selected nix; then preflight_nix; fi
+	if module_selected bitwarden; then preflight_bitwarden; fi
 	local package available name
 	local -a targets=(git stow wget curl ca-certificates xz tar coreutils diffutils btrfs-progs)
 	local -A seen=() found=()
@@ -84,6 +85,10 @@ install_packages() {
 			[[ -v found[$package] ]] || die "RPM package unavailable: $package; no package transaction started. See docs/packages.md."
 		done
 	fi
+	if module_selected bitwarden && ((BITWARDEN_INSTALL_NEEDED)); then
+		prepare_bitwarden_rpm
+		targets+=("$BITWARDEN_RPM_TARGET")
+	fi
 	log "RPM package targets (${#targets[@]}): ${targets[*]}"
 	phase 'Upgrade protection: checking Btrfs snapshots and free space'
 	begin_system_upgrade
@@ -92,6 +97,7 @@ install_packages() {
 	# packages that are not already cached on a fresh workstation.
 	run sudo dnf --setopt=cacheonly=metadata --best upgrade
 	phase 'Selected Fedora applications: installing RPM packages'
+	if module_selected bitwarden && ((BITWARDEN_INSTALL_NEEDED && ! DRY_RUN)); then verify_bitwarden_rpm "$BITWARDEN_RPM_TARGET"; fi
 	run sudo dnf --setopt=cacheonly=metadata --best install "${targets[@]}"
 	if module_selected nix; then
 		phase 'Native Fedora Nix: preparing the daemon before linking'

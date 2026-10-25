@@ -17,8 +17,10 @@ Nix ownership/readiness, pinned upstream OpenCode V2, and RPM package inventorie
 Btrfs upgrade protection. Configure only selected application repositories;
 System76 remains DMI-gated. Preserve interactive package/key confirmation.
 
-Do not switch desktops, disable SELinux, change networking or competing power
-services, add privileged hardware groups, or flash firmware. The existing user
+Do not switch desktops, disable SELinux, change networking, add privileged
+hardware groups, or flash firmware. Competing power services were initially
+untouched; the accepted follow-up below adds confirmed backend changes.
+The existing user
 change in `shell/functions.sh` was initially excluded; the review follow-up
 explicitly includes it in the PR. It adds the `ai rust` selector and the user's
 nono quiet/diagnostic options without creating another managed profile.
@@ -37,6 +39,43 @@ separately from real installation testing. Fedora VM and Lemur Pro boot,
 suspend, networking, audio, portal, and power testing require a real Linux host.
 
 ## Sources and remaining work
+
+### Accepted follow-up: Bitwarden and hardware activation
+
+Accepted on 2026-10-25: install Bitwarden's native upstream RPM with a reviewed
+version/URL/SHA256 pin. Check official stable **desktop** releases via
+`dotfiles check-updates` and during `update system/all`, rather than introducing
+a scheduled job or silently installing an unreviewed latest release. Report
+installed, pinned, and published versions separately. A release-check failure
+must be visible, not reported as up-to-date; optional notices must not prevent
+normal OS security updates. Dry-runs make no network requests.
+
+Also accepted: on detected System76 hardware, show the planned service/power
+backend changes and ask for confirmation before activation. Inspect actual
+packaged units and competing backends, preserve Plasma PowerDevil, and do not
+silently alter unknown setups. Firmware flashing, graphics/boot changes, and
+privileged group membership remain manual.
+
+Implementation slices (both authorized):
+
+1. **Native Bitwarden and release notices:** download/verify the RPM before any
+   package transaction, include it in the protected install flow, refuse unsafe
+   ownership/downgrades, and provide read-only release checks. Fixture tests must
+   cover exact artifact/metadata matching, failures before transactions, repeated
+   installation, newer installed releases, desktop filtering, pagination/network
+   failures, and read-free dry-runs. No vault or authentication data is accessed.
+2. **Confirmed System76 activation:** discover/validate packaged service units,
+   show conflicting power backends, obtain terminal confirmation, activate the
+   selected services, and check health. Tests must cover missing units, other
+   vendors, decline/EOF, partial failures, repeat runs, no-op dry-runs, and keeping
+   PowerDevil/firmware/groups untouched. Actual RPM/service behavior still needs
+   Fedora/Lemur Pro acceptance.
+
+Status: implemented with synthetic artifact/release/systemd fixtures; Fedora
+installation and hardware acceptance remain pending. These choices supersede
+the manual Bitwarden installation and entirely manual System76 activation in
+the first Fedora slice. See [package sources](packages.md) and
+[System76 setup](system76.md) for the current behavior and recovery boundaries.
 
 - [Fedora KDE 44](https://fedoraproject.org/kde/download/).
 - [Native Fedora Nix setup](https://fedoraproject.org/wiki/Changes/Nix_package_tool):

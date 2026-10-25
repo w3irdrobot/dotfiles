@@ -177,7 +177,7 @@ os.chmod(args[1], int(args[0], 8))
         packages = next(line.split("=", 1)[1].split() for line in text.splitlines() if line.startswith("packages="))
         self.assertTrue(set(packages).isdisjoint({"opencode", "nodejs", "npm"}))
 
-    def test_bitwarden_metadata_reports_manual_native_rpm_without_custom_installer(self):
+    def test_bitwarden_metadata_selects_native_rpm_prerequisites_without_manual_install(self):
         for metadata in (self.repo / "modules").glob("*.conf"):
             if metadata.name != "bitwarden.conf":
                 metadata.unlink()
@@ -187,7 +187,8 @@ os.chmod(args[1], int(args[0], 8))
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("Manual application setup required: bitwarden", result.stderr)
+        self.assertNotIn("Manual application setup required: bitwarden", result.stderr)
+        self.assertIn('"version":', (self.repo / "modules/bitwarden-release.json").read_text())
         self.assertFalse((self.repo / "modules/bitwarden.sh").exists())
 
     def run_agent_helper(self, local_override=False):

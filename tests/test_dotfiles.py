@@ -27,7 +27,7 @@ class Fixture(unittest.TestCase):
         self.repo.mkdir()
         # Copy only runtime inputs, never the checkout's Git metadata or private files.
         for name in ("install.sh", ".gitignore", "bin", "lib", "modules", "stow",
-                      "shell", "examples", "repos"):
+                      "shell", "examples", "repos", "scripts"):
             source = ROOT / name
             if source.is_dir():
                 shutil.copytree(source, self.repo / name, symlinks=True)
@@ -50,12 +50,13 @@ class Fixture(unittest.TestCase):
         self.destination = self.home / "projects/github.com/w3irdrobot/dotfiles"
         # Fixture copies replace only fixed host paths, not behavior or host checks.
         # This keeps Linux checks runnable on macOS without production-only test flags.
-        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "lib/fedora.sh", "modules/nix.sh"):
+        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "lib/fedora.sh", "lib/bitwarden.sh", "modules/nix.sh", "modules/system76.sh"):
             path = self.repo / name
             if path.exists():
                 text = path.read_text().replace("/etc/os-release", str(self.os_release))
                 text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
                 text = text.replace("/etc/yum.repos.d", str(self.base / "repos"))
+                text = text.replace("/usr/bin/bitwarden", str(self.base / "usr/bin/bitwarden"))
                 for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
                                   str(self.base / fixed.lstrip("/")), text)
@@ -64,7 +65,7 @@ class Fixture(unittest.TestCase):
         for name in ("bash", "dirname", "basename", "readlink", "realpath", "find",
                      "sort", "cat", "grep", "sed", "awk", "tr", "cut", "head", "tail",
                      "mkdir", "mktemp", "rm", "rmdir", "ln", "cp", "mv", "chmod", "date",
-                     "id", "wc", "tee", "env", "sleep", "touch"):
+                      "id", "wc", "tee", "env", "sleep", "touch", "python3"):
             target = shutil.which(name)
             if target:
                 (self.path / name).symlink_to(target)

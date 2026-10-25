@@ -5,7 +5,8 @@
 - Target x86_64 Fedora KDE Plasma Desktop 44 with Bash 5+. Do not run provisioning on
   macOS. Leave the existing desktop, login, and networking settings alone.
 - Primary desktop baseline: Fedora 44 KDE Plasma on Wayland; no Arch support.
-  System76 packages are DMI-gated; activation and firmware updates remain manual.
+  System76 packages are DMI-gated; service activation requires terminal
+  confirmation. Firmware flashing and privileged groups remain manual.
 - `install.sh` is the downloadable bootstrap; `bin/dotfiles` is the local entry
   point. Keep bootstrap logic small and machine setup in focused modules.
 - `modules/<tool>.conf` describes a tool's group and package names as data, not
@@ -27,6 +28,9 @@
   available; Nix uses Fedora nix/nix-daemon. Keep OpenCode artifact/hash and PATH
   checks; never silently replace a conflicting executable.
   Nix daemon configuration is explicit; never mix upstream and repository Nix.
+- Bitwarden uses the reviewed upstream RPM pin in `modules/bitwarden-release.json`.
+  Check its SHA256 and RPM identity before protected installation; do not downgrade
+  an equal/newer installed version. CLI release checks are notices, not auto-updates.
 
 ## Safety
 
