@@ -19,7 +19,16 @@ System76 remains DMI-gated. Preserve interactive package/key confirmation.
 
 Do not switch desktops, disable SELinux, change networking or competing power
 services, add privileged hardware groups, or flash firmware. The existing user
-change in `shell/functions.sh` is outside this migration.
+change in `shell/functions.sh` was initially excluded; the review follow-up
+explicitly includes it in the PR. It adds the `ai rust` selector and the user's
+nono quiet/diagnostic options without creating another managed profile.
+
+The review follow-up also exposes the existing interactive migration tools as
+`dotfiles secrets export` and `dotfiles secrets import`. They bypass Fedora
+provisioning, retain the helpers' Linux/macOS behavior and current-directory
+fallback, and never run from install/update. Help/dry-run are read-free dispatch
+previews; real invocations suppress tracing and use checkout-owned scripts rather
+than similarly named PATH commands. See [secrets migration](secrets.md).
 
 Acceptance: fixture tests cover Fedora/version rejection, no-op dry-runs, DNF
 failure propagation, missing packages, V2 policy, source selection, conflicts,

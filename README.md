@@ -68,9 +68,13 @@ users. Keep the checkout in place because the launcher and config links use it.
 | `dotfiles update configs` | Safely fast-forward the checkout and relink configs |
 | `dotfiles update system` | Update Fedora RPMs and run selected tool setup; no Git update |
 | `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, and config links |
+| `dotfiles secrets export` | Interactively export selected GPG/SSH/Sparrow material to an encrypted archive |
+| `dotfiles secrets import` | Interactively restore an archive with the existing conflict protections |
 | `dotfiles --help` | Show usage and options |
 
-Add `--dry-run` to preview any lifecycle command. `--groups` replaces the default
+Add `--dry-run` to preview any lifecycle command. Secrets previews describe the
+operation without reading keys, wallets, or archives; their selections are
+interactive, not controlled by `--groups` or `--modules`. `--groups` replaces the default
 groups; `--modules` adds explicit tools. Repeat these selections on subsequent
 commands. `install --docker-group` is a separate, explicit root-equivalent
 permission opt-in. There is no uninstall, automatic rollback, Fedora release
@@ -79,7 +83,8 @@ upgrade, or manual-application updater command.
 Dry-runs print a plan without applying it. Normal runs log phases and commands,
 then print selection-specific next steps after success. `DEBUG=1` enables shell
 tracing, which can expose data processed by external commands: avoid it around
-credentials and redact traces before sharing them.
+credentials and redact traces before sharing them. `dotfiles secrets` suppresses
+DEBUG/xtrace/verbose tracing before dispatching the migration helper.
 
 Packages come from Fedora first, with narrowly scoped vendor RPM repositories
 for Brave/Mullvad and documented community RPM sources for Ghostty, VSCodium,

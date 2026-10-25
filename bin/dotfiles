@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
+if [[ ${1:-} == secrets ]]; then
+	# Never trace key/wallet processing, including inherited shell tracing.
+	set +x +v
+elif [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
 
 DOTFILES_PHASE='CLI initialization'
 cli_exit() {
@@ -25,9 +30,56 @@ DOTFILES_PHASE='CLI argument validation'
 usage() {
 	printf '%s\n' 'Usage: dotfiles install|link|update configs|update system|update all' \
 		'  [--groups core,ai,desktop] [--modules NAME[,NAME]] [--dry-run] [--docker-group (install only)]' \
+		'       dotfiles secrets export|import [--dry-run]' \
 		'Explicit modules are additive, including default=false modules and other groups.' \
 		'Groups: core, ai, desktop (defaults); cloud, bitcoin, hardware (optional).' \
 		'Config updates fast-forward this checkout; system updates never update project flakes.'
+}
+
+secrets_usage() {
+	printf '%s\n' 'Usage: dotfiles secrets export|import [--dry-run] [--help]' \
+		'Runs the existing interactive GPG/SSH/Sparrow archive migration tools.' \
+		'Selections and archive locations are interactive; no passphrases in arguments.' \
+		'Dry-runs only describe dispatch; they do not inspect keys, wallets, or archives.' \
+		'Install/update never run secrets migration automatically. See docs/secrets.md.'
+}
+
+manage_secrets() {
+	local action=${1:-} helper preview=0 help=0
+	case $action in
+	export | import) shift ;;
+	--help | -h)
+		(($# == 1)) || die 'Use dotfiles secrets --help without other arguments.'
+		secrets_usage
+		return 0
+		;;
+	*) die 'secrets needs export or import; see dotfiles secrets --help.' ;;
+	esac
+	while (($#)); do
+		case $1 in
+		--dry-run) preview=1 ;;
+		--help | -h) help=1 ;;
+		*) die 'Secrets commands accept only --dry-run or --help; selections are interactive.' ;;
+		esac
+		shift
+	done
+	if ((help)); then
+		secrets_usage
+		return 0
+	fi
+	if ((preview)); then
+		printf 'PLAN ONLY: would run interactive secrets %s. No keys, wallets, or archives were inspected or changed.\n' "$action"
+		return 0
+	fi
+	((EUID != 0)) || die 'Run secrets migration as your regular user, not root.'
+	DOTFILES_PHASE="Secrets $action"
+	helper=$ROOT/stow/gnupg/.local/bin/secrets_$action
+	[[ -f $helper && ! -L $helper ]] || die 'Missing repository secrets helper or unexpected symlink.'
+	# Use the reviewed checkout, not a same-named command on PATH. Preserve the
+	# caller's working directory for the helpers' no-removable-media fallback.
+	# Helpers already handle Linux/macOS and dependency/interactive checks; this
+	# dispatch must not invoke Fedora provisioning or load machine-local secrets.
+	DEBUG=0 exec bash -- "$helper"
 }
 
 main() {
@@ -38,6 +90,10 @@ main() {
 		exit 2
 	}
 	shift
+	if [[ $command == secrets ]]; then
+		manage_secrets "$@"
+		return
+	fi
 	if [[ $command == update ]]; then
 		(($#)) || die 'update needs configs, system, or all'
 		scope=$1

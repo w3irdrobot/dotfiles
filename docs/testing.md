@@ -76,7 +76,7 @@ complete; deleting it is a separate approved action.
 ## Fedora port local checks, 2026-10-25
 
 On the macOS development host, `just validate` passed Bash syntax, ShellCheck,
-shfmt, and **266 fixture tests (263 passed, three skipped)**. Skips were the two
+shfmt, and **275 fixture tests (272 passed, three skipped)**. Skips were the two
 real GNU Stow checks (Stow unavailable) and one case-sensitive-filename fixture
 on this case-insensitive filesystem. `python3 scripts/check-packages.py` passed
 offline syntax validation for all 73 RPM names; `git diff --check` passed.
@@ -88,6 +88,14 @@ failures; selected-source conflicts and repeat setup; native Nix package policy;
 and pinned OpenCode archive/binary checks, failed-download retry, no-clobber
 publication, V2 reporting, and PATH shadows. Existing snapshot fixtures now use
 Fedora's `root` subvolume and RPM inventories.
+
+The review follow-up adds launcher-from-PATH coverage plus eight secrets CLI
+dispatch fixtures. Those cover interactive helper selection, preserved working
+directory and exit status, no PATH fallback, rejected arguments, read-free
+help/previews, cross-platform dispatch without provisioning, and suppression of
+DEBUG/inherited tracing. They use stub scripts and synthetic data; no real keys,
+wallets, authentication stores, or secret archives were read. The longer-budget
+full run completed successfully after the earlier 120-second rerun timed out.
 
 Separate read-only HTTPS metadata inspection found all 73 module RPM names for
 x86_64/noarch in Fedora 44 and the selected repositories. The pinned OpenCode
