@@ -65,6 +65,12 @@ The download must match both the checksum and expected RPM identity before the
 protected DNF upgrade/install flow. A verified cache is reused; conflicting files
 are not overwritten. Equal/newer installed versions are kept, not downgraded.
 
+The vendor RPM owns `/opt/Bitwarden/bitwarden`; its install script creates the
+`/usr/bin/bitwarden` symlink directly or through `/etc/alternatives/bitwarden`.
+That generated launcher need not be RPM-owned. Validation resolves the launcher
+and checks the executable target's package ownership, refusing unexpected or
+dangling targets rather than launching the app to test it.
+
 Run `dotfiles check-updates` for installed, reviewed-pin, and published stable
 desktop versions. `dotfiles update system/all` also checks when Bitwarden is
 selected or installed. These checks do not change pins or install releases.

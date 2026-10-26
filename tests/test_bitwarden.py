@@ -42,6 +42,7 @@ if os.environ.get('TEST_RPM_ERROR') == '1': sys.exit(97)
 if '-qp' in args:
     print(os.environ.get('TEST_HEADER', 'bitwarden|' + os.environ['TEST_VERSION'] + '|1|x86_64'))
 elif '-qf' in args:
+    if os.environ.get('TEST_UNOWNED_LAUNCHER') and args[-1].endswith('/usr/bin/bitwarden'): sys.exit(1)
     print(os.environ.get('TEST_OWNER', 'bitwarden'))
 elif '-q' in args:
     installed = os.environ.get('TEST_INSTALLED', '')
@@ -178,6 +179,38 @@ MODULES=(bitwarden); PACKAGES=(libsecret python3 curl)
         self.assertEqual(0, self.library('validate_bitwarden_install').returncode)
         self.env['TEST_OWNER'] = 'unmanaged'
         self.assert_failed(self.library('validate_bitwarden_install'), 'installation is incomplete')
+
+    def test_vendor_direct_and_alternatives_symlinks_validate_the_owned_opt_target(self):
+        native = self.base / 'opt/Bitwarden/bitwarden'
+        native.parent.mkdir(parents=True)
+        native.write_text('never execute this fixture')
+        native.chmod(0o755)
+        self.binary.parent.mkdir(parents=True)
+        alternative = self.base / 'etc/alternatives/bitwarden'
+        alternative.parent.mkdir(parents=True)
+        alternative.symlink_to(native)
+        self.env['TEST_INSTALLED'] = '2026.10.1'
+        self.env['TEST_UNOWNED_LAUNCHER'] = '1'
+        for target in (native, alternative):
+            self.binary.symlink_to(target)
+            self.log.unlink(missing_ok=True)
+            result = self.library('preflight_bitwarden; validate_bitwarden_install')
+            self.assertEqual(0, result.returncode, result.stderr)
+            owners = [call[-1] for call in self.calls() if call[0] == 'rpm' and '-qf' in call]
+            self.assertTrue(owners)
+            self.assertEqual({str(native.resolve())}, set(owners))
+            self.binary.unlink()
+
+    def test_vendor_launcher_cannot_point_to_an_arbitrary_or_dangling_target(self):
+        target = self.base / 'unexpected-executable'
+        target.write_text('never execute')
+        target.chmod(0o755)
+        self.binary.parent.mkdir(parents=True)
+        self.binary.symlink_to(target)
+        self.assert_failed(self.library('preflight_bitwarden'), 'unexpected executable')
+        target.unlink()
+        self.assert_failed(self.library('preflight_bitwarden'), 'missing its native executable')
+        self.assertEqual([], self.transactions())
 
     def test_update_notices_fail_visibly_without_failing_completed_os_updates(self):
         checker = self.repo / "scripts/check-updates.py"

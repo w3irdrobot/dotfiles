@@ -19,17 +19,31 @@ check_bitwarden_cache() {
 	[[ ! -L $BITWARDEN_RPM_TARGET && (! -e $BITWARDEN_RPM_TARGET || -f $BITWARDEN_RPM_TARGET) ]] || die 'Conflicting Bitwarden RPM cache destination; inspect it manually.'
 }
 
+check_bitwarden_executable() {
+	local target owner
+	[[ -x /usr/bin/bitwarden ]] || die 'Installed Bitwarden RPM is missing its native executable; repair the package before continuing.'
+	target=$(realpath -e -- /usr/bin/bitwarden) || die 'Could not resolve the native Bitwarden launcher; inspect it manually.'
+	# The vendor RPM owns /opt/Bitwarden/bitwarden. Its post-install script
+	# creates /usr/bin/bitwarden through alternatives (or a direct symlink),
+	# so the launcher itself is not necessarily recorded as RPM-owned.
+	case $target in
+	/opt/Bitwarden/bitwarden | /usr/bin/bitwarden) ;;
+	*) die 'Native Bitwarden launcher resolves to an unexpected executable; inspect it manually.' ;;
+	esac
+	owner=$(rpm -qf --qf '%{NAME}\n' "$target") || die 'Bitwarden launcher target is not an RPM-owned native executable; inspect it manually.'
+	[[ $owner == bitwarden ]] || die 'Native Bitwarden executable must be owned by the bitwarden RPM; installation is incomplete.'
+}
+
 preflight_bitwarden() {
 	load_bitwarden_pin
 	check_bitwarden_cache
 	BITWARDEN_INSTALL_NEEDED=1
-	local installed status comparison owner
+	local installed status comparison
 	if [[ -e /usr/bin/bitwarden || -L /usr/bin/bitwarden ]]; then
-		owner=$(rpm -qf --qf '%{NAME}\n' /usr/bin/bitwarden) || die 'Unmanaged native Bitwarden executable; inspect it manually before RPM installation.'
-		[[ $owner == bitwarden && -x /usr/bin/bitwarden ]] || die 'Native Bitwarden must be executable and owned by the bitwarden RPM.'
+		check_bitwarden_executable
 	fi
 	if installed=$(rpm -q --qf '%{VERSION}\n' bitwarden 2>/dev/null); then
-		[[ -x /usr/bin/bitwarden ]] || die 'Installed Bitwarden RPM is missing its native executable; repair the package before continuing.'
+		check_bitwarden_executable
 		comparison=$(python3 "$ROOT/scripts/check-updates.py" --compare-bitwarden "$installed") || die 'Could not compare the installed Bitwarden RPM with its reviewed pin.'
 		if [[ $comparison == equal || $comparison == newer ]]; then
 			# Consumed by install_packages in lib/fedora.sh.
@@ -74,9 +88,7 @@ prepare_bitwarden_rpm() (
 )
 
 validate_bitwarden_install() {
-	local owner
-	owner=$(rpm -qf --qf '%{NAME}\n' /usr/bin/bitwarden) || die 'Bitwarden installation did not provide an RPM-owned native executable.'
-	[[ $owner == bitwarden && -x /usr/bin/bitwarden ]] || die 'Bitwarden installation is incomplete; inspect/repair the RPM before continuing.'
+	check_bitwarden_executable
 }
 
 check_bitwarden_release_notice() {

@@ -212,6 +212,17 @@ All 17 Fedora package-flow tests, shell checks, and diff whitespace checks passe
 the full suite was not rerun locally for this filter-only fix. Existing installs
 need the manual repository-line update documented in [package sources](packages.md).
 
+After RPM installation, Bitwarden validation incorrectly required RPM ownership
+of `/usr/bin/bitwarden`. Re-downloading the reviewed 2026.10.1 RPM and matching its
+SHA256 confirmed the owned executable is `/opt/Bitwarden/bitwarden`; the RPM's
+post-install script creates the launcher through alternatives or a direct symlink.
+No package script was executed during this inspection. Validation/preflight now
+check the resolved native target and its RPM ownership. Fixtures reproduce an
+unowned launcher with both link layouts and reject arbitrary/dangling targets.
+The final `just validate` passed shell checks and **341 fixture tests (338 passed,
+three skipped)**; the original Stow/filesystem skips remain. Confirmation on the
+user's Fedora installation is still needed.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

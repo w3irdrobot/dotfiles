@@ -60,7 +60,8 @@ class Fixture(unittest.TestCase):
                     text = text.replace('/dev/tty', str(self.terminal))
                 text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
                 text = text.replace("/etc/yum.repos.d", str(self.base / "repos"))
-                text = text.replace("/usr/bin/bitwarden", str(self.base / "usr/bin/bitwarden"))
+                text = text.replace("/usr/bin/bitwarden", str(self.base.resolve() / "usr/bin/bitwarden"))
+                text = text.replace("/opt/Bitwarden/bitwarden", str(self.base.resolve() / "opt/Bitwarden/bitwarden"))
                 text = text.replace("/usr/bin/discord", str(self.base / "usr/bin/discord"))
                 for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
