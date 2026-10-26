@@ -5,7 +5,7 @@ repository definitions from `repos/` as `/etc/yum.repos.d/dotfiles-<name>.repo`:
 
 | Module | Source | RPMs allowed from that source |
 | --- | --- | --- |
-| brave | Brave vendor stable | brave-browser |
+| brave | Brave vendor stable | brave-browser, brave-keyring |
 | mullvad | Mullvad vendor stable | mullvad-vpn |
 | vscodium | Upstream-documented paulcarroty repository | codium |
 | ghostty | Upstream-documented scottames/ghostty COPR | ghostty |
@@ -18,6 +18,12 @@ source is unavailable. Review signing-key prompts. Existing destination files
 must match byte-for-byte; dotfiles refuses to overwrite a modified definition.
 If you already enabled one of these sources under another filename, resolve
 duplicate or conflicting repository definitions manually.
+
+If you installed the earlier Brave definition containing only
+`includepkgs=brave-browser`, review the updated definition and use
+`sudoedit /etc/yum.repos.d/dotfiles-brave.repo` to change that line to
+`includepkgs=brave-browser brave-keyring` before rerunning. Brave requires its
+keyring RPM; the previous filter hid that dependency. Keep signature checks on.
 
 Fedora supplies Nix (`nix nix-daemon`), Bitcoin Core
 (`bitcoin-core-server bitcoin-core-utils`), Docker-compatible Moby

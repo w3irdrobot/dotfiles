@@ -203,6 +203,15 @@ package-flow tests, shell checks, and `git diff --check` passed for this follow-
 the full suite was not rerun locally. Source:
 [Fedora 44 wget2-wget files/provides](https://packages.fedoraproject.org/pkgs/wget2/wget2-wget/fedora-44.html).
 
+The first selected-application transaction then failed on Brave's required
+`brave-keyring` RPM: our `includepkgs` filter allowed only `brave-browser`.
+The filter now permits exactly both names, with package signature checking
+unchanged. The DNF fixture models that dependency being filtered out, and tests
+also preserve refusal to overwrite an older installed repository definition.
+All 17 Fedora package-flow tests, shell checks, and diff whitespace checks passed;
+the full suite was not rerun locally for this filter-only fix. Existing installs
+need the manual repository-line update documented in [package sources](packages.md).
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

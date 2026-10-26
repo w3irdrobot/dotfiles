@@ -32,6 +32,13 @@ if args[0] == 'cp':
 elif args[0] == 'dnf':
     if os.environ.get('TEST_DNF_FAIL') in args:
         sys.exit(43)
+    if 'install' in args and 'brave-browser' in args:
+        import configparser
+        repo = configparser.ConfigParser()
+        repo.read(Path(os.environ['TEST_LOG']).parent / 'repos/dotfiles-brave.repo')
+        allowed = repo['dotfiles-brave']['includepkgs'].split()
+        if 'brave-keyring' not in allowed:
+            sys.exit('brave-browser requires brave-keyring, but it is filtered out')
     if 'repoquery' in args:
         start = args.index('--queryformat') + 2
         queryformat = args[start - 1].replace('\\\\n', '\\n')
@@ -115,6 +122,25 @@ else:
         self.assertIn('wget2-wget', query)
         self.assertNotIn('wget', query)
         self.assertIn('wget2-wget', self.transactions()[-1])
+
+    def test_brave_source_allows_required_keyring_without_broadening_to_other_rpms(self):
+        result = self.packages()
+        self.assertEqual(0, result.returncode, result.stderr)
+        import configparser
+        config = configparser.ConfigParser()
+        config.read(self.dest / 'dotfiles-brave.repo')
+        repo = config['dotfiles-brave']
+        self.assertEqual({'brave-browser', 'brave-keyring'}, set(repo['includepkgs'].split()))
+        self.assertEqual('1', repo['gpgcheck'])
+
+    def test_existing_older_brave_definition_requires_manual_review(self):
+        old = (self.repo / 'repos/brave.repo').read_text().replace(
+            'includepkgs=brave-browser brave-keyring', 'includepkgs=brave-browser')
+        target = self.dest / 'dotfiles-brave.repo'
+        target.write_text(old)
+        self.assert_failed(self.packages(), 'Repository conflict')
+        self.assertEqual(old, target.read_text())
+        self.assertFalse(any(c[0] == 'sudo' for c in self.calls()))
 
     def test_dnf_failures_stop_later_phases_and_preserve_status(self):
         for action in ("makecache", "upgrade", "install"):
