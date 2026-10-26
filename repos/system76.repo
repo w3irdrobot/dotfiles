@@ -1,0 +1,9 @@
+[dotfiles-system76]
+name=System76 (szydell COPR, linked by System76)
+baseurl=https://download.copr.fedorainfracloud.org/results/szydell/system76/fedora-$releasever-$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/szydell/system76/pubkey.gpg
+includepkgs=system76-driver system76-firmware system76-power firmware-manager
+skip_if_unavailable=0
+priority=110

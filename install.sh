@@ -31,11 +31,15 @@ run() {
 check_platform() {
 	[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || die 'Only x86_64 Linux is supported.'
 	[[ -r /etc/os-release ]] || die 'Missing /etc/os-release.'
-	local distro
+	local distro version
 	distro=$(sed -n 's/^ID=//p' /etc/os-release)
 	distro=${distro//\"/}
 	distro=${distro//\'/}
-	[[ $distro == arch || $distro == manjaro ]] || die 'Only Arch and Manjaro are supported.'
+	version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release)
+	version=${version//\"/}
+	version=${version//\'/}
+	[[ $distro == fedora && $version == 44 ]] || die 'Only Fedora KDE Plasma Desktop 44 is supported.'
+	[[ ! -e /run/ostree-booted ]] || die 'Fedora Atomic desktops are unsupported; use the regular KDE Plasma Desktop installation.'
 	((EUID != 0)) || die 'Run as your regular user, not root.'
 	[[ ${XDG_CONFIG_HOME:-$HOME/.config} == "$HOME/.config" ]] || die 'Custom XDG_CONFIG_HOME is unsupported; configs deploy to ~/.config. No setup changes applied.'
 }
@@ -84,49 +88,23 @@ preflight_native_opencode_paths() {
 
 check_native_opencode_path() {
 	local candidate=$1 explicit=$2 actual native
+	local managed=$HOME/.local/share/dotfiles/opencode/2.1.4/opencode
 	[[ -e $candidate || -L $candidate ]] || return 0
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
 	# and the explicitly protected startup path still require inspection.
 	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
-	[[ $candidate != /usr/bin/opencode ]] || return 0
 	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
-	native=$(realpath -m -- /usr/bin/opencode) || die 'Could not resolve native OpenCode path; inspect it manually.'
-	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the native package: $candidate; inspect and move it manually. Leaving it unchanged."
+	native=$(realpath -m -- "$managed") || die 'Could not resolve managed OpenCode path; inspect it manually.'
+	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate; inspect and move it manually. Leaving it unchanged."
 }
 
 bootstrap_git() {
-	# Check unmanaged copies before even querying pacman, including in dry-runs.
 	preflight_native_opencode_paths
-	local guard_opencode=0 query_status metadata repository name version
-	local -a packages=(git ca-certificates)
-	if ((dry_run)); then
-		printf 'Would guard any installed OpenCode against refreshed Extra V2 metadata before installing packages.\n' >&2
-	else
-		if pacman -Qq -- opencode >/dev/null 2>&1; then
-			guard_opencode=1
-		else
-			query_status=$?
-			[[ $query_status == 1 ]] || die 'Cannot determine installed OpenCode ownership; refusing bootstrap package transactions.'
-		fi
-	fi
-	phase 'Git prerequisites: refreshing databases and downloading without installing'
-	run sudo pacman -Syu --downloadonly --needed git ca-certificates
-	phase 'Git prerequisites: validating native OpenCode V2 policy'
-	if ((guard_opencode)); then
-		metadata=$(LC_ALL=C pacman -Si -- extra/opencode) || die 'OpenCode V2 repository metadata is unavailable. Databases/cache were refreshed, but no packages installed; full upgrade pending.'
-		repository=$(printf '%s\n' "$metadata" | sed -n 's/^Repository[[:space:]]*:[[:space:]]*//p')
-		name=$(printf '%s\n' "$metadata" | sed -n 's/^Name[[:space:]]*:[[:space:]]*//p')
-		version=$(printf '%s\n' "$metadata" | sed -n 's/^Version[[:space:]]*:[[:space:]]*//p')
-		if [[ $version == *:* ]]; then
-			[[ $version =~ ^[0-9]+: ]] || die 'Invalid OpenCode package epoch; databases refreshed, no packages installed, full upgrade pending.'
-			version=${version#*:}
-		fi
-		[[ $repository == extra && $name == opencode && $version =~ ^2\.[0-9][[:alnum:].+_-]*$ ]] || die 'Installed OpenCode must remain native Extra V2. Databases/cache refreshed, no packages installed; full upgrade pending. Do not run isolated pacman -S installs.'
-		packages+=(extra/opencode)
-	fi
-	phase 'Git prerequisites: full upgrade using the checked indexes'
-	run sudo pacman -Su --needed -- "${packages[@]}"
+	phase 'Git prerequisites: installing Fedora Git and CA certificates only'
+	# Dependency-only bootstrap, not a system upgrade. The checkout owns snapshot
+	# protection and pinned OpenCode validation for subsequent setup.
+	run sudo dnf --refresh install git ca-certificates
 }
 
 main() {
@@ -166,7 +144,7 @@ main() {
 		*) die "Unknown argument: $1" ;;
 		esac
 	done
-	phase 'Bootstrap platform validation: Arch/Manjaro x86_64, regular user'
+	phase 'Bootstrap platform validation: Fedora 44 x86_64, regular user'
 	check_platform
 	log 'Platform validation passed.'
 	[[ $ref != -* ]] || die 'Invalid branch.'

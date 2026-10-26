@@ -3,51 +3,36 @@
 Run `just validate` for shell checks and disposable fixture tests. They cover
 argument handling, conflict safety, repeated runs, and failure paths without
 provisioning the developer's machine. See [test coverage](../tests/README.md).
-Real package resolution, AUR builds, Nix daemon operation, and desktop integration
+Real RPM dependency resolution, Nix daemon operation, and desktop integration
 need a Linux rehearsal.
 
 ## Verified scope
 
-The preserved x86_64 Arch guest passed core installation and repeat installation,
-link/config/system/update-all commands, locked Nix development, native OpenCode
-API startup, and reboot persistence on 2026-10-14–15. Later checks covered the
-full-default repeat install, Brave package installation, nono runtime-pack setup,
-and private environment-file isolation. Details and commit checkpoints are below.
-
-**Manjaro KDE/Wayland and System76 lemp14 hardware acceptance remain pending.**
-The headless Arch guest establishes package and CLI behavior, not graphical
-integration, Manjaro branch compatibility, personal sign-ins, or laptop behavior.
-Earlier XFCE expectations are historical, not the current desktop target.
+**Fedora KDE Plasma Desktop 44 and System76 lemp14 hardware acceptance are
+pending.** The target changed on 2026-10-25; earlier Arch/Manjaro results below
+are historical evidence, not Fedora acceptance. The Arch-only VM drivers and
+paru build fixtures have been removed with that backend.
 
 ## Disposable Linux VM
 
-[Lima](https://lima-vm.io/docs/) supports an Arch Linux template. On an ARM Mac,
-use an x86_64 QEMU guest, not Arch Linux ARM. Emulation is slow. Install Lima,
-QEMU, and guest agents separately with approval; the dotfiles installer does not
-install VM software on macOS.
+Use the regular Fedora KDE Plasma Desktop 44 x86_64 ISO, not Kinoite/Atomic.
+Verify the ISO checksum/signature, install into a disposable VM with systemd,
+Btrfs root, and a regular user with sudo, then take a hypervisor snapshot.
+Keep host-home mounts, personal SSH keys, and agent forwarding disabled.
+On an ARM Mac, an x86_64 guest needs an emulator; Rosetta is not an x86_64 kernel.
+Install or launch VM software only with approval. No Fedora VM image or automated
+prompt-approval driver is currently checked in.
 
-The checked-in Lima 2.2.1 configuration pins the Arch image and checksum, uses
-6 GiB RAM and a 40 GiB disk, and disables host mounts, personal public-key
-loading, agent forwarding, and containerd. Guest SSH uses localhost port 60022.
-Use a dedicated state directory:
+Transfer or clone the reviewed Fedora branch inside the guest. Local changes
+are not served by the public bootstrap until published. Run:
 
 ```bash
-export LIMA_HOME="$HOME/.lima-dotfiles-test"
-# Create once; preserve an existing instance.
-limactl create --name=dotfiles-arch --yes tests/vm/arch-x86_64.yaml
-limactl start --yes --timeout=30m dotfiles-arch
-limactl shell dotfiles-arch
+bash bin/dotfiles install --dry-run
+bash bin/dotfiles install
 ```
 
-Tart requires the guest architecture to match the host. Rosetta translates apps
-inside ARM guests, not an x86_64 kernel; it cannot replace this rehearsal on an
-ARM Mac. See [Tart's architecture check](https://github.com/openai/tart/blob/main/Sources/tart/VM.swift).
-
-Clone the branch under review inside the guest. Keep host home mounts disabled
-and confirm a normal non-root user, sudo access, networking, systemd, sufficient
-disk space, and a snapshot before installing. Use a separate disposable Manjaro
-KDE x86_64 VM or the target machine for the desktop checks. Keep the VM until
-review is complete; VM deletion is a separate, approved action.
+Review package plans and signing keys interactively. Keep the VM until review is
+complete; deleting it is a separate approved action.
 
 ## Acceptance checklist
 
@@ -57,63 +42,125 @@ review is complete; VM deletion is a separate, approved action.
 3. Test an existing `.bashrc`, a dangling config link, and a conflicting parent
    path. Each must stop with the original path untouched.
 4. Back up and resolve conflicts manually. Install core, then repeat it. Verify
-   repository-first package ownership and stable links; Bitwarden, OpenCode V2,
-   and Nix must be native packages.
+   Fedora RPM ownership and stable links. Native Nix must belong to `nix-core`;
+   OpenCode must be the pinned verified upstream V2 binary, not the V1 COPR RPM.
 5. Open a fresh login shell. Check `nix --version`, daemon access, flakes support,
    and a project's locked dev shell without global Rust/Node toolchains.
 6. Install the default groups. Test Ghostty, VSCodium, clipboard behavior,
-   Bitwarden's SSH agent, and OpenCode/nono. In Plasma Wayland, check session type,
+   Bitwarden's RPM ownership, native launcher/SSH agent, and OpenCode/nono.
+   Run `dotfiles check-updates`; verify installed/pinned/published versions,
+   visible network-failure status, reviewed-pin updates, and no downgrades.
+   Check lazygit's COPR/RPM ownership and Discord's bootstrap RPM without treating
+   its version as the user-downloaded client version. Test Signal's AppImage/FUSE
+   launch, Secret Service, self-update, and repeat install preserving the updated
+   app. Confirm per-user Telegram/Gear Lever menu integration, file pickers, links,
+   notifications and user-only Flatpak updates; system apps/remotes stay untouched.
+   Do not move the managed Signal AppImage via Gear Lever.
+   In Plasma Wayland, check session type,
    portal file pickers/screen sharing, and Signal persistence with an unlocked
    Secret Service provider. Test XWayland apps without global Electron flags and
    confirm TTY installation still works.
 7. Interrupt installation and rerun. Partial checkouts and upstream/partial Nix
    installs must be diagnosed, not overwritten or marked complete. Repository
-   OpenCode V1/V3 must stop upgrades before package installation.
+   OpenCode shadows or modified pinned binaries must stop before installation.
 8. Test config updates with clean, dirty, and diverged histories, plus a new
    config whose destination already exists. Confirm local work survives refusal.
 9. Run system updates and verify full native upgrades rather than partial ones.
    On Btrfs, confirm the pre-upgrade snapshot exists and rollback notes name the
-   correct device and subvolumes; a failed snapshot must stop before `pacman -Su`.
+   correct device and subvolumes; a failed snapshot must stop before DNF upgrade.
+   Fedora normally has separate `/boot` and EFI partitions: a root-only rollback
+   is not a complete kernel/boot rollback. Rehearse recovery from live media.
 10. Confirm setup leaves desktop settings, autologin, networking, Docker-group
     membership (unless requested), wallets, keys, and local credentials alone.
-11. On lemp14, verify DMI detection, Manjaro package resolution, repeat install,
-    hotkeys, suspend/resume, and battery controls after manually reviewed service
-    activation. Resolve power-backend conflicts while keeping PowerDevil.
-    Confirm setup itself activates no System76 services, flashes no firmware,
-    and adds no privileged groups. A generic VM cannot verify these checks.
+11. On lemp14, verify DMI detection, Fedora/COPR dependency resolution, repeat install,
+     hotkeys, suspend/resume, and battery controls after confirmed service
+     activation. Check decline/no-terminal behavior before accepting the plan,
+     daemon health and wake enablement afterward, repeat-run idempotence, and
+     power-backend recovery failures. Keep PowerDevil. Confirm no firmware
+     flashing, privileged groups, or user notification timer changes.
+     A generic VM cannot verify the hardware behavior.
 
-## Controlled VM drivers
+12. Verify the explicit manual application report against
+    [package sources](packages.md). Configuration links alone must not be treated
+    as an installed lazydocker, kubie, Sparrow, or Nerd Font.
 
-The drivers in `tests/vm/` target the isolated rehearsal guest. They validate
-guest identity and reviewed inputs, cap known approvals, and stop at unexpected
-prompts. They are test infrastructure, not general unattended installers.
+## Fedora port local checks, 2026-10-25
 
-The drivers target `master`. For a real run after merging, manually prepare a
-clean guest checkout at the reviewed published commit. The bootstrap driver also
-requires `~/install-dotfiles.sh` in the guest to match its checked-in
-`BOOTSTRAP_SHA`; review and refresh that pin whenever `install.sh` changes.
-The driver does not download or switch branches for you.
+On the macOS development host, `just validate` passed Bash syntax, ShellCheck,
+shfmt, and **309 fixture tests (306 passed, three skipped)**. Skips were the two
+real GNU Stow checks (Stow unavailable) and one case-sensitive-filename fixture
+on this case-insensitive filesystem. `python3 scripts/check-packages.py` passed
+offline syntax validation for all 73 RPM names; `git diff --check` passed.
 
-`run-bootstrap.py --expect-conflict` verifies the bootstrap hash and approves
-each known Git-prerequisite pacman prompt once. It then expects the unmanaged
-`.bashrc` refusal. Noninteractive SSH or pre-fed answers are not substitutes for
-this controlling-terminal workflow.
+New fixtures cover Fedora release rejection; shared bat/VSCodium platform
+validation; full-default no-op dry-runs; DNF refresh/query/transaction ordering;
+metadata-only caching with RPM downloads allowed; missing names and command
+failures; selected-source conflicts and repeat setup; native Nix package policy;
+and pinned OpenCode archive/binary checks, failed-download retry, no-clobber
+publication, V2 reporting, and PATH shadows. Existing snapshot fixtures now use
+Fedora's `root` subvolume and RPM inventories.
 
-For a core run, supply the published commit and reviewed local recipe hash:
+The review follow-up adds launcher-from-PATH coverage plus eight secrets CLI
+dispatch fixtures. Those cover interactive helper selection, preserved working
+directory and exit status, no PATH fallback, rejected arguments, read-free
+help/previews, cross-platform dispatch without provisioning, and suppression of
+DEBUG/inherited tracing. They use stub scripts and synthetic data; no real keys,
+wallets, authentication stores, or secret archives were read. The longer-budget
+full run completed successfully after the earlier 120-second rerun timed out.
 
-```bash
-LIMA_HOME="$HOME/.lima-dotfiles-test" python3 -B tests/vm/run-install.py \
-  --commit FULL40SHA --recipe-sha256 RECIPE_SHA256
-```
+Bitwarden/System76 follow-up fixtures cover checked native RPM preparation and
+cache reuse/conflicts, no downgrades, installed ownership, public desktop-release
+filtering/pagination/errors, read-free previews, terminal confirmation/decline,
+unit ownership/overrides, persistent backend masking, health checks, repeat runs,
+and partial activation/recovery failures. The initial expanded run exposed a
+duplicate Python fixture symlink; that fixture setup was corrected before the
+successful full rerun. These tests use only synthetic RPM bytes and systemd state.
 
-The driver checks a clean checkout, handles no-op native transactions, and stops
-at AUR review. Secret Service, JACK, and font provider selections require their
-explicit approval flags. The observed guest used `gnome-keyring`, `pipewire-jack`,
-and `noto-fonts`; those are VM choices, not production defaults.
-`run-vscodium.py` exercises a separately reviewed VSCodium build.
-A review stop or partially installed transaction is not a completed setup.
+Read-only inspection verified the Bitwarden 2026.10.1 RPM SHA256 against the pin
+and its identity `bitwarden|2026.10.1|1|x86_64`; its header had digest tags but no
+RSA/PGP signing tag. Actual System76 Fedora RPM payloads confirmed the firmware,
+power, and wake unit names documented in [System76 setup](system76.md), and no
+driver `system76.service`. No package scripts were executed. A live public API
+check reported stable desktop 2026.10.1 and the matching reviewed digest; installed
+RPM status was correctly unknown on macOS, where RPM is unavailable.
 
-## Recorded results
+Separate read-only HTTPS metadata inspection found all 73 module RPM names for
+x86_64/noarch in Fedora 44 and the selected repositories. The pinned OpenCode
+2.1.4 artifact matched registry integrity and its recorded archive/binary hashes.
+See [migration evidence](fedora-migration.md#read-only-package-evidence-2026-10-25).
+
+No Fedora container/VM was launched, no real DNF dependency solve or transaction
+was run, and no Linux binary was executed on the host. The updated Fedora CI
+jobs have not been run here. Fedora install/reinstall, native Nix operation,
+OpenCode/nono execution, KDE integration, and boot recovery still need the Linux
+rehearsal above; laptop boot/suspend/power checks require the Lemur Pro.
+
+## Desktop-source follow-up checks
+
+The final `just validate` run passed Bash syntax, ShellCheck, shfmt, and
+**331 fixture tests (328 passed, three skipped)**. The skips remain the two
+GNU Stow checks and one case-sensitive-filename fixture described above.
+`git diff --check` also passed.
+
+The 22 new targeted desktop-source fixtures passed on macOS. They exercise
+Discord's checked bootstrap RPM/no-downgrade flow, Signal's initial hashes and
+isolated signature verification before transactions, wrong signing identities,
+cache/install conflicts, preserved Signal self-updates, and user Flatpak remote
+origins, repeated installs, scope, failures, and side-effect-free dry-runs.
+The existing update/restart fixture now explicitly expects user Flatpak updates
+for `update all`, but not `update configs`; its earlier mock rejected the new
+command and was corrected rather than weakening production failure propagation.
+
+`python3 scripts/check-packages.py` validated **76** current RPM names offline;
+this does not extend the earlier 73-name remote evidence to all new dependencies.
+Read-only vendor inspection verified Discord 1.0.166's RPM identity/checksum and
+Signal 8.32.0's AppImage/key hashes and detached vendor signature. Live release
+checks reported the reviewed Bitwarden and Discord versions with no newer stable
+releases, and correctly reported unavailable RPM inventory on macOS. No Linux
+application, actual Flatpak install/update, or DNF transaction was executed.
+Fedora/KDE launcher, FUSE, updater, portals and notifications still need rehearsal.
+
+## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old
 commits. Superseded failures remain useful regression context; Git history holds

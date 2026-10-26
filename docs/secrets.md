@@ -1,6 +1,35 @@
 # Moving secrets between machines
 
-`secrets_export` and `secrets_import` are a separate, manual migration workflow.
+Use the globally available per-user `dotfiles` launcher:
+
+```bash
+dotfiles secrets export --dry-run
+dotfiles secrets export
+dotfiles secrets import
+dotfiles secrets --help
+```
+
+These commands delegate directly to this checkout's existing `secrets_export`
+and `secrets_import` scripts. The standalone commands remain available when the
+GnuPG module is linked. Neither path runs as part of installation or updates.
+Selections and archive locations are interactive; do not pass credentials or
+passphrases as command arguments. `--dry-run` describes the operation without
+reading keys, wallets, or archives. Help and previews do not check dependencies
+or prove that an export/restore will succeed.
+
+The helpers support Linux and macOS; Fedora-only provisioning checks do not run
+for secrets migration. On a source machine without the launcher, use
+`bash /path/to/checkout/bin/dotfiles secrets export` with Bash 5+ and the helper
+dependencies (`gpg`, `fzf`, `tar`, `jq`, and platform discovery tools) installed.
+No dependencies are installed automatically. The caller's current directory is
+preserved for the existing fallback when no removable media is found. Run from
+a private directory outside this checkout, including for dry-run previews.
+
+`dotfiles secrets` suppresses DEBUG/xtrace/verbose tracing before invoking the
+helper. Do not separately enable tracing inside the helper or publish its output
+without reviewing it for identifying metadata.
+
+Secrets export/import remain a separate, manual migration workflow.
 Review the archive selection and test a restore before wiping the source machine.
 Keep archives, keys, wallet data, and authentication stores outside this checkout.
 

@@ -1,9 +1,9 @@
 # Dotfiles
 
-My Linux workstation setup: Bash, paru, repository-packaged Nix, and GNU Stow.
-The primary target is **x86_64 Manjaro KDE Plasma on Wayland**. The installer also
-supports x86_64 Arch Linux with Bash 5+; it leaves desktop, login, and networking
-settings to you.
+My Linux workstation setup: Bash, DNF5, Fedora-packaged Nix, and GNU Stow.
+The only supported target is **Fedora KDE Plasma Desktop 44, x86_64**, with Bash
+5+ and Wayland. Use the regular RPM-based edition, not Kinoite/Atomic. Desktop,
+login, SELinux, and networking settings stay yours to manage.
 
 ## Install
 
@@ -15,10 +15,15 @@ less install.sh
 bash install.sh
 ```
 
-You need networking, sudo access, and a terminal for interactive package and AUR
-review. Start with Manjaro's KDE edition rather than converting an XFCE install.
-Manjaro can lag Arch: check dependency conflicts against your branch instead of
-forcing a partial upgrade.
+You need networking, sudo access, and a terminal for interactive RPM package and
+signing-key confirmation. Start with Fedora's KDE edition. Test the live USB on
+the laptop before installing. This Fedora port has local fixture coverage, not
+yet a completed Fedora VM or Lemur Pro hardware rehearsal.
+
+**During the migration, the public bootstrap still serves the published
+`master`. Local edits are not published automatically.** Use the reviewed Fedora
+checkout's `bash bin/dotfiles install --dry-run` and `bash bin/dotfiles install`
+until the Fedora changes are committed and published.
 
 The bootstrap clones `master` over HTTPS, so a fresh machine needs no GitHub SSH
 keys. It uses `~/projects/github.com/w3irdrobot/dotfiles`. Keep that checkout in
@@ -52,24 +57,66 @@ bash bin/dotfiles install --modules slack
 `link` only prepares configuration links; it does not install packages. Repeat
 your `--groups` and `--modules` choices on later commands: selections are not saved.
 Successful install/link runs also provide a `~/.local/bin/dotfiles` launcher.
+With the managed Bash config, open a new terminal and use `dotfiles` from any
+directory. This is a per-user command, not a system-wide installation for other
+users. Keep the checkout in place because the launcher and config links use it.
+
+| Command | What it manages |
+| --- | --- |
+| `dotfiles install` | Update Fedora RPMs, install selected tools, run setup, and link configs |
+| `dotfiles link` | Link selected configs and create/reuse the launcher; no package installation |
+| `dotfiles update configs` | Safely fast-forward the checkout and relink configs |
+| `dotfiles update system` | Update Fedora RPMs, selected tool setup, and installed user Flatpaks; no Git update |
+| `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, user Flatpaks, and config links |
+| `dotfiles check-updates` | Report installed/pinned/published Bitwarden and Discord RPM versions; no installation |
+| `dotfiles secrets export` | Interactively export selected GPG/SSH/Sparrow material to an encrypted archive |
+| `dotfiles secrets import` | Interactively restore an archive with the existing conflict protections |
+| `dotfiles --help` | Show usage and options |
+
+Add `--dry-run` to preview any lifecycle command. Secrets previews describe the
+operation without reading keys, wallets, or archives; their selections are
+interactive, not controlled by `--groups` or `--modules`. `--groups` replaces the default
+groups; `--modules` adds explicit tools. Repeat these selections on subsequent
+commands. `install --docker-group` is a separate, explicit root-equivalent
+permission opt-in. There is no uninstall, automatic rollback, Fedora release
+upgrade, or manual-application updater command.
 
 Dry-runs print a plan without applying it. Normal runs log phases and commands,
 then print selection-specific next steps after success. `DEBUG=1` enables shell
 tracing, which can expose data processed by external commands: avoid it around
-credentials and redact traces before sharing them.
+credentials and redact traces before sharing them. `dotfiles secrets` suppresses
+DEBUG/xtrace/verbose tracing before dispatching the migration helper.
 
-Packages come from official repositories first, then reviewed AUR builds through
-paru. Bitwarden, OpenCode V2, and Nix use native repository packages. Brave uses
-AUR's `brave-bin`. Nono is a checksum-pinned upstream binary. If repository paru
-is unavailable, the installer builds the [frozen fallback](modules/paru-recipe/README.md)
-with a Nix-supplied Rust toolchain and native libraries.
+Packages come from Fedora first, with narrowly scoped vendor RPM repositories
+for Brave/Mullvad and documented community RPM sources for Ghostty, VSCodium,
+System76, and lazygit. Definitions in `repos/` require package signatures and
+are added only for selected modules. Existing conflicting definitions stop setup.
+OpenCode V2 and nono use pinned, checksum-verified upstream binaries. Arch,
+pacman, paru, and AUR are no longer supported.
+
+Bitwarden uses a pinned, checksum-verified native upstream RPM. Run
+`dotfiles check-updates` for new desktop-release notices; system/all updates
+also check when it is selected or installed. New pins require review, not an
+automatic latest-version install. Sign-in and SSH-agent activation stay manual.
+
+Discord uses a reviewed vendor RPM bootstrapper; its first launch downloads the
+client separately. Signal uses the official signature-verified AppImage and then
+its built-in updater. Telegram and Gear Lever (AppImage integration) use verified
+user Flathub apps. System/all updates also update installed user Flatpaks;
+system-wide Flatpak installations stay untouched. See [package details](docs/packages.md).
+
+**Some selected modules currently require manual application installation**, most
+notably Nerd Fonts and optional lazydocker, kubie, Google Cloud tools, and Sparrow.
+Their configs still link; setup reports exactly which applications it did not
+install. See [package sources and manual steps](docs/packages.md), including RPM
+update responsibilities. This is not a claim that every previous app is automated.
 
 Nix supplies project development environments rather than global Rust/Node
 toolchains. Its module enables the packaged daemon and user-level flakes support,
 while preserving global settings. Existing upstream Nix installations require
 manual resolution before setup. See [project environments](docs/nix-projects.md).
 
-The Bitcoin group installs native Bitcoin Core and Sparrow. Review Tor, storage
+The Bitcoin group installs Fedora Bitcoin Core; Sparrow remains manual. Review Tor, storage
 paths, and service configuration before using the supplied configs; electrs
 installation and wallet/key migration remain manual. Mullvad login, connection,
 and daemon setup are also manual. Docker-group membership requires an explicit
@@ -90,10 +137,12 @@ or choose another provider. Wallet configuration and autostart are yours to mana
 
 On confirmed System76 hardware, `core` or `hardware` selects the driver, firmware,
 power, and firmware-manager packages. DMI detection gates explicit
-`--modules system76` too. Service activation, competing power backends, permissions,
-and firmware updates need manual review. See [System76 setup](docs/system76.md).
-Manjaro KDE/Wayland and Lemur Pro lemp14 hardware acceptance remain pending;
-[the testing guide](docs/testing.md) records the verified Arch scope.
+`--modules system76` too. Install/system-update shows a service activation plan
+and asks before enabling daemons or masking competing power backends. Plasma
+PowerDevil stays intact; firmware flashing and privileged groups remain manual.
+See [System76 setup](docs/system76.md).
+Fedora KDE/Wayland and Lemur Pro lemp14 hardware acceptance remain pending;
+[the testing guide](docs/testing.md) separates current checks from historical Arch results.
 
 ## Local settings and credentials
 
@@ -144,18 +193,18 @@ checkout before fast-forwarding and linking. They preserve local work and do not
 install new dependencies. Rerun `install` with the same selections when a config
 change adds a package or setup action, and restart affected apps afterward.
 
-System updates perform a full native upgrade and AUR upgrade through paru.
-Repository OpenCode must stay on major V2; incompatible versions stop the
-transaction before package installation rather than freezing one package during
-a partial upgrade. Unmanaged OpenCode executables on `PATH` are refused without
-running them; aliases must resolve to native `/usr/bin/opencode`. Inspect and move
-conflicts manually. AUR upgrades exclude paru so the frozen fallback cannot be
-replaced by an unreviewed recipe. Native paru still
-updates in the full repository transaction.
+System updates refresh RPM metadata, verify every selected package is available,
+take the Btrfs snapshot, then run interactive DNF upgrade
+and install transactions against that cache. Missing packages and incompatible
+OpenCode installations stop before either package transaction; there is no
+arbitrary fallback. Unmanaged OpenCode executables on `PATH` are refused without
+running them. The managed launcher is `~/.local/bin/opencode`, pointing to
+`~/.local/share/dotfiles/opencode/2.1.4/opencode`; setup verifies its binary hash.
 
-Nix itself updates through pacman/paru. Each project owns its `flake.lock` updates;
-Nix garbage collection is separate maintenance. Nono version/digest changes need
-a reviewed repository change and another install run. Resolve conflicting older
+Nix itself updates through DNF. Each project owns its `flake.lock` updates;
+Nix garbage collection is separate maintenance. OpenCode/nono version/digest changes need
+a reviewed repository change and another install run. Do not use OpenCode's
+self-updater to replace the pinned binary. Resolve conflicting older
 links manually rather than replacing unmanaged or dangling destinations.
 
 On Btrfs roots, system updates create a read-only pre-upgrade snapshot and refuse
@@ -187,6 +236,7 @@ bin/dotfiles           local install/link/update command
 lib/                   shared installer helpers
 modules/<tool>.conf    group and package metadata (data, not shell)
 modules/<tool>.sh      custom setup beyond package installation
+repos/                 selected, signature-checked RPM repository definitions
 stow/<tool>/           home-shaped configuration
 shell/                 helpers sourced directly from this checkout
 examples/              templates for machine-local settings

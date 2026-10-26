@@ -1,88 +1,80 @@
-# Protected system upgrades
+# Protected Fedora upgrades
 
-Before a full package transaction, the update path checks that the machine can
-recover from a bad upgrade. On Btrfs roots it takes a read-only snapshot; when
-that is not possible it refuses the transaction instead of proceeding unprotected.
+Before a real `install`, `update system`, or `update all` package transaction,
+dotfiles takes a read-only snapshot of a Btrfs root. If snapshot preparation
+fails, the package transaction does not start. Non-Btrfs roots log that snapshots
+are unavailable and continue without this protection.
 
-## What is checked
+The bootstrap's narrow Git/CA prerequisite installation occurs before the
+checkout's snapshot machinery is available and is not covered by it.
 
-For every real `install`, `update system`, or `update all` package transaction:
+## Checks and snapshots
 
-- `/` must be a Btrfs subvolume mounted below the filesystem top level.
-- Btrfs tooling (`findmnt`, `btrfs`, `df`) must be available.
-- `/var/lib/pacman/db.lck` must not exist.
-- `pacman -Dk` must pass before the transaction and is checked again afterward.
+For a Btrfs root:
+
+- `/` must be a subvolume below the filesystem top level.
+- `findmnt`, `btrfs`, and `df` must be available; `rpm --verifydb` must pass.
 - At least 2 GiB must be free on `/`, plus 256 MiB on `/boot` and 64 MiB on
-  `/efi` or `/boot/efi` when those are separate mounts.
+  `/efi` or `/boot/efi` when present.
 
-Non-Btrfs roots skip the snapshot with a log message and otherwise continue.
+DNF owns transaction locking. Never delete lockfiles to bypass a concurrent or
+interrupted transaction. Package availability and selected-source metadata are
+checked before the snapshot; RPM installation still requires interactive review.
 
-## Snapshots
+Snapshots live outside the root subvolume so they survive a root rollback.
+An existing, separately mounted `/.snapshots` subvolume on the same device is
+reused. Otherwise setup temporarily mounts the Btrfs top level and reuses
+`@.snapshots` or creates/reuses `@snapshots`. A snapshot directory nested inside
+the root is not used for rollback protection. The root name itself is discovered,
+not assumed to be Arch's `@`; Fedora commonly uses `root`.
 
-The snapshot is placed outside the root subvolume so it survives a root rollback:
+The last five `dotfiles-*` snapshots are retained. Set `DOTFILES_SNAPSHOT_KEEP`
+to a positive integer to change retention. Only this installer's named snapshots
+are pruned. This is not a backup against disk failure.
 
-- If `/.snapshots` is already a separate Btrfs subvolume on the same device, it is
-  used directly.
-- Otherwise the Btrfs top level is mounted temporarily and an existing
-  `@.snapshots` subvolume or `@snapshots` is used for `dotfiles-<timestamp>`
-  snapshots.
-- A `/.snapshots` that is nested inside the root subvolume is ignored because it
-  would move when the root is renamed during rollback.
+State is recorded under
+`~/.local/state/dotfiles/upgrades/<snapshot>/` (or `XDG_STATE_HOME`):
 
-The last five snapshots are kept by default. Set `DOTFILES_SNAPSHOT_KEEP` to a
-positive integer to change that. Only snapshots named `dotfiles-*` are pruned.
+- `packages-before.txt`: RPM names and epoch/version/release/architecture.
+- `snapshot.txt`: device and root/snapshot subvolume paths.
+- `rollback.txt`: machine-specific live-media root recovery instructions.
 
-Before the transaction, the current package selection is written under
-`${XDG_STATE_HOME:-~/.local/state}/dotfiles/upgrades/<snapshot>/`:
+One snapshot covers the full DNF upgrade and the following selected-package
+install. Either transaction can be cancelled or fail independently; the snapshot
+remains available. `rpm --verifydb` is checked afterward. Changes to `kernel*`,
+`linux-firmware`, `dracut`, `systemd`, `grub2*`, `shim*`, `akmod*`, `kmod*`, or
+`nvidia*` print a reboot warning when a pre-upgrade inventory is available.
 
-- `packages-before.txt`
-- `foreign-before.txt`
-- `snapshot.txt`
-- `rollback.txt`
+Transactions use DNF5's `cacheonly=metadata`: checked metadata stays cached while
+RPM payloads can still download. Fully offline `--cacheonly` mode would not work
+for uncached packages on a fresh machine. Root snapshots also exclude separate
+or nested subvolumes such as `/home` and `/nix`.
 
-After the transaction, boot-critical package changes (`linux*`, `linux-firmware`,
-`mkinitcpio`, `systemd`, `grub`, `refind`, `nvidia*`) cause a reboot warning.
+## Root rollback and boot recovery
 
-## Rollback
+Read the generated `rollback.txt` for the exact device/subvolumes. Generally:
 
-`rollback.txt` contains the exact device and subvolume paths for the current
-machine. The general procedure is:
-
-1. Boot live Arch/Manjaro media and open any LUKS container.
+1. Boot Fedora live media and open any LUKS container.
 2. Mount the Btrfs top level with `mount -o subvolid=5 <device> /mnt`.
-3. Rename the broken root subvolume, for example `@` to `@.broken-<snapshot>`.
-4. Snapshot the read-only pre-upgrade snapshot back to the root name.
-5. If `/boot` or the EFI system partition is separate, restore it or reinstall
-   the kernel from a chroot before rebooting.
+3. Rename the broken root, for example `root` to `root.broken-<snapshot>`.
+4. Snapshot the read-only pre-upgrade snapshot back to the original root name.
+5. Reconcile boot artifacts before rebooting when `/boot` or EFI is separate.
 
-If `/etc/fstab` or the bootloader pins a `subvolid` instead of a subvolume name,
-update that id after recreating the root subvolume.
+If fstab or the bootloader pins a `subvolid` instead of a subvolume name, update
+that id after recreating the root.
 
-## Rebuilding the bootloader
+**Fedora normally has separate `/boot` and EFI partitions.** A root snapshot
+does not roll back their kernels, initramfs, BLS entries, bootloader, or firmware
+boot entries. Keep a bootable Fedora USB and a separate boot backup. The
+generated notes warn about these mounts but do not back them up automatically.
 
-A root rollback restores `/boot` but not the ESP. If GRUB's EFI files, Secure Boot
-shim, or firmware boot entry are broken, rebuild the bootloader from live media
-after restoring the root:
+After restoring root, mount the real root, boot, and EFI filesystems in the
+rescue environment. Reconcile installed kernel RPMs with `/boot` and
+`/usr/lib/modules`; Fedora's kernel package scripts and `dracut` must produce
+matching boot artifacts. An RPM database rollback alone is not a boot recovery.
 
-```bash
-# UEFI. Replace ROOT and ESP with the installed partition devices; mount the
-# root with the correct subvol= option first if it is not the default.
-ROOT=/dev/nvme0n1p2
-ESP=/dev/nvme0n1p1
-mount "$ROOT" /mnt
-mount "$ESP" /mnt/boot/efi
-manjaro-chroot /mnt          # arch-chroot /mnt on Arch
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Manjaro
-grub-mkconfig -o /boot/grub/grub.cfg
-efibootmgr -v
-```
-
-On BIOS, use `grub-install --target=i386-pc /dev/nvme0n1` with the whole disk,
-not a partition, then run `grub-mkconfig`. Reinstalling GRUB also makes the ESP
-binary and the restored `/boot/grub` modules match again.
-
-A root snapshot does not include separate `/boot`, `/efi`, or `/boot/efi`
-partitions. A default Manjaro UEFI install keeps the kernel and initramfs in
-`/boot` on the Btrfs root, so those are covered; the 300 MiB FAT32 ESP mounted at
-`/boot/efi` is not. Keep a bootable USB and a current copy of the ESP when GRUB
-or the bootloader packages are part of the upgrade.
+For UEFI/Secure Boot, use Fedora's documented signed GRUB/shim package recovery.
+Do not copy the former Manjaro `grub-install` procedure or overwrite the EFI stub
+with a generated configuration. Fedora's generated GRUB config belongs at
+`/boot/grub2/grub.cfg`. See [Fedora GRUB2 guidance](https://docs.fedoraproject.org/en-US/quick-docs/grub2-bootloader/).
+Recovery remains unverified until rehearsed against the target's partitioning.

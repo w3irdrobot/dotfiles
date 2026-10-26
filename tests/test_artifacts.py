@@ -25,13 +25,13 @@ class Artifacts(unittest.TestCase):
         self.nix_configuration = self.base / "etc/nix"
         module = self.repo / "modules/nix.sh"
         module.write_text(module.read_text().replace("/usr/bin/nix", str(self.nix_binary)))
-        self.mock("pacman", f"""args = sys.argv[1:]
-if args == ['-Qqo', '--', {str(self.nix_binary)!r}]:
+        self.mock("rpm", f"""args = sys.argv[1:]
+if '-qf' in args and args[-1] == {str(self.nix_binary)!r}:
     owner = os.environ.get('TEST_NIX_OWNER', '')
     if owner:
         print(owner)
     sys.exit(int(os.environ.get('TEST_NIX_OWNERSHIP_STATUS', '0' if owner else '1')))
-if args == ['-Qq', 'nix']:
+if args == ['-q', 'nix-core']:
     sys.exit(0 if os.environ.get('TEST_NIX_INSTALLED') == '1' else 1)
 sys.exit(97)""")
         self.mock("sudo", """import subprocess
@@ -92,7 +92,7 @@ if args == ['config', 'show']:
 sys.exit(97)
 """)
         shutil.move(self.path / "nix-fixture", self.nix_binary)
-        self.env["TEST_NIX_OWNER"] = "nix"
+        self.env["TEST_NIX_OWNER"] = "nix-core"
         self.env["TEST_NIX_INSTALLED"] = "1"
         self.nix_socket.parent.mkdir(parents=True)
         cwd = Path.cwd()
@@ -113,7 +113,7 @@ sys.exit(97)
         self.assertFalse(self.nix_root.exists())
         self.assertFalse(self.nix_configuration.exists())
         self.assertEqual({}, self.snapshot())
-        self.assertTrue(all(c[0] == "pacman" for c in self.calls()))
+        self.assertTrue(all(c[0] == "rpm" for c in self.calls()))
 
     def test_native_nix_preflight_accepts_package_owned_existing_store(self):
         self.existing_nix()
@@ -121,7 +121,7 @@ sys.exit(97)
         (self.nix_configuration / "nix.conf").write_text("build-users-group = nixbld\n")
         result = self.run_nix("preflight_nix")
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertTrue(all(c[0] == "pacman" for c in self.calls()))
+        self.assertTrue(all(c[0] == "rpm" for c in self.calls()))
 
     def test_native_nix_preflight_refuses_upstream_and_partial_paths(self):
         for path in (self.nix_root, self.nix_configuration):
@@ -138,7 +138,7 @@ sys.exit(97)
                 self.assert_failed(result, "Never mix installation methods")
                 self.assertTrue(path.is_symlink())
                 path.unlink()
-        self.assertTrue(all(c[0] == "pacman" for c in self.calls()))
+        self.assertTrue(all(c[0] == "rpm" for c in self.calls()))
 
     def test_native_nix_preflight_refuses_unowned_binary_without_executing_it(self):
         self.nix_binary.parent.mkdir(parents=True)
@@ -160,7 +160,7 @@ sys.exit(97)
         self.assertFalse(any(c[0] == "nix" for c in self.calls()))
 
     def test_native_nix_preflight_refuses_missing_owned_binary_and_query_errors(self):
-        self.env["TEST_NIX_OWNER"] = "nix"
+        self.env["TEST_NIX_OWNER"] = "nix-core"
         result = self.run_nix("preflight_nix")
         self.assert_failed(result, "Package-owned native Nix is incomplete")
         del self.env["TEST_NIX_OWNER"]
@@ -186,12 +186,12 @@ sys.exit(97)
                 result = self.run_nix(dry_run=True)
                 self.assertEqual(0, result.returncode, result.stderr)
                 self.assertEqual(before, self.snapshot())
-                self.assertTrue(all(c[0] == "pacman" for c in self.calls()))
+                self.assertTrue(all(c[0] == "rpm" for c in self.calls()))
                 if installed:
                     result = self.run_nix("validate_nix", dry_run=True)
                     self.assertEqual(0, result.returncode, result.stderr)
                     self.assertEqual(before, self.snapshot())
-                    self.assertTrue(all(c[0] == "pacman" for c in self.calls()))
+                    self.assertTrue(all(c[0] == "rpm" for c in self.calls()))
 
     def test_native_nix_setup_bootstraps_before_user_features_are_linked_idempotently(self):
         self.existing_nix()
@@ -256,7 +256,7 @@ sys.exit(97)
                       (self.repo / "modules/nix.conf").read_text().splitlines()
                       if line and not line.startswith("#"))
         self.assertEqual("core", fields["group"])
-        self.assertEqual("nix", fields["packages"])
+        self.assertEqual("nix nix-daemon", fields["packages"])
 
     def nono_target(self):
         return self.home / ".local/share/dotfiles/nono/0.80.0/nono"

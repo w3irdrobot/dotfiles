@@ -5,7 +5,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-import urllib.parse
+import subprocess
+from types import SimpleNamespace
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/check-packages.py"
 SPEC = importlib.util.spec_from_file_location("check_packages", SCRIPT)
@@ -67,41 +68,32 @@ class Metadata(unittest.TestCase):
 
 
 class RemoteMetadata(unittest.TestCase):
-    def test_arch_any_and_x86_64_match_without_aur_lookup(self):
-        def response(url):
-            query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
-            self.assertNotIn("arch", query)
-            name = query["name"][0]
-            return {"results": [{"pkgname": name, "arch": "any" if name == "docs" else "x86_64"}]}
-
-        with patch.object(CHECK, "get_json", side_effect=response) as fetch:
+    def test_queries_exact_names_without_installing(self):
+        with patch.object(CHECK.shutil, "which", return_value="dnf"), patch.object(
+            CHECK.subprocess, "run", return_value=SimpleNamespace(stdout="docs\nbinary\nbinary\n")
+        ) as run:
             CHECK.validate_remote({"docs", "binary"})
-        self.assertEqual(2, fetch.call_count)
+        command = run.call_args.args[0]
+        self.assertIn("repoquery", command)
+        self.assertIn("--arch=x86_64,noarch", command)
+        self.assertNotIn("install", command)
+        self.assertNotIn("sudo", command)
 
-    def test_wrong_name_or_architecture_falls_back_to_aur(self):
-        for item in ({"pkgname": "fixture-extra", "arch": "any"},
-                     {"pkgname": "fixture", "arch": "aarch64"}):
-            with self.subTest(item=item):
-                with patch.object(CHECK, "get_json", side_effect=[
-                    {"results": [item]}, {"results": [{"Name": "fixture"}]},
-                ]) as fetch:
-                    CHECK.validate_remote({"fixture"})
-                self.assertIn("aur.archlinux.org/rpc", fetch.call_args.args[0])
+    def test_missing_names_are_reported_without_fallback(self):
+        with patch.object(CHECK.shutil, "which", return_value="dnf"), patch.object(
+            CHECK.subprocess, "run", return_value=SimpleNamespace(stdout="fixture-extra\n")
+        ):
+            with self.assertRaisesRegex(ValueError, "Packages absent.*fixture"):
+                CHECK.validate_remote({"fixture"})
 
-    def test_missing_names_are_reported_across_all_aur_batches(self):
-        names = {f"fixture-{i:02}" for i in range(51)}
-        with patch.object(CHECK, "get_json", return_value={"results": []}) as fetch:
-            with self.assertRaises(ValueError) as error:
-                CHECK.validate_remote(names)
-        self.assertEqual(53, fetch.call_count)
-        self.assertEqual(
-            "Packages absent from Arch (x86_64/any) and AUR: " + ", ".join(sorted(names)),
-            str(error.exception),
-        )
+    def test_dnf_errors_propagate_instead_of_looking_like_missing_packages(self):
+        with patch.object(CHECK.shutil, "which", return_value="dnf"), patch.object(
+            CHECK.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "dnf")
+        ):
+            with self.assertRaises(subprocess.CalledProcessError):
+                CHECK.validate_remote({"fixture"})
 
-    def test_aur_rpc_error_is_not_reported_as_missing_packages(self):
-        with patch.object(CHECK, "get_json", side_effect=[
-            {"results": []}, {"type": "error", "error": "rate limited"},
-        ]):
-            with self.assertRaisesRegex(ValueError, "AUR RPC error: rate limited"):
+    def test_missing_dnf_reports_environment_requirement(self):
+        with patch.object(CHECK.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(ValueError, "requires Fedora 44"):
                 CHECK.validate_remote({"fixture"})

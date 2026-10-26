@@ -2,12 +2,11 @@
 """Validate module package metadata; remote lookups require explicit --network."""
 
 import argparse
-import json
 from pathlib import Path
 import re
 import sys
-import urllib.parse
-import urllib.request
+import shutil
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9@._+-]*$")
@@ -25,7 +24,7 @@ def metadata():
             if not line or line.startswith("#"):
                 continue
             key, separator, value = line.partition("=")
-            if not separator or key not in ("group", "packages", "default"):
+            if not separator or key not in ("group", "packages", "default", "manual"):
                 raise ValueError(f"{path.name}:{number}: expected key=value data")
             if key in fields:
                 raise ValueError(f"{path.name}:{number}: duplicate {key}")
@@ -44,42 +43,21 @@ def metadata():
     return packages
 
 
-def get_json(url):
-    request = urllib.request.Request(url, headers={"User-Agent": "dotfiles-package-validation/1"})
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
-
-
 def validate_remote(packages):
-    aur = []
-    for package in sorted(packages):
-        # Omitting the architecture filter includes Arch's architecture-independent
-        # packages. Still reject results for architectures this installer cannot use.
-        query = urllib.parse.urlencode({"name": package})
-        data = get_json("https://archlinux.org/packages/search/json/?" + query)
-        if not any(
-            item["pkgname"] == package and item.get("arch") in ("x86_64", "any")
-            for item in data.get("results", [])
-        ):
-            aur.append(package)
-    missing = set()
-    for start in range(0, len(aur), 50):
-        batch = aur[start:start + 50]
-        query = urllib.parse.urlencode([("arg[]", name) for name in batch])
-        data = get_json("https://aur.archlinux.org/rpc/v5/info?" + query)
-        if data.get("type") == "error":
-            raise ValueError(f"AUR RPC error: {data.get('error')}")
-        found = {item["Name"] for item in data.get("results", [])}
-        missing.update(set(batch) - found)
+    if not shutil.which("dnf"):
+        raise ValueError("Network package validation requires Fedora 44 with DNF5 and the selected repos configured")
+    result = subprocess.run(
+        ["dnf", "--refresh", "repoquery", "--available", "--arch=x86_64,noarch", "--queryformat", "%{name}", *sorted(packages)],
+        check=True, text=True, capture_output=True, timeout=180,
+    )
+    missing = packages - set(result.stdout.splitlines())
     if missing:
-        raise ValueError(
-            "Packages absent from Arch (x86_64/any) and AUR: " + ", ".join(sorted(missing))
-        )
+        raise ValueError("Packages absent from configured Fedora RPM sources: " + ", ".join(sorted(missing)))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--network", action="store_true", help="query Arch and AUR over HTTPS")
+    parser.add_argument("--network", action="store_true", help="query configured Fedora RPM sources using DNF5 (metadata only)")
     args = parser.parse_args()
     packages = metadata()
     if not packages:
@@ -88,7 +66,7 @@ def main():
         validate_remote(packages)
     print(
         f"Validated {len(packages)} package names"
-        + (" against Arch/AUR metadata" if args.network else " (syntax only; no network)")
+        + (" against configured Fedora RPM metadata" if args.network else " (syntax only; no network)")
     )
     return 0
 
@@ -96,5 +74,5 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
         sys.exit(str(error))

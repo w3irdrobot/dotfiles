@@ -43,9 +43,9 @@ if 'FSTYPE' in args:
     else:
         print('ext4')
 elif 'SOURCE' in args:
-    print('/dev/mapper/test[/@]' if target == '/' else '/dev/mapper/test[/@snapshots]')
+    print('/dev/mapper/test[/root]' if target == '/' else '/dev/mapper/test[/@snapshots]')
 elif 'FSROOT' in args:
-    print('/@' if target == '/' else '/@snapshots')
+    print('/root' if target == '/' else '/@snapshots')
 elif 'TARGET' in args:
     if target == '/.snapshots':
         print('/.snapshots' if mounted else '/')
@@ -65,8 +65,11 @@ from pathlib import Path
 args = sys.argv[1:]
 if not args:
     sys.exit(97)
-if args[0] == 'pacman':
-    if '-Su' in args and not any('y' in a for a in args[1:] if a.startswith('-')):
+if args[0] == 'dnf':
+    if 'repoquery' in args:
+        for name in args[args.index('--queryformat') + 2:]:
+            print(name)
+    if 'upgrade' in args:
         Path(os.environ['TEST_KERNEL_MARKER']).write_text('kernel upgraded')
     sys.exit(0)
 if args[0] == 'mktemp':
@@ -88,28 +91,19 @@ if args[0] == 'btrfs' and len(args) >= 3 and args[1] == 'subvolume':
         pass
     sys.exit(0)
 sys.exit(97)""")
-        self.mock("pacman", """import os, sys
+        self.mock("rpm", """import os, sys
 from pathlib import Path
 args = sys.argv[1:]
-if args == ['-Dk']:
+if args == ['--verifydb']:
     sys.exit(0)
-if args == ['-Q']:
-    print('linux 6.1.0-1')
-    print('pacman 6.0.0-1')
+if '-qa' in args:
+    print('kernel-core 0:6.1.0-1.fc44.x86_64')
+    print('rpm 0:6.0.0-1.fc44.x86_64')
     if Path(os.environ['TEST_KERNEL_MARKER']).exists():
-        print('linux 6.2.0-1')
+        print('kernel-core 0:6.2.0-1.fc44.x86_64')
     sys.exit(0)
-if args == ['-Qqm']:
-    print('fixture-aur')
-    sys.exit(0)
-if '-Qq' in args:
+if '-q' in args:
     sys.exit(1)
-if '-Si' in args:
-    name = args[-1].removeprefix('extra/')
-    print('Repository      : extra')
-    print('Name            : ' + name)
-    print('Version         : 2.0.0-1')
-    sys.exit(0)
 sys.exit(97)""")
         self.mock("paru", "print('paru v2.1.0') if '--version' in sys.argv else None")
 
@@ -151,26 +145,26 @@ source "$ROOT/lib/dotfiles.sh"
         self.assertEqual(1, len(snapshots), self.calls())
         snapshot = snapshots[0]
         self.assertIn("-r", snapshot)
-        self.assertTrue(snapshot[-2].endswith("/@"), snapshot)
+        self.assertTrue(snapshot[-2].endswith("/root"), snapshot)
         self.assertIn("/@snapshots/dotfiles-", snapshot[-1])
         calls = self.calls()
         upgrade = next(index for index, call in enumerate(calls)
-                       if call[:2] == ["sudo", "pacman"] and "-Su" in call)
+                       if call[:2] == ["sudo", "dnf"] and "upgrade" in call)
         self.assertLess(calls.index(snapshot), upgrade)
         notes = self.rollback_notes()
         text = notes.read_text()
         self.assertIn("mount -o subvolid=5", text)
         self.assertIn("@snapshots/dotfiles-", text)
-        self.assertIn("Boot-critical packages changed: linux", result.stderr)
+        self.assertIn("Boot-critical packages changed: kernel-core", result.stderr)
         self.assertIn("Reboot before", result.stderr)
         self.assertTrue((notes.parent / "packages-before.txt").exists())
-        self.assertTrue((notes.parent / "foreign-before.txt").exists())
+        self.assertFalse((notes.parent / "foreign-before.txt").exists())
 
     def test_snapshot_failure_aborts_before_the_full_upgrade(self):
         self.env["TEST_SNAPSHOT_FAIL"] = "1"
         result = self.run_packages()
         self.assert_failed(result, "Could not create the pre-upgrade Btrfs snapshot")
-        self.assertFalse(any(call[:2] == ["sudo", "pacman"] and "-Su" in call
+        self.assertFalse(any(call[:2] == ["sudo", "dnf"] and "upgrade" in call
                              for call in self.calls()))
         self.assertTrue(any(call[:2] == ["sudo", "umount"] for call in self.calls()))
         self.assertEqual([], list((self.state / "dotfiles/upgrades").glob("dotfiles-*")))
@@ -180,7 +174,7 @@ source "$ROOT/lib/dotfiles.sh"
         result = self.run_packages()
         self.assert_failed(result, "at least 2048 MiB")
         self.assertFalse(self.snapshot_calls())
-        self.assertFalse(any(call[:2] == ["sudo", "pacman"] and "-Su" in call
+        self.assertFalse(any(call[:2] == ["sudo", "dnf"] and "upgrade" in call
                              for call in self.calls()))
 
     def test_non_btrfs_root_skips_snapshot_without_aborting(self):

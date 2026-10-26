@@ -41,18 +41,18 @@ jobs:
       - name: Package metadata syntax (offline)
         run: python3 scripts/check-packages.py
 
-  arch-stow:
+  fedora-stow:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Real Stow tests in disposable Arch container
+      - name: Real Stow tests in disposable Fedora 44 container
         run: |
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
-            --workdir /src archlinux:base \
-            bash -c 'pacman -Syu --noconfirm --needed python stow git diffutils && useradd --create-home tester && runuser -u tester -- python -B -m unittest discover -s tests -v'
+            --workdir /src registry.fedoraproject.org/fedora:44 \
+            bash -c 'dnf install --assumeyes python3 stow git diffutils findutils util-linux shadow-utils && useradd --create-home tester && runuser -u tester -- python3 -B -m unittest discover -s tests -v'
 
   package-existence:
     # Explicit network validation only on trusted master pushes, not PR code.
@@ -62,5 +62,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Query Arch and AUR metadata (no package installation)
-        run: python3 scripts/check-packages.py --network
+      - name: Query Fedora 44 and selected RPM metadata (no application installation)
+        run: |
+          docker run --rm \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
+            --workdir /src registry.fedoraproject.org/fedora:44 \
+            bash -c 'dnf install --assumeyes python3 && cp repos/*.repo /etc/yum.repos.d/ && dnf --assumeyes --refresh makecache && python3 scripts/check-packages.py --network'

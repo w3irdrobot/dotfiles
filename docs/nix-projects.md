@@ -2,7 +2,9 @@
 
 The installer adds the repository Nix package, enables its daemon, and turns on
 `nix-command` and `flakes` through user configuration. Each project owns its
-toolchains and lockfiles; pacman/paru owns workstation apps and system packages.
+toolchains and lockfiles; DNF owns workstation RPMs and system packages. Fedora
+44 splits native Nix into `nix`, `nix-core`, and `nix-daemon`; setup explicitly
+selects `nix nix-daemon` and verifies that `nix-core` owns `/usr/bin/nix`.
 
 A project can start with a `flake.nix` like this:
 
@@ -44,7 +46,7 @@ flakes and binary-cache settings before using them.
 
 The development shell is not a sandbox, does not vendor application dependencies,
 and does not automatically reconcile Cargo/npm lockfiles. Keep those project
-lockfiles as well. Pacman/paru updates Nix itself; Nix garbage collection and
+lockfiles as well. DNF updates Nix itself; Nix garbage collection and
 project lockfile updates remain separate, explicit maintenance tasks.
 
 ## Nix inside nono

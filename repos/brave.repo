@@ -1,0 +1,9 @@
+[dotfiles-brave]
+name=Brave browser (vendor)
+baseurl=https://brave-browser-rpm-release.s3.brave.com/$basearch
+enabled=1
+gpgcheck=1
+gpgkey=https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
+includepkgs=brave-browser
+skip_if_unavailable=0
+priority=110

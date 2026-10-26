@@ -95,7 +95,7 @@ printf 'PACKAGES: %s\\n' "${PACKAGES[*]}"
         for _ in range(2):
             result = self.helper(tail='system76_next_steps\n')
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn("Resolve backend conflicts manually", result.stdout)
+            self.assertIn("backend conflicts manually", result.stdout)
             self.assertIn("PowerDevil", result.stdout)
             self.assertEqual(before, self.snapshot())
         self.assertFalse(any(call[0] in ("sudo", "systemctl", "pacman", "paru")
@@ -113,7 +113,7 @@ printf 'PACKAGES: %s\\n' "${PACKAGES[*]}"
 
     def test_system76_cli_dry_run_plans_packages_without_provisioning(self):
         self.dmi("System76")
-        self.os_release.write_text('ID=manjaro\n')
+        self.os_release.write_text('ID=fedora\nVERSION_ID=44\n')
         (self.path / "paru").unlink()
         self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
         self.mock("stow", "sys.exit(0)")

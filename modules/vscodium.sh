@@ -5,21 +5,10 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 	set -x
 fi
 
-die() {
-	printf 'vscodium: %s\n' "$*" >&2
-	exit 1
-}
-
-check_platform() {
-	[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || die 'Only x86_64 Linux is supported.'
-	[[ -r /etc/os-release ]] || die 'Missing /etc/os-release.'
-	local distro
-	distro=$(sed -n 's/^ID=//p' /etc/os-release)
-	distro=${distro//\"/}
-	distro=${distro//\'/}
-	[[ $distro == arch || $distro == manjaro ]] || die 'Only Arch and Manjaro are supported.'
-	((EUID != 0)) || die 'Run as your regular user, not root.'
-}
+ROOT=$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd -P)
+readonly ROOT
+# shellcheck source=lib/dotfiles.sh
+source "$ROOT/lib/dotfiles.sh"
 
 install_extensions() {
 	local root manifest installed extension

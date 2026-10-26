@@ -27,7 +27,7 @@ class Fixture(unittest.TestCase):
         self.repo.mkdir()
         # Copy only runtime inputs, never the checkout's Git metadata or private files.
         for name in ("install.sh", ".gitignore", "bin", "lib", "modules", "stow",
-                     "shell", "examples"):
+                      "shell", "examples", "repos", "scripts"):
             source = ROOT / name
             if source.is_dir():
                 shutil.copytree(source, self.repo / name, symlinks=True)
@@ -46,15 +46,18 @@ class Fixture(unittest.TestCase):
             "GIT_TERMINAL_PROMPT": "0",
         }
         self.os_release = self.base / "os-release"
-        self.os_release.write_text('ID=arch\nNAME="Arch Linux"\n')
+        self.os_release.write_text('ID=fedora\nVERSION_ID=44\nNAME="Fedora Linux"\n')
         self.destination = self.home / "projects/github.com/w3irdrobot/dotfiles"
         # Fixture copies replace only fixed host paths, not behavior or host checks.
         # This keeps Linux checks runnable on macOS without production-only test flags.
-        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "modules/nix.sh"):
+        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "lib/fedora.sh", "lib/bitwarden.sh", "lib/discord.sh", "modules/nix.sh", "modules/system76.sh"):
             path = self.repo / name
             if path.exists():
                 text = path.read_text().replace("/etc/os-release", str(self.os_release))
                 text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
+                text = text.replace("/etc/yum.repos.d", str(self.base / "repos"))
+                text = text.replace("/usr/bin/bitwarden", str(self.base / "usr/bin/bitwarden"))
+                text = text.replace("/usr/bin/discord", str(self.base / "usr/bin/discord"))
                 for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
                                   str(self.base / fixed.lstrip("/")), text)
@@ -63,16 +66,17 @@ class Fixture(unittest.TestCase):
         for name in ("bash", "dirname", "basename", "readlink", "realpath", "find",
                      "sort", "cat", "grep", "sed", "awk", "tr", "cut", "head", "tail",
                      "mkdir", "mktemp", "rm", "rmdir", "ln", "cp", "mv", "chmod", "date",
-                     "id", "wc", "tee", "env", "sleep", "touch"):
+                      "id", "wc", "tee", "env", "sleep", "touch", "python3"):
             target = shutil.which(name)
             if target:
                 (self.path / name).symlink_to(target)
         self.mock("uname", 'print("Linux" if "-s" in sys.argv else "x86_64")')
         # Fixture hosts use a non-Btrfs root, so upgrade snapshot tests opt in.
         self.mock("findmnt", 'print("ext4") if "FSTYPE" in sys.argv else print("/")')
-        for name in ("sudo", "pacman", "yay", "paru", "makepkg", "curl", "wget",
+        for name in ("sudo", "dnf", "rpm", "pacman", "yay", "paru", "makepkg", "curl", "wget",
                      "brew", "nix-env", "systemctl", "chsh", "flatpak", "git", "stow"):
             self.mock(name, "sys.exit(97)")
+        self.mock("rpm", "sys.exit(1)")
         # BSD realpath lacks GNU -m; use stdlib's equivalent in the mocked PATH.
         self.mock("realpath", "print(os.path.realpath(sys.argv[-1]))")
 
@@ -127,7 +131,7 @@ class Fixture(unittest.TestCase):
 
     def test_unsupported_distribution_refuses_install(self):
         self.os_release.write_text("ID=ubuntu\n")
-        self.assert_failed(self.run_cli("install"), "Only Arch and Manjaro")
+        self.assert_failed(self.run_cli("install"), "Only Fedora KDE Plasma Desktop 44")
         self.assertEqual({}, self.snapshot())
         self.assertFalse([c for c in self.calls() if c[0] != "uname"])
 
@@ -293,7 +297,7 @@ class Fixture(unittest.TestCase):
 
     def test_custom_module_failure_stops_before_linking(self):
         self.minimal_modules()
-        self.mock("sudo", "sys.exit(0)")
+        self.mock("sudo", "[print(a) for a in sys.argv[1:] if not a.startswith('-')] if 'repoquery' in sys.argv else None")
         self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
         self.mock("stow", "sys.exit(0)")
         (self.repo / "modules/fixture-cloud.sh").write_text(
@@ -315,9 +319,10 @@ class Fixture(unittest.TestCase):
         self.opt_in_modules()
         self.git_fixture()
         self.mock("stow", "sys.exit(0)")
-        self.mock("sudo", "sys.exit(0)")
+        self.mock("sudo", "[print(a) for a in sys.argv[1:] if not a.startswith('-')] if 'repoquery' in sys.argv else None")
         self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
         self.mock("paru", "print('paru v2.1.0') if '--version' in sys.argv else None")
+        self.mock("flatpak", "sys.exit(0 if sys.argv[1:] == ['update', '--user'] else 97)")
         for scope in ("configs", "all"):
             with self.subTest(scope=scope):
                 self.log.unlink(missing_ok=True)
@@ -328,6 +333,7 @@ class Fixture(unittest.TestCase):
                 fetches = [c for c in self.calls() if c[0] == "git" and "fetch" in c]
                 self.assertEqual(1, len(fetches), self.calls())
                 self.assertEqual(scope == "all", any(c[0] == "sudo" for c in self.calls()))
+                self.assertEqual(scope == "all", any(c == ['flatpak', 'update', '--user'] for c in self.calls()))
                 self.assertIn(f"Complete: update {scope}", result.stderr)
                 self.assert_stow_selection(
                     ("fixture-core", "fixture-desktop"), ("fixture-cloud",)

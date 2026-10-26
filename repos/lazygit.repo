@@ -1,0 +1,9 @@
+[dotfiles-lazygit]
+name=lazygit (dejan COPR, linked by upstream)
+baseurl=https://download.copr.fedorainfracloud.org/results/dejan/lazygit/fedora-$releasever-$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/dejan/lazygit/pubkey.gpg
+includepkgs=lazygit
+skip_if_unavailable=0
+priority=110
