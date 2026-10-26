@@ -234,6 +234,20 @@ service changes. All 17 System76 service fixtures, shell checks, and diff checks
 passed; the full suite was not rerun locally for this follow-up. The laptop's
 activation after this fix still needs user confirmation.
 
+Signal subsequently launched from the terminal but KDE's application menu could
+not find `signal-desktop`: the menu did not inherit Bash's user-bin PATH. The
+desktop entry now uses an explicit home-directory launcher path through `/bin/sh`,
+with URL arguments passed separately rather than interpolated into shell code.
+It also no longer adds a different password-store override from a plain terminal
+launch, preserving the user's currently working behavior after their profile
+reset. This aligns entry points; it does not select/migrate keyrings or establish
+that a particular Secret Service provider remains stable across reboots.
+Two fake-HOME launcher tests passed (missing user-bin PATH, spaces in HOME,
+quoted/shell-like URI forwarding, menu/terminal argument equivalence), along with
+all 22 desktop-source tests, shell checks, and diff checks. No real Signal profile
+or keyring was read, and the full suite/KDE launcher was not run locally for this
+follow-up. After pulling, refresh KDE's menu cache with `kbuildsycoca6 --noincremental`.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

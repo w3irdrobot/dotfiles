@@ -122,10 +122,13 @@ prerequisites first. The selected packages retain these tools and FUSE support.
 
 The writable AppImage lives at
 `~/.local/share/dotfiles/signal/Signal.AppImage`; Stow links the `signal-desktop`
-launcher into `~/.local/bin` and retains our existing desktop entry and
-`--password-store=gnome-libsecret` integration. Ensure `~/.local/bin` is on PATH
-if you select Signal without managed Bash. Login/linking and an unlocked Secret
-Service provider remain manual; `libsecret` alone does not supply one.
+launcher into `~/.local/bin`. The desktop entry invokes that home-directory path
+explicitly instead of relying on KDE inheriting Bash's PATH. Menu and terminal
+launches use the same launcher without different password-store flags; an
+existing working terminal launch remains the baseline. Ensure `~/.local/bin` is
+on PATH for terminal use if you select Signal without managed Bash. Keep the
+same unlocked keyring provider across sessions; setup does not choose or migrate
+wallets. Login/linking remains manual, and `libsecret` alone is not a provider.
 
 After the initial install, **Signal owns its in-place updates** (configure them
 in Signal). Repeat setup preserves the managed app, including self-updated bytes;
