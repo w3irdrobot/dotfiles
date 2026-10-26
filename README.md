@@ -7,23 +7,31 @@ login, SELinux, and networking settings stay yours to manage.
 
 ## Install
 
-Download the bootstrap, review it, then run it as your normal user:
+Run the bootstrap from a terminal as your normal user:
 
 ```bash
-wget -O install.sh https://dotfiles.w3ird.tech/install.sh
-less install.sh
-bash install.sh
+set -o pipefail
+wget -O- https://dotfiles.w3ird.tech/install.sh | bash
 ```
 
-You need networking, sudo access, and a terminal for interactive RPM package and
+You need `wget`, networking, sudo access, and a terminal for interactive RPM package and
 signing-key confirmation. Start with Fedora's KDE edition. Test the live USB on
 the laptop before installing. This Fedora port has local fixture coverage, not
 yet a completed Fedora VM or Lemur Pro hardware rehearsal.
 
-**During the migration, the public bootstrap still serves the published
-`master`. Local edits are not published automatically.** Use the reviewed Fedora
-checkout's `bash bin/dotfiles install --dry-run` and `bash bin/dotfiles install`
-until the Fedora changes are committed and published.
+The public bootstrap is published from `master`; local edits are not published
+automatically. Piping executes the downloaded code immediately. To inspect it
+first, use `wget -O install.sh https://dotfiles.w3ird.tech/install.sh`, review the
+file, then run `bash install.sh`.
+
+To preview without applying changes, pass arguments through `bash -s --`:
+
+```bash
+wget -O- https://dotfiles.w3ird.tech/install.sh | bash -s -- --dry-run
+```
+
+Real installs read confirmation prompts from the terminal, not the download
+pipe. Without a controlling terminal, only help/dry-run modes are supported.
 
 The bootstrap clones `master` over HTTPS, so a fresh machine needs no GitHub SSH
 keys. It uses `~/projects/github.com/w3irdrobot/dotfiles`. Keep that checkout in

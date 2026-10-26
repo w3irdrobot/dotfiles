@@ -47,7 +47,7 @@ def validate_remote(packages):
     if not shutil.which("dnf"):
         raise ValueError("Network package validation requires Fedora 44 with DNF5 and the selected repos configured")
     result = subprocess.run(
-        ["dnf", "--refresh", "repoquery", "--available", "--arch=x86_64,noarch", "--queryformat", "%{name}", *sorted(packages)],
+        ["dnf", "--refresh", "repoquery", "--available", "--arch=x86_64,noarch", "--queryformat", "%{name}\\n", *sorted(packages)],
         check=True, text=True, capture_output=True, timeout=180,
     )
     missing = packages - set(result.stdout.splitlines())

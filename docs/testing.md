@@ -160,6 +160,41 @@ releases, and correctly reported unavailable RPM inventory on macOS. No Linux
 application, actual Flatpak install/update, or DNF transaction was executed.
 Fedora/KDE launcher, FUSE, updater, portals and notifications still need rehearsal.
 
+## Piped bootstrap checks
+
+`just validate` passed Bash syntax, ShellCheck, shfmt, and **335 fixture tests
+(332 passed, three skipped)** with the same Stow/filesystem skips described above.
+The final helper-order cleanup also passed shell checks and the four targeted
+piped-bootstrap tests. Real Fedora/terminal provisioning remains unverified.
+
+The primary install command is now `wget -O- ... | bash`, with Bash `pipefail`
+enabled in the caller. The bootstrap gives interactive descendants terminal
+input while restoring the parser's source stdin afterward. Without a terminal,
+real installation stops before Git/package work; help and dry-runs still work.
+
+Four new synthetic fixtures cover piped dispatch/argument preservation, separate
+Git-prerequisite and setup confirmation input, restored source input, terminal
+absence, and no-op help/previews. The shared fixture replaces `/dev/tty` with a
+temporary input file; no real provisioning or host terminal prompts are used.
+OpenCode's standalone guards remain unchanged: they protect the dependency-only
+Git bootstrap, before the checkout's own guards can run.
+
+## First Fedora install: package-query separator fix
+
+A real installation reported `RPM package unavailable: git` before the main
+package transactions. The DNF5 custom query format lacked an explicit newline,
+while the shell parser expected one package name per line. The fixture used
+Python `print()` for each package, accidentally supplying the missing separator.
+
+The installer (including its Fedora Nix check) and standalone package checker
+now request `%{name}\n`. The DNF fixture renders the requested format instead of
+adding newlines itself, and regression assertions cover the explicit separator.
+Package resolution now has its own phase label, separate from metadata refresh.
+The corrected installer still needs confirmation on the user's Fedora machine.
+Local `just validate` passed shell checks and **336 fixture tests (333 passed,
+three skipped)**, including the corrected DNF5 formatting regression.
+See [DNF5 repoquery formatting](https://dnf5.readthedocs.io/en/latest/commands/repoquery.8.html#formatting-options).
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

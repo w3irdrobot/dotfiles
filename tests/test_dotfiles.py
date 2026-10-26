@@ -47,6 +47,8 @@ class Fixture(unittest.TestCase):
         }
         self.os_release = self.base / "os-release"
         self.os_release.write_text('ID=fedora\nVERSION_ID=44\nNAME="Fedora Linux"\n')
+        self.terminal = self.base / "terminal-input"
+        self.terminal.write_text("")
         self.destination = self.home / "projects/github.com/w3irdrobot/dotfiles"
         # Fixture copies replace only fixed host paths, not behavior or host checks.
         # This keeps Linux checks runnable on macOS without production-only test flags.
@@ -54,6 +56,8 @@ class Fixture(unittest.TestCase):
             path = self.repo / name
             if path.exists():
                 text = path.read_text().replace("/etc/os-release", str(self.os_release))
+                if name == 'install.sh':
+                    text = text.replace('/dev/tty', str(self.terminal))
                 text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
                 text = text.replace("/etc/yum.repos.d", str(self.base / "repos"))
                 text = text.replace("/usr/bin/bitwarden", str(self.base / "usr/bin/bitwarden"))

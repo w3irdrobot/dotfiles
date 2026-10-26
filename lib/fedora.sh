@@ -48,7 +48,7 @@ require_native_nix_repository() {
 	local package metadata
 	for package in nix nix-core nix-daemon; do
 		metadata=$(sudo dnf --cacheonly --repo=fedora --repo=updates repoquery \
-			--available --arch=x86_64,noarch --latest-limit=1 --queryformat '%{name}' "$package") || die 'Could not query Fedora Nix packages.'
+			--available --arch=x86_64,noarch --latest-limit=1 --queryformat '%{name}\n' "$package") || die 'Could not query Fedora Nix packages.'
 		[[ $metadata == "$package" || $metadata == "$package"$'\n'"$package" ]] || die "Fedora package $package is unavailable; no upstream installer fallback."
 	done
 }
@@ -74,11 +74,13 @@ install_packages() {
 	configure_repositories
 	phase 'Repository refresh: metadata only, no package installation'
 	run sudo dnf --refresh makecache
+	phase 'RPM package preflight: resolving selected names from checked metadata'
 	if ((! DRY_RUN)); then
 		if module_selected nix; then require_native_nix_repository; fi
 		# Resolve every selected name before upgrading anything. DNF's install
 		# must also remain strict: no --skip-unavailable / --skip-broken.
-		available=$(sudo dnf --cacheonly repoquery --available --arch=x86_64,noarch --queryformat '%{name}' "${targets[@]}") || die 'Could not resolve selected Fedora RPM packages.'
+		# DNF5 prints exactly this format; it does not add record separators.
+		available=$(sudo dnf --cacheonly repoquery --available --arch=x86_64,noarch --queryformat '%{name}\n' "${targets[@]}") || die 'Could not resolve selected Fedora RPM packages.'
 		while IFS= read -r name; do
 			[[ -z $name ]] || found[$name]=1
 		done <<<"$available"

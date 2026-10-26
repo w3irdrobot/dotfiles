@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download and review https://dotfiles.w3ird.tech/install.sh, then run bash install.sh.
+# Install: wget -O- https://dotfiles.w3ird.tech/install.sh | bash
 set -euo pipefail
 if [[ "${DEBUG:-0}" == "1" ]]; then set -x; fi
 
@@ -107,6 +107,45 @@ bootstrap_git() {
 	run sudo dnf --refresh install git ca-certificates
 }
 
+bootstrap_checkout() {
+	# main owns destination/ref/dry_run/setup_args; function redirection restores
+	# Bash's source stdin afterward instead of leaving the parser on /dev/tty.
+	phase 'Git prerequisites: checking the available clone tools'
+	if ! command -v git >/dev/null; then
+		bootstrap_git
+		if ((dry_run)); then
+			printf 'Would clone %s at %s and run bin/setup.\n' "$REPOSITORY" "$ref" >&2
+			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
+			printf 'PLAN ONLY: prerequisites, checkout clone and setup dispatch were not performed.\n'
+			return
+		fi
+	fi
+	log 'Git clone tooling is available.'
+	git check-ref-format "refs/heads/$ref" || die 'Invalid branch.'
+	if [[ -e $destination || -L $destination ]]; then
+		phase 'Checkout update: verifying origin, cleanliness and fast-forward safety'
+		check_checkout
+	else
+		phase 'Checkout clone: creating the public HTTPS checkout'
+		run mkdir -p "$(dirname "$destination")"
+		run git clone --branch "$ref" --single-branch "$REPOSITORY" "$destination"
+		if ((dry_run)); then
+			printf 'Would run bin/setup in the new checkout.\n' >&2
+			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
+			printf 'PLAN ONLY: checkout clone and setup dispatch were not performed.\n'
+			return
+		fi
+	fi
+	[[ -f $destination/bin/setup ]] || die 'Selected ref has no bin/setup.'
+	phase 'Setup dispatch: running the selected checkout entrypoint'
+	bash "$destination/bin/setup" "${setup_args[@]}"
+	if ((dry_run)); then
+		phase 'PLAN ONLY: bootstrap dispatch preview finished; no changes applied'
+	else
+		phase 'Complete: bootstrap checkout and setup dispatch'
+	fi
+}
+
 main() {
 	local destination="$HOME/projects/github.com/w3irdrobot/dotfiles" ref=master dry_run=0
 	local -a setup_args=()
@@ -148,39 +187,17 @@ main() {
 	check_platform
 	log 'Platform validation passed.'
 	[[ $ref != -* ]] || die 'Invalid branch.'
-	phase 'Git prerequisites: checking the available clone tools'
-	if ! command -v git >/dev/null; then
-		bootstrap_git
-		if ((dry_run)); then
-			printf 'Would clone %s at %s and run bin/setup.\n' "$REPOSITORY" "$ref" >&2
-			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
-			printf 'PLAN ONLY: prerequisites, checkout clone and setup dispatch were not performed.\n'
-			return
+	# With wget | bash, stdin carries source code, not prompt responses. All
+	# interactive descendants must read the terminal instead of consuming it.
+	if ((! dry_run)) && [[ ! -t 0 ]]; then
+		local terminal_input
+		if ! { exec {terminal_input}</dev/tty; } 2>/dev/null; then
+			die 'Interactive installation requires a terminal; run from a terminal or use --dry-run.'
 		fi
-	fi
-	log 'Git clone tooling is available.'
-	git check-ref-format "refs/heads/$ref" || die 'Invalid branch.'
-	if [[ -e $destination || -L $destination ]]; then
-		phase 'Checkout update: verifying origin, cleanliness and fast-forward safety'
-		check_checkout
+		bootstrap_checkout <&"$terminal_input"
+		exec {terminal_input}<&-
 	else
-		phase 'Checkout clone: creating the public HTTPS checkout'
-		run mkdir -p "$(dirname "$destination")"
-		run git clone --branch "$ref" --single-branch "$REPOSITORY" "$destination"
-		if ((dry_run)); then
-			printf 'Would run bin/setup in the new checkout.\n' >&2
-			phase 'PLAN ONLY: bootstrap dry-run finished; no changes applied'
-			printf 'PLAN ONLY: checkout clone and setup dispatch were not performed.\n'
-			return
-		fi
-	fi
-	[[ -f $destination/bin/setup ]] || die 'Selected ref has no bin/setup.'
-	phase 'Setup dispatch: running the selected checkout entrypoint'
-	bash "$destination/bin/setup" "${setup_args[@]}"
-	if ((dry_run)); then
-		phase 'PLAN ONLY: bootstrap dispatch preview finished; no changes applied'
-	else
-		phase 'Complete: bootstrap checkout and setup dispatch'
+		bootstrap_checkout
 	fi
 }
 main "$@"

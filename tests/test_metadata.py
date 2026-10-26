@@ -76,6 +76,7 @@ class RemoteMetadata(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertIn("repoquery", command)
         self.assertIn("--arch=x86_64,noarch", command)
+        self.assertEqual('%{name}\\n', command[command.index('--queryformat') + 1])
         self.assertNotIn("install", command)
         self.assertNotIn("sudo", command)
 

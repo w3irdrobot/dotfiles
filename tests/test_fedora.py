@@ -34,9 +34,10 @@ elif args[0] == 'dnf':
         sys.exit(43)
     if 'repoquery' in args:
         start = args.index('--queryformat') + 2
+        queryformat = args[start - 1].replace('\\\\n', '\\n')
         for name in args[start:]:
             if name != os.environ.get('TEST_MISSING'):
-                print(name)
+                sys.stdout.write(queryformat.replace('%{name}', name))
 else:
     sys.exit(97)
 """)
@@ -96,6 +97,15 @@ else:
         result = self.packages(modules=(), packages=("fixture-missing",))
         self.assert_failed(result, "RPM package unavailable: fixture-missing")
         self.assertEqual([], self.transactions())
+
+    def test_dnf5_queries_explicitly_separate_package_names(self):
+        result = self.packages(modules=(), packages=('git', 'stow', 'curl'))
+        self.assertEqual(0, result.returncode, result.stderr)
+        queries = [c for c in self.calls() if 'repoquery' in c]
+        self.assertTrue(queries)
+        for query in queries:
+            self.assertEqual('%{name}\\n', query[query.index('--queryformat') + 1])
+        self.assertEqual(2, len(self.transactions()))
 
     def test_dnf_failures_stop_later_phases_and_preserve_status(self):
         for action in ("makecache", "upgrade", "install"):
