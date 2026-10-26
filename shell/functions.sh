@@ -16,6 +16,12 @@ function scratch() {
 	cd "$directory" || return
 }
 
+function add_home_routes() {
+	for subnet in 2 3 4 5; do
+		sudo ip route add "192.168.${subnet}.0/24" via 192.168.1.1
+	done
+}
+
 # Are we already inside a gshell session?
 _gshell_is_active() {
 	[ -n "${GSHELL_ACTIVE:-}" ]
