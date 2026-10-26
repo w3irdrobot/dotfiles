@@ -61,7 +61,9 @@ install_packages() {
 	if module_selected bitwarden; then preflight_bitwarden; fi
 	if module_selected discord; then preflight_discord; fi
 	local package available name
-	local -a targets=(git stow wget curl ca-certificates xz tar coreutils diffutils btrfs-progs)
+	# Fedora's wget command is shipped by wget2-wget; use concrete RPM names
+	# because preflight compares repoquery's package names, not virtual provides.
+	local -a targets=(git stow wget2-wget curl ca-certificates xz tar coreutils diffutils btrfs-progs)
 	local -A seen=() found=()
 	for package in "${targets[@]}"; do seen[$package]=1; done
 	for package in "${PACKAGES[@]}"; do

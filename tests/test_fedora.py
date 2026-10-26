@@ -37,6 +37,7 @@ elif args[0] == 'dnf':
         queryformat = args[start - 1].replace('\\\\n', '\\n')
         for name in args[start:]:
             if name != os.environ.get('TEST_MISSING'):
+                if name == 'wget': name = 'wget2-wget'
                 sys.stdout.write(queryformat.replace('%{name}', name))
 else:
     sys.exit(97)
@@ -106,6 +107,14 @@ else:
         for query in queries:
             self.assertEqual('%{name}\\n', query[query.index('--queryformat') + 1])
         self.assertEqual(2, len(self.transactions()))
+
+    def test_base_dependencies_use_fedora_wget_provider_package_name(self):
+        result = self.packages(modules=(), packages=())
+        self.assertEqual(0, result.returncode, result.stderr)
+        query = next(c for c in self.calls() if 'repoquery' in c)
+        self.assertIn('wget2-wget', query)
+        self.assertNotIn('wget', query)
+        self.assertIn('wget2-wget', self.transactions()[-1])
 
     def test_dnf_failures_stop_later_phases_and_preserve_status(self):
         for action in ("makecache", "upgrade", "install"):

@@ -195,6 +195,14 @@ Local `just validate` passed shell checks and **336 fixture tests (333 passed,
 three skipped)**, including the corrected DNF5 formatting regression.
 See [DNF5 repoquery formatting](https://dnf5.readthedocs.io/en/latest/commands/repoquery.8.html#formatting-options).
 
+The next real-install preflight failure named `wget`: Fedora 44 ships that
+command in the concrete `wget2-wget` RPM, with `wget` as a provided capability.
+Base dependencies now select `wget2-wget`. The fixture models that provider/name
+difference and asserts the concrete name is queried and installed. All 15 Fedora
+package-flow tests, shell checks, and `git diff --check` passed for this follow-up;
+the full suite was not rerun locally. Source:
+[Fedora 44 wget2-wget files/provides](https://packages.fedoraproject.org/pkgs/wget2/wget2-wget/fedora-44.html).
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old
