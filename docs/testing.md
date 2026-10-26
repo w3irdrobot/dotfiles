@@ -265,6 +265,25 @@ host embedded in Git. The final `just validate` passed shell checks and **348 te
 `git diff --check` passed. Machine-local files under the Stow SSH directory are
 ignored except for the generic template, as a staging guard.
 
+## Explicit-only secrets export selection
+
+Export pickers now require marked rows: Enter with no marks skips a category
+instead of accepting fzf's focused row, and an all-empty selection creates no
+archive. Personal fzf auto-selection/output overrides are disabled for these
+pickers. Picker errors/forged output fail closed, and selected GPG records must
+contain a nonempty hexadecimal key ID before any secret-key export call. This
+prevents an empty GPG selector from accidentally exporting every secret key.
+
+Five new synthetic tests cover unmarked focused rows, one-key-only export,
+skipping GPG while exporting SSH, invalid/empty/option-like IDs, and picker
+failures/forged selections. They exercise the actual Enter action shell with a
+fake selection count and stub GPG; no real keys, vaults, or archives were read.
+The USB discovery fixture's placeholder key ID was updated to valid synthetic
+hex so it continues reaching its intended discovery-failure check.
+The final `just validate` passed shell checks and **353 tests (350 passed, three
+expected skips)**; diff whitespace checks passed. Real interactive fzf export
+with the user's secrets was not run by the agent.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

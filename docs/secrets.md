@@ -33,6 +33,14 @@ Secrets export/import remain a separate, manual migration workflow.
 Review the archive selection and test a restore before wiping the source machine.
 Keep archives, keys, wallet data, and authentication stores outside this checkout.
 
+Each export picker requires explicit marks: press **TAB** to mark/unmark items,
+then **Enter** to export those marks. Enter with no marked items, or Escape,
+skips that category; the focused row is not implicitly selected. If every category
+is empty, export stops without creating an archive. Personal fzf auto-selection
+and output-transform options are ignored for these sensitive pickers. Picker
+errors abort rather than selecting a fallback, and malformed/empty GPG key IDs
+are rejected before GPG is invoked.
+
 ## SSH configuration
 
 Git manages only a generic `~/.ssh/config` template: the local include and

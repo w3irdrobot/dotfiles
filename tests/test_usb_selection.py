@@ -142,7 +142,7 @@ select_removable_media "$records" 'Select: '
         for name in self.definitions:
             result = self.run_bash(name, [], '''
 check_deps() { :; }
-list_gpg_keys() { printf 'fixture|FIXTURE\\n'; }
+list_gpg_keys() { printf 'fixture|0123456789ABCDEF\\n'; }
 list_ssh_config_hosts() { :; }
 list_sparrow_wallets() { :; }
 main
