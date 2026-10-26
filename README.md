@@ -66,9 +66,9 @@ users. Keep the checkout in place because the launcher and config links use it.
 | `dotfiles install` | Update Fedora RPMs, install selected tools, run setup, and link configs |
 | `dotfiles link` | Link selected configs and create/reuse the launcher; no package installation |
 | `dotfiles update configs` | Safely fast-forward the checkout and relink configs |
-| `dotfiles update system` | Update Fedora RPMs and run selected tool setup; no Git update |
-| `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, and config links |
-| `dotfiles check-updates` | Report installed/pinned/published Bitwarden desktop versions; no installation |
+| `dotfiles update system` | Update Fedora RPMs, selected tool setup, and installed user Flatpaks; no Git update |
+| `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, user Flatpaks, and config links |
+| `dotfiles check-updates` | Report installed/pinned/published Bitwarden and Discord RPM versions; no installation |
 | `dotfiles secrets export` | Interactively export selected GPG/SSH/Sparrow material to an encrypted archive |
 | `dotfiles secrets import` | Interactively restore an archive with the existing conflict protections |
 | `dotfiles --help` | Show usage and options |
@@ -89,7 +89,7 @@ DEBUG/xtrace/verbose tracing before dispatching the migration helper.
 
 Packages come from Fedora first, with narrowly scoped vendor RPM repositories
 for Brave/Mullvad and documented community RPM sources for Ghostty, VSCodium,
-and System76. Definitions in `repos/` require package signatures and
+System76, and lazygit. Definitions in `repos/` require package signatures and
 are added only for selected modules. Existing conflicting definitions stop setup.
 OpenCode V2 and nono use pinned, checksum-verified upstream binaries. Arch,
 pacman, paru, and AUR are no longer supported.
@@ -99,8 +99,14 @@ Bitwarden uses a pinned, checksum-verified native upstream RPM. Run
 also check when it is selected or installed. New pins require review, not an
 automatic latest-version install. Sign-in and SSH-agent activation stay manual.
 
+Discord uses a reviewed vendor RPM bootstrapper; its first launch downloads the
+client separately. Signal uses the official signature-verified AppImage and then
+its built-in updater. Telegram and Gear Lever (AppImage integration) use verified
+user Flathub apps. System/all updates also update installed user Flatpaks;
+system-wide Flatpak installations stay untouched. See [package details](docs/packages.md).
+
 **Some selected modules currently require manual application installation**, most
-notably Signal, Discord, Telegram, lazygit, and Nerd Fonts.
+notably Nerd Fonts and optional lazydocker, kubie, Google Cloud tools, and Sparrow.
 Their configs still link; setup reports exactly which applications it did not
 install. See [package sources and manual steps](docs/packages.md), including RPM
 update responsibilities. This is not a claim that every previous app is automated.

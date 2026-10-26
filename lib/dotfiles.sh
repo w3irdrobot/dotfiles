@@ -455,6 +455,12 @@ end_system_upgrade() {
 source "$ROOT/lib/fedora.sh"
 # shellcheck source=lib/bitwarden.sh
 source "$ROOT/lib/bitwarden.sh"
+# shellcheck source=lib/discord.sh
+source "$ROOT/lib/discord.sh"
+# shellcheck source=lib/signal.sh
+source "$ROOT/lib/signal.sh"
+# shellcheck source=lib/flatpak.sh
+source "$ROOT/lib/flatpak.sh"
 
 # Keep these PATH guards identical to their standalone copies in install.sh.
 preflight_native_opencode_paths() {
@@ -494,10 +500,13 @@ check_native_opencode_path() {
 source "$ROOT/modules/nix.sh"
 
 preflight_custom_modules() {
+	preflight_flatpaks
 	local module
 	for module in "${MODULES[@]}"; do
 		case $module in
 		bitwarden) preflight_bitwarden ;;
+		discord) preflight_discord ;;
+		signal) preflight_signal ;;
 		system76) bash "$ROOT/modules/system76.sh" --check ;;
 		opencode) bash "$ROOT/modules/opencode.sh" --check ;;
 		nono) bash "$ROOT/modules/$module.sh" --check ;;
@@ -507,6 +516,7 @@ preflight_custom_modules() {
 
 setup_modules() {
 	phase 'Module configuration: preparing selected tools'
+	setup_flatpaks
 	local module
 	for module in "${MODULES[@]}"; do
 		phase "Module configuration: $module"
@@ -517,6 +527,10 @@ setup_modules() {
 			setup_nix --bootstrap
 		elif [[ $module == bitwarden ]]; then
 			if ((! DRY_RUN)); then validate_bitwarden_install; fi
+		elif [[ $module == discord ]]; then
+			if ((! DRY_RUN)); then validate_discord_install; fi
+		elif [[ $module == signal ]]; then
+			install_signal_appimage
 		elif [[ -f $ROOT/modules/$module.sh ]]; then
 			run bash "$ROOT/modules/$module.sh"
 		fi
@@ -549,7 +563,9 @@ update_system() {
 	install_packages
 	end_system_upgrade
 	setup_modules
+	update_user_flatpaks
 	check_bitwarden_release_notice
+	check_discord_release_notice
 	log 'DNF manages repository RPMs; standalone pins and project flake.lock updates remain explicitly reviewed.'
 }
 

@@ -50,13 +50,14 @@ class Fixture(unittest.TestCase):
         self.destination = self.home / "projects/github.com/w3irdrobot/dotfiles"
         # Fixture copies replace only fixed host paths, not behavior or host checks.
         # This keeps Linux checks runnable on macOS without production-only test flags.
-        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "lib/fedora.sh", "lib/bitwarden.sh", "modules/nix.sh", "modules/system76.sh"):
+        for name in ("install.sh", "lib/dotfiles.sh", "lib/hardware.sh", "lib/fedora.sh", "lib/bitwarden.sh", "lib/discord.sh", "modules/nix.sh", "modules/system76.sh"):
             path = self.repo / name
             if path.exists():
                 text = path.read_text().replace("/etc/os-release", str(self.os_release))
                 text = text.replace("/sys/class/dmi/id", str(self.base / "dmi"))
                 text = text.replace("/etc/yum.repos.d", str(self.base / "repos"))
                 text = text.replace("/usr/bin/bitwarden", str(self.base / "usr/bin/bitwarden"))
+                text = text.replace("/usr/bin/discord", str(self.base / "usr/bin/discord"))
                 for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
                                   str(self.base / fixed.lstrip("/")), text)
@@ -321,6 +322,7 @@ class Fixture(unittest.TestCase):
         self.mock("sudo", "[print(a) for a in sys.argv[1:] if not a.startswith('-')] if 'repoquery' in sys.argv else None")
         self.mock("pacman", "sys.exit(0 if '-Si' in sys.argv else 1)")
         self.mock("paru", "print('paru v2.1.0') if '--version' in sys.argv else None")
+        self.mock("flatpak", "sys.exit(0 if sys.argv[1:] == ['update', '--user'] else 97)")
         for scope in ("configs", "all"):
             with self.subTest(scope=scope):
                 self.log.unlink(missing_ok=True)
@@ -331,6 +333,7 @@ class Fixture(unittest.TestCase):
                 fetches = [c for c in self.calls() if c[0] == "git" and "fetch" in c]
                 self.assertEqual(1, len(fetches), self.calls())
                 self.assertEqual(scope == "all", any(c[0] == "sudo" for c in self.calls()))
+                self.assertEqual(scope == "all", any(c == ['flatpak', 'update', '--user'] for c in self.calls()))
                 self.assertIn(f"Complete: update {scope}", result.stderr)
                 self.assert_stow_selection(
                     ("fixture-core", "fixture-desktop"), ("fixture-cloud",)

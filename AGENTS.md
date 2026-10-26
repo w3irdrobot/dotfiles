@@ -31,6 +31,14 @@
 - Bitwarden uses the reviewed upstream RPM pin in `modules/bitwarden-release.json`.
   Check its SHA256 and RPM identity before protected installation; do not downgrade
   an equal/newer installed version. CLI release checks are notices, not auto-updates.
+- Discord uses a reviewed vendor bootstrap RPM and the same protected transaction
+  boundary; its user-level client download/update happens on launch, outside the pin.
+- Signal's official AppImage requires initial hash and detached-signature verification
+  with an isolated public keyring. Preserve Signal-owned self-updates in its managed
+  writable location; never execute it during setup/validation.
+- Telegram and Gear Lever are per-user verified Flathub apps. Preserve remote/origin
+  conflicts, leave system installations alone, and update installed user Flatpaks
+  during system/all updates. Fonts remain manual.
 
 ## Safety
 

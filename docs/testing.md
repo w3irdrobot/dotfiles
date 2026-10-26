@@ -47,10 +47,16 @@ complete; deleting it is a separate approved action.
 5. Open a fresh login shell. Check `nix --version`, daemon access, flakes support,
    and a project's locked dev shell without global Rust/Node toolchains.
 6. Install the default groups. Test Ghostty, VSCodium, clipboard behavior,
-    Bitwarden's RPM ownership, native launcher/SSH agent, and OpenCode/nono.
-    Run `dotfiles check-updates`; verify installed/pinned/published versions,
-    visible network-failure status, reviewed-pin updates, and no downgrades.
-    In Plasma Wayland, check session type,
+   Bitwarden's RPM ownership, native launcher/SSH agent, and OpenCode/nono.
+   Run `dotfiles check-updates`; verify installed/pinned/published versions,
+   visible network-failure status, reviewed-pin updates, and no downgrades.
+   Check lazygit's COPR/RPM ownership and Discord's bootstrap RPM without treating
+   its version as the user-downloaded client version. Test Signal's AppImage/FUSE
+   launch, Secret Service, self-update, and repeat install preserving the updated
+   app. Confirm per-user Telegram/Gear Lever menu integration, file pickers, links,
+   notifications and user-only Flatpak updates; system apps/remotes stay untouched.
+   Do not move the managed Signal AppImage via Gear Lever.
+   In Plasma Wayland, check session type,
    portal file pickers/screen sharing, and Signal persistence with an unlocked
    Secret Service provider. Test XWayland apps without global Electron flags and
    confirm TTY installation still works.
@@ -76,7 +82,7 @@ complete; deleting it is a separate approved action.
 
 12. Verify the explicit manual application report against
     [package sources](packages.md). Configuration links alone must not be treated
-     as an installed Signal, Telegram, Discord, or Nerd Font.
+    as an installed lazydocker, kubie, Sparrow, or Nerd Font.
 
 ## Fedora port local checks, 2026-10-25
 
@@ -128,6 +134,31 @@ was run, and no Linux binary was executed on the host. The updated Fedora CI
 jobs have not been run here. Fedora install/reinstall, native Nix operation,
 OpenCode/nono execution, KDE integration, and boot recovery still need the Linux
 rehearsal above; laptop boot/suspend/power checks require the Lemur Pro.
+
+## Desktop-source follow-up checks
+
+The final `just validate` run passed Bash syntax, ShellCheck, shfmt, and
+**331 fixture tests (328 passed, three skipped)**. The skips remain the two
+GNU Stow checks and one case-sensitive-filename fixture described above.
+`git diff --check` also passed.
+
+The 22 new targeted desktop-source fixtures passed on macOS. They exercise
+Discord's checked bootstrap RPM/no-downgrade flow, Signal's initial hashes and
+isolated signature verification before transactions, wrong signing identities,
+cache/install conflicts, preserved Signal self-updates, and user Flatpak remote
+origins, repeated installs, scope, failures, and side-effect-free dry-runs.
+The existing update/restart fixture now explicitly expects user Flatpak updates
+for `update all`, but not `update configs`; its earlier mock rejected the new
+command and was corrected rather than weakening production failure propagation.
+
+`python3 scripts/check-packages.py` validated **76** current RPM names offline;
+this does not extend the earlier 73-name remote evidence to all new dependencies.
+Read-only vendor inspection verified Discord 1.0.166's RPM identity/checksum and
+Signal 8.32.0's AppImage/key hashes and detached vendor signature. Live release
+checks reported the reviewed Bitwarden and Discord versions with no newer stable
+releases, and correctly reported unavailable RPM inventory on macOS. No Linux
+application, actual Flatpak install/update, or DNF transaction was executed.
+Fedora/KDE launcher, FUSE, updater, portals and notifications still need rehearsal.
 
 ## Historical results (unsupported Arch/Manjaro backend)
 

@@ -95,10 +95,10 @@ manage_update_check() {
 	done
 	if ((help)); then
 		printf '%s\n' 'Usage: dotfiles check-updates [--dry-run]' \
-			'Compare installed/pinned Bitwarden with the latest published stable desktop RPM.' \
+			'Compare installed/pinned Bitwarden and Discord RPMs with stable upstream releases.' \
 			'Read-only: no installation, authentication, or pin changes.'
 	elif ((preview)); then
-		printf 'PLAN ONLY: would query installed/pinned Bitwarden and public desktop releases; no network requests or changes applied.\n'
+		printf 'PLAN ONLY: would query installed/pinned Bitwarden and Discord with public releases; no network requests or changes applied.\n'
 	else
 		[[ -f $ROOT/scripts/check-updates.py && ! -L $ROOT/scripts/check-updates.py ]] || die 'Missing repository release checker or unexpected symlink.'
 		exec python3 "$ROOT/scripts/check-updates.py"

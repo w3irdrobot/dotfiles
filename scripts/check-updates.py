@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only Bitwarden desktop release checks; never installs or changes pins."""
+"""Read-only native app release checks; never installs or changes pins."""
 
 import argparse
 import json
@@ -132,19 +132,47 @@ def main():
     internal = parser.add_mutually_exclusive_group()
     internal.add_argument("--print-bitwarden-pin", action="store_true", help=argparse.SUPPRESS)
     internal.add_argument("--compare-bitwarden", metavar="VERSION", help=argparse.SUPPRESS)
+    internal.add_argument("--print-discord-pin", action="store_true", help=argparse.SUPPRESS)
+    internal.add_argument("--compare-discord", metavar="VERSION", help=argparse.SUPPRESS)
+    internal.add_argument('--print-signal-pin', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--only', choices=('bitwarden', 'discord'), help='check one application')
     args = parser.parse_args()
-    if args.print_bitwarden_pin:
+    if args.print_signal_pin:
+        import signal_release
+        print(signal_release.pin_fields())
+    elif args.print_bitwarden_pin:
         pin = load_pin()
         print("|".join(pin[key] for key in ("version", "url", "sha256")))
     elif args.compare_bitwarden is not None:
         installed, pinned = version_key(args.compare_bitwarden), version_key(load_pin()["version"])
         print("older" if installed < pinned else "newer" if installed > pinned else "equal")
-    else:
+    elif args.print_discord_pin or args.compare_discord is not None:
+        import discord_release
+        pin = discord_release.load_pin()
+        if args.print_discord_pin:
+            print('|'.join(pin[key] for key in ('version', 'url', 'sha256')))
+        else:
+            installed, pinned = discord_release.version_key(args.compare_discord), discord_release.version_key(pin['version'])
+            print('older' if installed < pinned else 'newer' if installed > pinned else 'equal')
+    elif args.only == 'bitwarden':
         check_updates()
+    elif args.only == 'discord':
+        import discord_release
+        discord_release.check_updates()
+    else:
+        import discord_release
+        failures = []
+        for name, check in (('Bitwarden', check_updates), ('Discord', discord_release.check_updates)):
+            try:
+                check()
+            except (ValueError, OSError, subprocess.SubprocessError) as error:
+                failures.append(f'{name}: {error}')
+        if failures:
+            raise ValueError('; '.join(failures))
 
 
 if __name__ == "__main__":
     try:
         main()
     except (ValueError, OSError, subprocess.SubprocessError, urllib.error.URLError) as error:
-        sys.exit(f"Bitwarden release check failed: {error}")
+        sys.exit(f"Native app release check failed: {error}")

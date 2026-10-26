@@ -166,10 +166,10 @@ else:
 
     def test_manual_applications_are_reported_not_claimed_installed(self):
         self.mock("stow", "sys.exit(0)")
-        result = self.run_cli("link", "--groups", "hardware", "--modules", "signal")
+        result = self.run_cli("link", "--groups", "hardware", "--modules", "sparrow")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("applications were NOT installed", result.stdout)
-        self.assertIn("signal:", result.stdout)
+        self.assertIn("sparrow:", result.stdout)
 
     def test_native_nix_requires_the_official_fedora_packages(self):
         result = self.library("require_native_nix_repository\n")

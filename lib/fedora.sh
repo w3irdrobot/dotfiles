@@ -6,7 +6,7 @@ selected_repositories() {
 	local module
 	for module in "${MODULES[@]}"; do
 		case $module in
-		brave | ghostty | vscodium | system76 | mullvad)
+		brave | ghostty | vscodium | system76 | mullvad | lazygit)
 			REPOSITORIES+=("$module")
 			;;
 		esac
@@ -59,6 +59,7 @@ install_packages() {
 	preflight_repositories
 	if module_selected nix; then preflight_nix; fi
 	if module_selected bitwarden; then preflight_bitwarden; fi
+	if module_selected discord; then preflight_discord; fi
 	local package available name
 	local -a targets=(git stow wget curl ca-certificates xz tar coreutils diffutils btrfs-progs)
 	local -A seen=() found=()
@@ -89,6 +90,11 @@ install_packages() {
 		prepare_bitwarden_rpm
 		targets+=("$BITWARDEN_RPM_TARGET")
 	fi
+	if module_selected discord && ((DISCORD_INSTALL_NEEDED)); then
+		prepare_discord_rpm
+		targets+=("$DISCORD_RPM_TARGET")
+	fi
+	if module_selected signal; then prepare_signal_appimage; fi
 	log "RPM package targets (${#targets[@]}): ${targets[*]}"
 	phase 'Upgrade protection: checking Btrfs snapshots and free space'
 	begin_system_upgrade
@@ -98,6 +104,7 @@ install_packages() {
 	run sudo dnf --setopt=cacheonly=metadata --best upgrade
 	phase 'Selected Fedora applications: installing RPM packages'
 	if module_selected bitwarden && ((BITWARDEN_INSTALL_NEEDED && ! DRY_RUN)); then verify_bitwarden_rpm "$BITWARDEN_RPM_TARGET"; fi
+	if module_selected discord && ((DISCORD_INSTALL_NEEDED && ! DRY_RUN)); then verify_discord_rpm "$DISCORD_RPM_TARGET"; fi
 	run sudo dnf --setopt=cacheonly=metadata --best install "${targets[@]}"
 	if module_selected nix; then
 		phase 'Native Fedora Nix: preparing the daemon before linking'

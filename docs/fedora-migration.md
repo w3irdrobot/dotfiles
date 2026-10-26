@@ -98,6 +98,36 @@ the first Fedora slice. See [package sources](packages.md) and
 
 ## Read-only package evidence, 2026-10-25
 
+### Accepted desktop-source follow-up
+
+Accepted after the Bitwarden/System76 follow-up: use the upstream-recommended
+`dejan/lazygit` COPR, Signal's official signed AppImage, Discord's official stable
+RPM, and per-user verified Flathub apps for Telegram and Gear Lever. Include
+interactive user Flatpak updates during system/all updates. Leave Nerd Font
+download/installation and Plasma global font choices manual.
+
+Implementation scope: selection-scoped COPR metadata; reviewed Discord bootstrap
+pin/identity checks and update notices; isolated-keyring Signal verification before
+transactions with a fixed native launcher and preserved app-owned updates; user
+Flathub remote/origin checks, idempotent app installs, and explicit user-only
+updates. No app launch, login, data migration, global font changes, or automatic
+adoption of existing unmanaged installations. Synthetic tests cover corrupt
+artifacts/signatures, wrong signing identity, conflicts, repeat runs/self-updates,
+dry-runs, Flatpak scope/origin/errors, and transaction ordering. Fedora/KDE runtime
+acceptance is still required. Implementation/check results are in
+[testing](testing.md); operational contracts are in [packages](packages.md).
+
+Read-only research found lazygit **0.66.2-1.fc44.x86_64** in the selected COPR.
+Discord's standard RPM redirect resolved to **1.0.166**; the downloaded RPM
+matched the recorded SHA256 and header identity. Its payload contains a launcher
+and `updater_bootstrap`, not the full client. Signal **8.32.0** matched its recorded
+SHA256 and a valid vendor signature from the pinned fingerprint. Public-key
+conversion plus `gpgv` avoided an agent/socket-length problem encountered with an
+initial GPG import attempt in a temporary directory; no personal keyring was used.
+No Linux application or RPM script was executed during inspection.
+
+### Earlier Fedora port evidence
+
 HTTPS `repomd.xml`/primary metadata lookups found all **73** module RPM names
 for `x86_64` or `noarch`: 65 in Fedora 44's release repository and eight across
 the five selected external repositories. This was an ad hoc read-only metadata

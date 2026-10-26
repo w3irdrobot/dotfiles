@@ -10,6 +10,7 @@ repository definitions from `repos/` as `/etc/yum.repos.d/dotfiles-<name>.repo`:
 | vscodium | Upstream-documented paulcarroty repository | codium |
 | ghostty | Upstream-documented scottames/ghostty COPR | ghostty |
 | system76 | System76-documented szydell/system76 COPR | system76-driver, system76-firmware, system76-power, firmware-manager |
+| lazygit | [Upstream-documented dejan/lazygit COPR](https://github.com/jesseduffield/lazygit#fedora--amazon-linux-2023--centos-stream) | lazygit |
 
 COPRs are community packages, not Fedora or vendor support guarantees. All
 definitions require RPM signatures, restrict package names, and fail if their
@@ -74,6 +75,71 @@ Sign in and enable its SSH agent manually; the socket remains
 changes that integration and is not a transparent replacement. Fedora's
 `libsecret` alone is not an unlocked Secret Service provider.
 
+## Discord's official RPM
+
+Discord selects the reviewed version/URL/SHA256 in
+`modules/discord-release.json` (initially **1.0.166**). Like Bitwarden, its cache
+must pass SHA256 and exact name/version/release/architecture checks before the
+protected package transactions. Equal/newer installed RPMs are kept. No DNF
+signature policy is disabled; the inspected RPM has no RSA/PGP signing tag.
+
+`dotfiles check-updates` and system/all update notices also compare Discord's
+installed/reviewed bootstrap RPM against the stable vendor download redirect.
+Notices do not download/install a new RPM. Review the new artifact and update
+all pin fields before installing a newer bootstrap.
+
+The vendor RPM is a **bootstrapper**, not the full client: its launcher downloads
+the client into `~/.config/discord` on first launch, and Discord manages its
+user-level client separately. The RPM pin does not freeze or independently
+verify that later download. Dotfiles validates RPM ownership without launching
+Discord or inspecting its authentication data.
+
+## Signal AppImage and Gear Lever
+
+Signal now publishes an [official AppImage](https://signal.org/download/linux/).
+The initial installation is pinned in `modules/signal-release.json` (initially
+**8.32.0**). Before package transactions, setup checks both the AppImage and public
+key SHA256, then verifies the detached signature from the pinned identity
+`4B16B7232DFAA439AD791002EF9F501F13EED94C` using an isolated temporary public
+keyring. It never imports anything into your GPG home or launches the AppImage.
+The Fedora workstation must already have `gpg`, `gpgv`, Python, and curl for this
+pre-transaction check; missing tools stop setup rather than installing unchecked
+prerequisites first. The selected packages retain these tools and FUSE support.
+
+The writable AppImage lives at
+`~/.local/share/dotfiles/signal/Signal.AppImage`; Stow links the `signal-desktop`
+launcher into `~/.local/bin` and retains our existing desktop entry and
+`--password-store=gnome-libsecret` integration. Ensure `~/.local/bin` is on PATH
+if you select Signal without managed Bash. Login/linking and an unlocked Secret
+Service provider remain manual; `libsecret` alone does not supply one.
+
+After the initial install, **Signal owns its in-place updates** (configure them
+in Signal). Repeat setup preserves the managed app, including self-updated bytes;
+it does not reapply the initial hash, downgrade, or execute it for inspection.
+An incomplete/unmanaged installation or conflicting PATH executable requires
+manual resolution. Do not move this managed file through Gear Lever—the launcher
+already integrates it into the menu and expects that fixed path.
+
+Gear Lever is installed as the verified user Flatpak `it.mijorus.gearlever`.
+Use its GUI to integrate/manage other AppImages; its own Flatpak sandbox does
+not make the AppImages it launches sandboxed. The initial Signal pin/signature
+flow remains separate from Gear Lever's GUI/update features.
+
+## User Flatpaks
+
+Telegram uses the verified Flathub app `org.telegram.desktop`; Gear Lever uses
+`it.mijorus.gearlever`. Selecting either installs Fedora's `flatpak` package and
+adds the official **user** Flathub remote if absent. A conflicting remote URL,
+disabled/signature-verification-disabled remote, or app from another user remote
+stops setup rather than being replaced. Existing system Flatpaks and system
+remotes are left alone; no data is migrated from native or system installations.
+
+Install is interactive and repeat runs reuse selected user apps. System/all
+updates run `flatpak update --user` when Flatpak is available, updating **all
+installed user Flatpaks**, even ones not selected in that command. Flatpak update
+failures stop the command visibly; completed RPM updates are not rolled back.
+Flatpak checks/installs/updates make no network requests during dry-runs.
+
 ## Manual applications
 
 The first Fedora port keeps these module selections and configuration links but
@@ -83,14 +149,12 @@ modules both during selection and in successful follow-up instructions.
 - **Nerd Fonts:** Fedora's ordinary JetBrains Mono and Fira Code fonts are
   installed, but the configured Nerd Font family names and prompt glyphs require
   the patched fonts from [Nerd Fonts](https://www.nerdfonts.com/font-downloads).
-  Install the reviewed fonts under `~/.local/share/fonts` and run `fc-cache -f`.
-- **lazygit, lazydocker, kubie:** choose a reviewed RPM source or verify upstream
+  Install through KDE System Settings → Font Management (personal fonts), or put
+  the reviewed fonts under `~/.local/share/fonts` and run `fc-cache -f`. The configs
+  already reference these Nerd Font families; setup does not change Plasma's
+  global font settings.
+- **lazydocker, kubie:** choose a reviewed RPM source or verify upstream
   binaries from the linked project releases. No global build toolchain is added.
-- **Signal:** upstream distributes Debian packages, not an official Fedora RPM.
-  Choose a maintained source explicitly. The existing native desktop launcher
-  expects `signal-desktop`; a Flatpak needs a deliberate launcher change too.
-- **Discord and Telegram:** choose a reviewed Fedora-compatible distribution or
-  their upstream Linux downloads. They are not installed from an arbitrary COPR.
 - **Google Cloud CLI / GKE plugin:** follow
   [Google's RPM instructions](https://cloud.google.com/sdk/docs/install), then
   install `google-cloud-cli` and `google-cloud-cli-gke-gcloud-auth-plugin`.

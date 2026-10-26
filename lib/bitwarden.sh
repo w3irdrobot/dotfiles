@@ -94,7 +94,7 @@ check_bitwarden_release_notice() {
 		if [[ $status != 1 ]]; then log 'Warning: could not inspect installed Bitwarden; release status is unknown.'; fi
 	fi
 	if ((inspect)); then
-		if ! python3 "$ROOT/scripts/check-updates.py"; then
+		if ! python3 "$ROOT/scripts/check-updates.py" --only bitwarden; then
 			log 'Warning: Bitwarden release check failed; update status is unknown. OS updates completed; retry dotfiles check-updates later.'
 		fi
 	fi
