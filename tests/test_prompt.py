@@ -18,6 +18,7 @@ class PromptSafety(unittest.TestCase):
 source "$1"
 __prompt_dir() { printf ordinary-directory; }
 __prompt_git() { printf ordinary-branch; }
+__prompt_nix() { printf ordinary-nix; }
 __prompt_aws() { printf ordinary-aws; }
 __prompt_gcloud() { printf ordinary-gcloud; }
 __prompt_k8s() { printf ordinary-context; }
@@ -34,7 +35,7 @@ printf '%s' "${PS1@P}"
             )
 
     def test_dynamic_text_cannot_execute_commands_or_prompt_escapes(self):
-        for helper in ("__prompt_dir", "__prompt_git", "__prompt_aws",
+        for helper in ("__prompt_dir", "__prompt_git", "__prompt_nix", "__prompt_aws",
                        "__prompt_gcloud", "__prompt_k8s"):
             for text in ("$(__prompt_attack)", "`__prompt_attack`", r"\w\u\h\n",
                          '${__prompt_attack}', 'quotes " and apostrophe \''):
@@ -48,6 +49,44 @@ printf '%s' "${PS1@P}"
         result = self.run_prompt("name\x1b[2J\r\n\t\x07\x7fend", "__prompt_dir")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("name?[2J?????end", result.stdout)
+
+    def test_nix_context_detection_and_name_fallback(self):
+        for context, expected in (
+            ({}, ""),
+            ({"name": "unrelated"}, ""),
+            ({"IN_NIX_SHELL": ""}, ""),
+            ({"IN_NIX_SHELL": "pure"}, "  nix"),
+            ({"IN_NIX_SHELL": "impure", "name": "project-dev"}, "  nix:project-dev"),
+            ({"NIX_BUILD_TOP": "/build", "name": "flake-dev"}, "  nix:flake-dev"),
+        ):
+            with self.subTest(context=context):
+                result = subprocess.run(
+                    [BASH, "--noprofile", "--norc", "-uc",
+                     'source "$1"; __prompt_nix || :', "prompt-test",
+                     str(ROOT / "shell/prompt.sh")],
+                    env={"PATH": os.defpath, **context},
+                    capture_output=True, text=True, timeout=10,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected, result.stdout)
+
+    def test_nix_indicator_clears_after_leaving_environment(self):
+        result = subprocess.run(
+            [BASH, "--noprofile", "--norc", "-c", '''
+source "$1"
+__prompt_dir() { printf directory; }
+__prompt_git() { :; }
+IN_NIX_SHELL=impure name=project-dev
+__prompt_command
+printf '%s' "$__prompt_nix_text"
+unset IN_NIX_SHELL name
+__prompt_command
+[[ -z $__prompt_nix_text ]]
+''', "prompt-test", str(ROOT / "shell/prompt.sh")],
+            env={"PATH": os.defpath}, capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("  nix:project-dev", result.stdout)
 
 
 if __name__ == "__main__":

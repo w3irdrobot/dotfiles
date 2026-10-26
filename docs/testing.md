@@ -13,6 +13,24 @@ pending.** The target changed on 2026-10-25; earlier Arch/Manjaro results below
 are historical evidence, not Fedora acceptance. The Arch-only VM drivers and
 paru build fixtures have been removed with that backend.
 
+## Kestrel VSIX and Nix prompt checks, 2026-10-26
+
+`just validate` passed Bash syntax, ShellCheck, shfmt, and **364 tests (361
+passed, three expected skips)** on the macOS development host. Skips remain
+two GNU Stow tests and a case-sensitive-filesystem fixture.
+
+Kestrel fixtures check deterministic local VSIX packaging, regular installed
+files, registration/content validation, repeat-run reuse, legacy-link refusal,
+modified/unregistered copy conflicts, and installation failures. These use a
+synthetic editor; actual VSCodium installation and theme-picker visibility on
+Fedora still need verification after the documented manual link migration.
+
+The Bash prompt reads `IN_NIX_SHELL` or `NIX_BUILD_TOP` and displays `nix:<name>`
+when Nix supplies `name`, otherwise `nix`. Fixtures cover pure/impure shell
+markers, the dev-shell fallback, absent context, clearing on exit, and actual
+Bash prompt expansion with hostile text. No Nix command runs during redraw;
+real project dev-shell behavior remains a Fedora acceptance check.
+
 ## Disposable Linux VM
 
 Use the regular Fedora KDE Plasma Desktop 44 x86_64 ISO, not Kinoite/Atomic.

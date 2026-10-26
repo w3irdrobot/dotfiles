@@ -28,6 +28,9 @@
   available; Nix uses Fedora nix/nix-daemon. Keep OpenCode artifact/hash and PATH
   checks; never silently replace a conflicting executable.
   Nix daemon configuration is explicit; never mix upstream and repository Nix.
+- VSCodium's bundled Kestrel theme is built locally as a VSIX and registered with
+  codium, not Stow-linked into the extensions directory. Keep settings Stow-managed;
+  refuse legacy links/modified copies and explain manual cleanup without --force.
 - Bitwarden uses the reviewed upstream RPM pin in `modules/bitwarden-release.json`.
   Check its SHA256 and RPM identity before protected installation; do not downgrade
   an equal/newer installed version. CLI release checks are notices, not auto-updates.

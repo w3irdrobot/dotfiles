@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 #
 # Custom PS1 prompt with Kestrel colors
-# Displays: directory | git branch/status | AWS profile | gcloud profile |
+# Displays: directory | git branch/status | Nix environment | AWS profile | gcloud profile |
 # k8s context (if KUBECONFIG set)
 # Two-line prompt with ₿ character (rust=success, bright rust=error)
 
@@ -56,6 +56,12 @@ __prompt_git() {
 	echo "  ${branch} ${status}"
 }
 
+# nix-shell/nix develop expose shell context; never invoke Nix during redraw.
+__prompt_nix() {
+	[[ -n ${IN_NIX_SHELL:-} || -n ${NIX_BUILD_TOP:-} ]] || return
+	printf '  nix%s' "${name:+:$name}"
+}
+
 # AWS profile (AWSUME_PROFILE takes precedence over AWS_PROFILE)
 __prompt_aws() {
 	local profile="${AWSUME_PROFILE:-${AWS_PROFILE:-}}"
@@ -105,16 +111,19 @@ __prompt_command() {
 
 	__prompt_directory=$(__prompt_dir)
 	__prompt_git_text=$(__prompt_git) || __prompt_git_text=''
+	__prompt_nix_text=$(__prompt_nix) || __prompt_nix_text=''
 	__prompt_aws_text=$(__prompt_aws) || __prompt_aws_text=''
 	__prompt_gcloud_text=$(__prompt_gcloud) || __prompt_gcloud_text=''
 	__prompt_k8s_text=$(__prompt_k8s) || __prompt_k8s_text=''
 	__prompt_directory=$(__prompt_safe_text "$__prompt_directory")
 	__prompt_git_text=$(__prompt_safe_text "$__prompt_git_text")
+	__prompt_nix_text=$(__prompt_safe_text "$__prompt_nix_text")
 	__prompt_aws_text=$(__prompt_safe_text "$__prompt_aws_text")
 	__prompt_gcloud_text=$(__prompt_safe_text "$__prompt_gcloud_text")
 	__prompt_k8s_text=$(__prompt_safe_text "$__prompt_k8s_text")
 	PS1="\n${__prompt_green}"'${__prompt_directory}'"${__prompt_reset}"
 	PS1+="${__prompt_pink}"'${__prompt_git_text}'"${__prompt_reset}"
+	PS1+="${__prompt_blue}"'${__prompt_nix_text}'"${__prompt_reset}"
 	PS1+="${__prompt_mustard}"'${__prompt_aws_text}'"${__prompt_reset}"
 	PS1+="${__prompt_blue}"'${__prompt_gcloud_text}'"${__prompt_reset}"
 	PS1+="${__prompt_purple}"'${__prompt_k8s_text}'"${__prompt_reset}"

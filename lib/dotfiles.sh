@@ -507,6 +507,7 @@ preflight_custom_modules() {
 		bitwarden) preflight_bitwarden ;;
 		discord) preflight_discord ;;
 		signal) preflight_signal ;;
+		vscodium) bash "$ROOT/modules/vscodium.sh" --check ;;
 		system76) bash "$ROOT/modules/system76.sh" --check ;;
 		opencode) bash "$ROOT/modules/opencode.sh" --check ;;
 		nono) bash "$ROOT/modules/$module.sh" --check ;;

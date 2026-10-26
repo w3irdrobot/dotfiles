@@ -33,6 +33,48 @@ Base dependencies select `wget2-wget`, Fedora 44's RPM providing `/usr/bin/wget`
 rather than the virtual `wget` capability; package preflight uses concrete RPM names.
 See [migration sources](fedora-migration.md) for the researched upstream links.
 
+## Bundled Kestrel theme
+
+VSCodium settings still use Stow, but the local Kestrel extension is installed
+as a real extension, not as linked files under `.vscode-oss/extensions`.
+`modules/vscodium-theme` holds the reviewed manifest/colors. Python's standard
+library builds a temporary VSIX with that exact source; `codium --install-extension`
+registers it and extracts regular files. No marketplace fetch, npm, or global
+Node toolchain is needed for Kestrel. The existing extension list is installed
+separately as before.
+
+Setup verifies registration, location, and matching manifest/theme content after
+installation. Repeat runs reuse matching registered files; edited or unregistered
+existing copies are reported rather than overwritten with `--force`. VSCodium's
+own `__metadata` manifest field is ignored during source comparison. After setup,
+reload VSCodium and choose **Kestrel** from the theme picker if needed.
+
+### Moving from the old Stow-linked extension
+
+Older installs linked `package.json` and the color JSON into an extension folder,
+which was not reliably discovered/registered. After pulling the update, these old
+links may be dangling. Close VSCodium, review them with:
+
+```bash
+theme="$HOME/.vscode-oss/extensions/w3irdrobot.kestrel-theme-0.0.1"
+ls -l "$theme/package.json" "$theme/themes/kestrel-color-theme.json"
+```
+
+If both are the old links into this checkout's `stow/vscodium` tree, remove only
+those links and their now-empty directories, then install the registered copy:
+
+```bash
+unlink "$theme/package.json"
+unlink "$theme/themes/kestrel-color-theme.json"
+rmdir "$theme/themes" "$theme"
+bash modules/vscodium.sh
+```
+
+Run from the checkout, as your normal user. `unlink` does not delete link targets;
+`rmdir` refuses nonempty directories. Do not delete regular files or use recursive
+removal to bypass a conflict. The installer itself refuses legacy links and never
+removes them automatically. This migration does not reset settings or other extensions.
+
 ## Pinned OpenCode V2
 
 Fedora 44's researched `sureclaw/opencode` COPR served **1.18.30**, despite its
