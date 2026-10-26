@@ -35,6 +35,22 @@ Keep archives, keys, wallet data, and authentication stores outside this checkou
 
 ## SSH configuration
 
+Git manages only a generic `~/.ssh/config` template: the local include and
+shared defaults. Personal host aliases, addresses, usernames, and identity paths
+belong outside the checkout. Export the **current, cleaned-up source-machine
+config**, not an old copy from Git history; deleted hosts must not be resurrected
+by config linking or installation. Import restores selected archived hosts into
+`~/.ssh/config.local`, never into the tracked template.
+
+Earlier revisions incorrectly embedded personal host blocks in that template.
+They are removed from the current tree, not moved into a new local copy or
+recovered from history. On a machine linking to the old template, pulling the
+cleanup removes those old blocks; export the correct source config and explicitly
+import it on the destination. Existing destination hosts are skipped, not pruned
+or overwritten: importing an archive is not an automatic deletion/sync operation.
+Historical Git commits still contain the removed entries; erasing history would
+be a separate, explicitly approved operation.
+
 Imported host definitions belong in `~/.ssh/config.local`. Export follows that
 include at the top of the main config and accepts whitespace and `keyword=value`
 syntax. For each selected host, it flattens applicable global, wildcard/negated,

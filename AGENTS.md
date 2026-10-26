@@ -57,6 +57,10 @@
   checkout. Managed nono profiles deny `~/.config/bash`; exported values may
   still be inherited by AI processes. Prefer credential injection where available.
   Git overrides remain in `~/.gitconfig_local`.
+- The tracked SSH config is generic defaults plus `Include ~/.ssh/config.local`
+  only. Personal host blocks, addresses, usernames, and identity paths are carried
+  outside Git by explicit secrets export/import. The current source-machine config
+  is authoritative; never repopulate removed hosts from stale tracked config/history.
 - Log meaningful installer phases and failures, never environment/credential
   values. Print next steps only after successful runs, with dry-runs clearly
   marked as plans. Do not emit installer-style progress logs during shell startup.

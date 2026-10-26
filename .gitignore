@@ -6,6 +6,10 @@ machine_export
 /.worktrees/
 /local/
 
+# Only the generic SSH template belongs in Stow; hosts and keys stay outside Git.
+/stow/ssh/.ssh/*
+!/stow/ssh/.ssh/config
+
 # VSCodium - ignore everything except settings and keybindings
 .config/VSCodium/*
 !.config/VSCodium/User/

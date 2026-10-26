@@ -25,6 +25,10 @@ class SecretsImport(unittest.TestCase):
         self.ssh.mkdir(parents=True)
         self.managed = self.base / "managed-config"
         shutil.copyfile(ROOT / "stow/ssh/.ssh/config", self.managed)
+        # Test duplicate protection with a synthetic existing host, not a
+        # personal host accidentally embedded in the repository template.
+        with self.managed.open('a') as config:
+            config.write('\nHost existing.example\n  User fixture-existing\n')
         (self.ssh / "config").symlink_to(self.managed)
         self.original = self.managed.read_bytes()
         self.fragment = self.ssh / "config.local"
@@ -32,7 +36,7 @@ class SecretsImport(unittest.TestCase):
         self.source.write_text(
             "Host *\n  User ignored-default\n"
             "Host fixture.example\n  HostName 192.0.2.1\n  User fixture\n"
-            "Host github.com\n  User must-not-replace\n"
+            "Host existing.example\n  User must-not-replace\n"
         )
         # Remove only the final entrypoint call, retaining the actual definitions.
         text = SCRIPT.read_text()

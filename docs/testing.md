@@ -248,6 +248,23 @@ all 22 desktop-source tests, shell checks, and diff checks. No real Signal profi
 or keyring was read, and the full suite/KDE launcher was not run locally for this
 follow-up. After pulling, refresh KDE's menu cache with `kbuildsycoca6 --noincremental`.
 
+## SSH template privacy correction
+
+The tracked SSH template previously contained stale personal host blocks despite
+the intended secrets-only migration contract. It now contains only the local
+include and generic defaults; personal hosts/identity paths are not reconstructed
+or moved from the stale template. The source machine's cleaned current config is
+the migration input. No live SSH configs, keys, archives, or authentication stores
+were inspected or changed during this correction, and Git history was not rewritten.
+
+Regression checks enforce the generic-only template and no exported concrete hosts
+when a synthetic HOME has no local fragment. Import duplicate-protection fixtures
+now create their own synthetic existing host rather than depending on a personal
+host embedded in Git. The final `just validate` passed shell checks and **348 tests
+(345 passed, three expected skips)**, including the synthetic secrets round trips;
+`git diff --check` passed. Machine-local files under the Stow SSH directory are
+ignored except for the generic template, as a staging guard.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old
