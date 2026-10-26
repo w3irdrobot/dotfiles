@@ -64,6 +64,12 @@ include at the top of the main config and accepts whitespace and `keyword=value`
 syntax. For each selected host, it flattens applicable global, wildcard/negated,
 repeated-host, and `Match all` settings in their original order, collecting all
 explicit identity files. It does not run `ssh -G` or config commands.
+Archive host blocks use two-space indentation and conventional keyword casing
+for common options. Values, directive order, and repeated options are preserved;
+inherited settings are flattened into each selected host rather than relying on
+the destination's global defaults. This is a semantic export, not a byte-for-byte
+copy preserving original comments/layout. Existing local fragments are not
+automatically reformatted or overwritten when updating the tools.
 
 Flatten and review these unsupported forms manually before exporting:
 

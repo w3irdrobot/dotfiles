@@ -284,6 +284,20 @@ The final `just validate` passed shell checks and **353 tests (350 passed, three
 expected skips)**; diff whitespace checks passed. Real interactive fzf export
 with the user's secrets was not run by the agent.
 
+## SSH archive formatting
+
+The export parser normalizes directives while flattening inherited settings,
+which previously leaked into the archive as lowercase, unindented host options.
+A separate output renderer now applies two-space indentation and conventional
+casing for common SSH keywords. It preserves values (including quoted identity
+paths), directive order, and repeated options; the internal identity parser stays
+normalized. Existing local files/archives are not rewritten or re-imported.
+
+The formatting fixture uses synthetic hosts/identities, and the OpenSSH `-G`
+equivalence test now checks the rendered output as well as export round trips.
+The final `just validate` passed shell checks and **354 tests (351 passed, three
+expected skips)**; diff checks passed. No real SSH config, key, or archive was read.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

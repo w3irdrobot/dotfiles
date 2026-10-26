@@ -237,10 +237,10 @@ Match all
         with tarfile.open(next(self.base.glob("secrets-*.tar.gz.gpg"))) as archive:
             config = archive.extractfile("./ssh_config").read().decode()
             self.assertEqual(1, config.count("Host fixture"))
-            self.assertLess(config.index("user first-user"), config.index("user later-user"))
+            self.assertLess(config.index("  User first-user"), config.index("  User later-user"))
             self.assertNotIn("unrelated", config)
             for name in names:
-                self.assertIn(f"identityfile ~/.ssh/{name}", config)
+                self.assertIn(f"  IdentityFile ~/.ssh/{name}", config)
                 self.assertEqual((self.ssh / name).read_bytes(), archive.extractfile(f"./{name}").read())
 
     def test_unsupported_identity_expansions_fail_without_interpretation(self):
@@ -278,7 +278,7 @@ Match all
             self.assertIn("./id_agent.pub", names)
             self.assertNotIn("./id_agent", names)
             config = archive.extractfile("./ssh_config").read().decode()
-            self.assertIn("identityfile ~/.ssh/id_agent", config)
+            self.assertIn("  IdentityFile ~/.ssh/id_agent", config)
 
     def test_explicit_public_identity_does_not_archive_pub_pub(self):
         self.write_config("Host fixture\n IdentityFile ~/.ssh/id_agent.pub\n")
@@ -326,7 +326,7 @@ Match all
 ''')
         for host in ("fixture", "excluded", "fixture.extra", "alias"):
             with self.subTest(host=host):
-                result = self.run_bash(f"extract_ssh_config_host {shlex.quote(host)}\n")
+                result = self.run_bash(f"extract_ssh_config_host {shlex.quote(host)} | format_ssh_export\n")
                 self.assertEqual(0, result.returncode, result.stderr)
                 flat = self.base / "flattened-config"
                 flat.write_text(result.stdout)
@@ -371,13 +371,28 @@ main
         with tarfile.open(archives[0]) as archive:
             config = archive.extractfile("./ssh_config").read().decode()
             self.assertIn("Host restored.example", config)
-            self.assertIn("identityfile ~/.ssh/id_restored", config)
-            self.assertIn("addkeystoagent yes", config)
+            self.assertIn("  IdentityFile ~/.ssh/id_restored", config)
+            self.assertIn("  AddKeysToAgent yes", config)
             self.assertNotIn("Include ~/.ssh/config.local", config)
             self.assertEqual(key.read_bytes(), archive.extractfile("./id_restored").read())
             self.assertEqual(key.with_suffix(".pub").read_bytes(),
                              archive.extractfile("./id_restored.pub").read())
         self.assertEqual(self.original, (self.ssh / "config").read_bytes())
+
+    def test_archive_formatter_indents_and_canonicalizes_without_changing_values_or_order(self):
+        raw = ('Host fixture.example\n'
+               'addkeystoagent yes\nidentitiesonly yes\n'
+               'user fixture\nhostname 192.0.2.10\n'
+               'identityfile "~/.ssh/key with spaces.pub"\n'
+               'identitiesonly yes\nfutureoption KeepThisCase\n')
+        result = self.run_bash(f"printf '%s' {shlex.quote(raw)} | format_ssh_export\n")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(
+            'Host fixture.example\n'
+            '  AddKeysToAgent yes\n  IdentitiesOnly yes\n'
+            '  User fixture\n  HostName 192.0.2.10\n'
+            '  IdentityFile "~/.ssh/key with spaces.pub"\n'
+            '  IdentitiesOnly yes\n  futureoption KeepThisCase\n', result.stdout)
 
 
 if __name__ == "__main__":
