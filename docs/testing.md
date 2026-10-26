@@ -223,6 +223,17 @@ The final `just validate` passed shell checks and **341 fixture tests (338 passe
 three skipped)**; the original Stow/filesystem skips remain. Confirmation on the
 user's Fedora installation is still needed.
 
+The next System76 activation stop was a false positive for Fedora's global
+`service.d/10-timeout-abort.conf`. A photo of `systemctl cat/show` on the user's
+laptop showed this packaged default and its sole `TimeoutStopFailureMode=abort`
+setting, not a machine-local service override. The guard now accepts that exact
+path only when it is a regular `systemd`-owned file with the reviewed settings;
+it leaves the file unchanged. Unknown/additional drop-ins, changed directives,
+missing/symlinked files, and ownership/query failures remain refusals before any
+service changes. All 17 System76 service fixtures, shell checks, and diff checks
+passed; the full suite was not rerun locally for this follow-up. The laptop's
+activation after this fix still needs user confirmation.
+
 ## Historical results (unsupported Arch/Manjaro backend)
 
 These checkpoints summarize observed results, not instructions to rerun old

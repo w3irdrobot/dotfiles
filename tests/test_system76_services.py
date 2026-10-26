@@ -32,7 +32,10 @@ class System76Services(unittest.TestCase):
             }
         self.save()
         self.module = self.repo / "modules/system76.sh"
-        self.module.write_text(self.module.read_text().removesuffix('main "$@"\n').replace("</dev/tty", '<"$TEST_CONFIRM"'))
+        self.dropin = self.base / 'usr/lib/systemd/system/service.d/10-timeout-abort.conf'
+        self.module.write_text(self.module.read_text().removesuffix('main "$@"\n').replace(
+            "</dev/tty", '<"$TEST_CONFIRM"').replace(
+            '/usr/lib/systemd/system/service.d/10-timeout-abort.conf', str(self.dropin)))
         self.mock("systemctl", """from pathlib import Path
 state = json.loads(Path(os.environ['TEST_UNITS']).read_text())
 args = sys.argv[1:]
@@ -49,6 +52,10 @@ else:
     sys.exit(97)
 """)
         self.mock("rpm", """if '-qf' not in sys.argv: sys.exit(97)
+if sys.argv[-1].endswith('/service.d/10-timeout-abort.conf'):
+    if os.environ.get('TEST_DROPIN_QUERY_FAIL'): sys.exit(97)
+    print(os.environ.get('TEST_DROPIN_OWNER', 'systemd'))
+    sys.exit(0)
 print(os.environ.get('TEST_OWNER', 'system76-firmware' if 'system76-firmware-daemon' in sys.argv[-1] else 'system76-power'))
 """)
         self.mock("sudo", """from pathlib import Path
@@ -210,4 +217,50 @@ if action == os.environ.get('TEST_FAIL_ACTION') and unit == os.environ.get('TEST
         self.state['tuned.service'].update(LoadState='masked', ActiveState='inactive', UnitFileState='masked-runtime')
         self.save()
         self.assert_failed(self.library(), 'mask is not persistent')
+        self.assertEqual([], self.mutations())
+
+    def fedora_dropin(self):
+        self.dropin.parent.mkdir(parents=True, exist_ok=True)
+        self.dropin.write_text('# This file is part of the systemd package.\n\n[Service]\nTimeoutStopFailureMode=abort\n')
+        for unit in (FIRMWARE, POWER, WAKE):
+            self.state[unit]['DropInPaths'] = str(self.dropin)
+        self.save()
+
+    def test_packaged_fedora_shutdown_default_is_accepted_for_all_three_units(self):
+        self.fedora_dropin()
+        before = self.dropin.read_bytes()
+        result = self.library()
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('active', self.current()[FIRMWARE]['ActiveState'])
+        self.assertEqual('active', self.current()[POWER]['ActiveState'])
+        self.assertEqual('enabled', self.current()[WAKE]['UnitFileState'])
+        self.assertEqual(before, self.dropin.read_bytes())
+
+    def test_fedora_default_does_not_allow_additional_or_modified_dropins(self):
+        self.fedora_dropin()
+        self.state[FIRMWARE]['DropInPaths'] += ' /etc/systemd/system/custom.conf'
+        self.save()
+        self.assert_failed(self.library(), 'unreviewed drop-ins')
+        self.assertEqual([], self.mutations())
+        self.fedora_dropin()
+        for settings in ('[Service]\nTimeoutStopFailureMode=kill\n',
+                         '[Service]\nTimeoutStopFailureMode=abort\nExecStart=/unexpected\n'):
+            self.dropin.write_text(settings)
+            self.assert_failed(self.library(), 'unreviewed settings')
+            self.assertEqual([], self.mutations())
+
+    def test_missing_symlinked_unowned_and_wrong_owner_shutdown_defaults_are_refused(self):
+        self.fedora_dropin()
+        self.dropin.unlink()
+        self.assert_failed(self.library(), 'Conflicting Fedora shutdown drop-in')
+        target = self.base / 'other.conf'
+        target.write_text('[Service]\nTimeoutStopFailureMode=abort\n')
+        self.dropin.symlink_to(target)
+        self.assert_failed(self.library(), 'Conflicting Fedora shutdown drop-in')
+        self.dropin.unlink()
+        self.fedora_dropin()
+        self.env['TEST_DROPIN_OWNER'] = 'other'
+        self.assert_failed(self.library(), 'Unexpected Fedora shutdown drop-in package owner')
+        self.env['TEST_DROPIN_QUERY_FAIL'] = '1'
+        self.assert_failed(self.library(), 'not RPM-owned')
         self.assertEqual([], self.mutations())

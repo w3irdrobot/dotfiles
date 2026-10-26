@@ -11,6 +11,23 @@ unit_property() {
 	systemctl show "$1" --property="$2" --value || die "Could not inspect $1 ($2); no automatic service changes."
 }
 
+check_system76_dropins() {
+	local unit=$1 dropins=$2 owner settings
+	local fedora_default=/usr/lib/systemd/system/service.d/10-timeout-abort.conf
+	[[ -n $dropins ]] || return 0
+	# Fedora applies this packaged shutdown policy to every service. Accept only
+	# its known setting, not arbitrary overrides merely located under /usr/lib.
+	[[ $dropins == "$fedora_default" ]] || die "System76 unit has unreviewed drop-ins: $unit; review/activate it manually."
+	[[ -f $fedora_default && ! -L $fedora_default ]] || die "Conflicting Fedora shutdown drop-in for $unit; inspect it manually."
+	owner=$(rpm -qf --qf '%{NAME}\n' "$fedora_default") || die 'Fedora shutdown drop-in is not RPM-owned; inspect it manually.'
+	[[ $owner == systemd ]] || die 'Unexpected Fedora shutdown drop-in package owner; inspect it manually.'
+	settings=$(LC_ALL=C awk '
+		/^[[:space:]]*($|#|;)/ { next }
+		{ gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print }
+	' "$fedora_default") || die 'Could not inspect Fedora shutdown drop-in contents.'
+	[[ $settings == $'[Service]\nTimeoutStopFailureMode=abort' ]] || die 'Fedora shutdown drop-in has unreviewed settings; inspect it manually.'
+}
+
 plan_system76_activation() {
 	SYSTEM76_CONFLICTS=() SYSTEM76_MASKED=() SYSTEM76_CHANGE_NEEDED=0
 	declare -gA SYSTEM76_WAS_ACTIVE=() SYSTEM76_WAS_ENABLED=()
@@ -21,7 +38,7 @@ plan_system76_activation() {
 		fragment=$(unit_property "$unit" FragmentPath)
 		case $fragment in "/usr/lib/systemd/system/$unit" | "/etc/systemd/system/$unit") ;; *) die "Unexpected System76 unit source: $unit; resolve local overrides manually." ;; esac
 		dropins=$(unit_property "$unit" DropInPaths)
-		[[ -z $dropins ]] || die "System76 unit has local drop-ins: $unit; review/activate it manually."
+		check_system76_dropins "$unit" "$dropins"
 		case $unit in system76-firmware-daemon.service) package=system76-firmware ;; *) package=system76-power ;; esac
 		owner=$(rpm -qf --qf '%{NAME}\n' "$fragment") || die "System76 unit is not RPM-owned: $unit"
 		[[ $owner == "$package" ]] || die "Unexpected System76 unit package owner: $unit"

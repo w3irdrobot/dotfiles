@@ -23,7 +23,12 @@ then asks through the terminal before making service changes. Declining or
 having no terminal leaves activation deferred; rerun install/update in a terminal
 when ready. Linking alone and dry-runs do not activate services. Local drop-ins,
 missing/masked required units, unexpected owners, or transitional states require
-manual review rather than guessing.
+manual review rather than guessing. The known Fedora-wide
+`/usr/lib/systemd/system/service.d/10-timeout-abort.conf` is accepted only as a
+regular file owned by `systemd`, containing solely `[Service]` and
+`TimeoutStopFailureMode=abort` (apart from comments/blank lines). This packaged
+shutdown-timeout policy is left unchanged; extra or modified drop-ins still stop
+activation. Do not delete or mask Fedora's default to work around the check.
 
 The confirmed plan enables/starts `system76-firmware-daemon.service` and
 `com.system76.PowerDaemon.service`, and enables `system76-power-wake.service`
