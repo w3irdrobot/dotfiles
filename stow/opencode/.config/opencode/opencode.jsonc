@@ -34,7 +34,7 @@
         "type": "remote",
         "url": "https://api.githubcopilot.com/mcp/",
         "headers": {
-          "Authorization": "Bearer {env:GITHUB_MCP_TOKEN}"
+          "Authorization": "Bearer {env:GITHUB_TOKEN}"
         }
       }
     }
@@ -52,6 +52,9 @@
       "models": {
         "glm-5-3-flash": {
           "name": "GLM-5.3 Flash"
+        },
+        "deepseek-v4-1-flash": {
+          "name": "DeepSeek V4.1 Flash"
         },
         "kimi-k3": {
           "name": "Kimi K3"
