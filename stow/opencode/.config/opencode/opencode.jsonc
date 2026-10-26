@@ -11,11 +11,6 @@
   },
   "mcp": {
     "servers": {
-      "better-auth": {
-        "disabled": true,
-        "type": "remote",
-        "url": "https://mcp.better-auth.com/mcp"
-      },
       "exa": {
         "disabled": false,
         "type": "remote",
