@@ -51,6 +51,9 @@ For an opt-in subset of instructions and skills on local/remote agent nodes, see
 [agent configuration](docs/agent-config.md). It does not run workstation setup or
 sync credentials or the personal knowledge base.
 
+The workstation's [OpenCode configuration](docs/opencode.md) includes the MCP
+setup, optional Proxmox prerequisites, and the boundary for machine-local values.
+
 The default groups are `core`, `ai`, and `desktop`. Cloud/container tools,
 Bitcoin applications, and hardware-security tools are opt-in through `cloud`,
 `bitcoin`, and `hardware`. Group selection replaces the defaults; explicit
