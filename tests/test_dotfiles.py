@@ -27,7 +27,7 @@ class Fixture(unittest.TestCase):
         self.repo.mkdir()
         # Copy only runtime inputs, never the checkout's Git metadata or private files.
         for name in ("install.sh", ".gitignore", "bin", "lib", "modules", "stow",
-                      "shell", "examples", "repos", "scripts"):
+                      "shell", "examples", "repos", "scripts", "agent-config"):
             source = ROOT / name
             if source.is_dir():
                 shutil.copytree(source, self.repo / name, symlinks=True)

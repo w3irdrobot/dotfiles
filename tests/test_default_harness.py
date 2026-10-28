@@ -24,7 +24,7 @@ class DefaultHarness(unittest.TestCase):
         self.assertIn("~/.config/bash/variables.sh", example)
         self.assertIn("inherited by child processes", example)
         self.assertIn("credential injection", example)
-        for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
+        for name in ("EXA_API_KEY", "GITHUB_TOKEN", "MAPLE_API_KEY"):
             self.assertNotIn(f"export {name}=", example)
 
     def test_all_managed_ai_profiles_inherit_private_bash_denial(self):
@@ -65,7 +65,7 @@ printf 'stow:%s\\n' "${STOW_PACKAGES[@]}"
     def test_default_ai_uses_opencode_not_claude(self):
         selected = self.selected()
         modules = {name for name in selected if ":" not in name}
-        self.assertEqual(modules, {"opencode", "nono"})
+        self.assertEqual(modules, {"opencode", "nono", "agent-config"})
 
     def test_default_desktop_includes_brave(self):
         selected = self.selected(groups="desktop")

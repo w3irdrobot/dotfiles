@@ -47,6 +47,16 @@ it, and pass `--ref BRANCH`. The public URL follows `master`.
 
 ## Choose what to install
 
+For shared instructions and skills across Maple, Codex, Claude Code, and OpenCode
+on local/remote nodes, see [agent configuration](docs/agent-config.md).
+`agent-config/` owns that content; tool-specific paths link to it. The `ai` group
+deploys shared links for all four tools during normal workstation setup. An agent
+can follow [node setup](agent-config/SETUP.md) for standalone deployment without
+workstation provisioning, credentials, or personal knowledge-base replication.
+
+The workstation's [OpenCode configuration](docs/opencode.md) includes the MCP
+setup, optional Proxmox prerequisites, and the boundary for machine-local values.
+
 The default groups are `core`, `ai`, and `desktop`. Cloud/container tools,
 Bitcoin applications, and hardware-security tools are opt-in through `cloud`,
 `bitcoin`, and `hardware`. Group selection replaces the defaults; explicit

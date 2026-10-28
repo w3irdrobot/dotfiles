@@ -19,17 +19,55 @@
           "x-api-key": "{env:EXA_API_KEY}"
         }
       },
-      "linear": {
-        "disabled": false,
-        "type": "remote",
-        "url": "https://mcp.linear.app/mcp"
-      },
       "github": {
         "disabled": false,
         "type": "remote",
         "url": "https://api.githubcopilot.com/mcp/",
         "headers": {
           "Authorization": "Bearer {env:GITHUB_TOKEN}"
+        }
+      },
+      "proxmox": {
+        "disabled": true,
+        "type": "local",
+        "command": [
+          "docker",
+          "run",
+          "-i",
+          "--rm",
+          "-e",
+          "PROXMOX_HOST",
+          "-e",
+          "PROXMOX_PORT",
+          "-e",
+          "PROXMOX_USER",
+          "-e",
+          "PROXMOX_TOKEN_NAME",
+          "-e",
+          "PROXMOX_TOKEN_VALUE",
+          "-e",
+          "PROXMOX_VERIFY_SSL",
+          "-e",
+          "PROXMOX_TIMEOUT",
+          "-e",
+          "TOOL_ROUTING",
+          "-e",
+          "ROUTER_TOP_K",
+          "-e",
+          "PROXMOX_READ_ONLY",
+          "-e",
+          "PROXMOX_DISABLE_RAW_API",
+          "--network",
+          "host",
+          "proxmox-mcp:1.4.4"
+        ],
+        "environment": {
+          "PROXMOX_HOST": "{env:PROXMOX_HOST}",
+          "PROXMOX_PORT": "443",
+          "PROXMOX_USER": "{env:PROXMOX_USER}",
+          "PROXMOX_TOKEN_NAME": "{env:PROXMOX_TOKEN_NAME}",
+          "PROXMOX_TOKEN_VALUE": "{env:PROXMOX_API_KEY}",
+          "PROXMOX_VERIFY_SSL": "1"
         }
       }
     }
@@ -50,6 +88,9 @@
         },
         "deepseek-v4-1-flash": {
           "name": "DeepSeek V4.1 Flash"
+        },
+        "deepseek-v4-1-flash-1017-uncensored": {
+          "name": "DeepSeek V4.1 Flash Uncensored"
         },
         "kimi-k3": {
           "name": "Kimi K3"

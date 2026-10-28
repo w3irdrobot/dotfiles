@@ -14,6 +14,12 @@
 - `stow/<tool>/` holds home-shaped configuration for that tool. Preserve the
   Kestrel appearance and the distinction between standalone scripts and
   interactive functions that affect the caller's shell.
+- `agent-config/` owns shared agent instructions and skills, plus explicitly
+  tool-scoped specialist definitions. OpenCode's Stow paths are symlink adapters;
+  edit canonical files, not duplicate copies. Use `scripts/link-agent-config.py`
+  for multi-tool deployment; the AI group's `agent-config` module calls it for
+  workstation setup. Remote agents follow `agent-config/SETUP.md`, never the
+  workstation bootstrap. Keep node paths and knowledge access local.
 - Bash deploys only `~/.bashrc`. Its loader sources helpers from repo `shell/`,
   never home-level helper symlinks. Optional machine-local shell overrides live
   in `~/.config/bash/variables.sh` for environment settings; optional non-secret

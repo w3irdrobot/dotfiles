@@ -21,9 +21,9 @@ inputs, combining questions where useful:
 - **Project name:** use a kebab-case Rust package name for Rust templates. Resolve
   name normalization before generation so the destination check matches the
   directory cargo-generate will create.
-- **Destination:** honor an explicit path. Otherwise use
-  `~/projects/<remote-host>/<owner-or-namespace>/<repository>`; obtain missing
-  host/namespace from context or ask. Preserve nested namespaces and omit `.git`.
+- **Destination:** honor an explicit path. Otherwise read the execution node's
+  documented checkout root and use `<root>/<remote-host>/<owner-or-namespace>/<repository>`.
+  Ask if the root or host/namespace is unknown. Preserve nested namespaces and omit `.git`.
   The template repository's owner is not automatically the new project's owner.
 - **Generation mode:** "here", "in the current directory", or an explicit request
   to scaffold into an existing directory selects in-place generation with
@@ -67,7 +67,7 @@ the user wants to proceed; do not substitute the CLI or invent its scaffold.
 
 ## Generate
 
-For a new directory, run from the resolved parent using the shell tool's `workdir` field.
+For a new directory, run from the resolved parent using the current tool's working-directory option.
 Substitute the actual project name and quote shell arguments as needed:
 
 ```bash

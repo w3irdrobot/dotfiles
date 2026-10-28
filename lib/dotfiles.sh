@@ -213,6 +213,10 @@ link_launcher() {
 
 preflight_link_modules() {
 	if module_selected ssh; then bash "$ROOT/modules/ssh.sh" --check; fi
+	if module_selected agent-config; then
+		command -v python3 >/dev/null || die 'Python 3 is required to preflight shared agent configuration.'
+		python3 "$ROOT/scripts/link-agent-config.py" --tools maple,codex,claude,opencode --dry-run
+	fi
 }
 
 link_configs() {
@@ -235,6 +239,14 @@ link_configs() {
 	for package in "${STOW_PACKAGES[@]}"; do
 		if ((DRY_RUN)); then log "Config link planned: $package"; else log "Config links ready: $package"; fi
 	done
+	if module_selected agent-config; then
+		phase 'Shared agent configuration: Maple, Codex, Claude Code, and OpenCode'
+		if ((DRY_RUN)); then
+			python3 "$ROOT/scripts/link-agent-config.py" --tools maple,codex,claude,opencode --dry-run
+		else
+			python3 "$ROOT/scripts/link-agent-config.py" --tools maple,codex,claude,opencode
+		fi
+	fi
 	if ((create_launcher)); then link_launcher; fi
 	if module_selected nix && ((! DRY_RUN)); then
 		phase 'Native Nix: validating the daemon and linked client features'
@@ -600,7 +612,7 @@ print_next_steps() {
 		printf '  Edit that private file yourself; setup never creates, reads, or modifies it. Managed nono profiles deny ~/.config/bash.\n'
 	fi
 	if module_selected opencode; then
-		printf '  OpenCode env references: EXA_API_KEY, GITHUB_MCP_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
+		printf '  OpenCode env references: EXA_API_KEY, GITHUB_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
 		printf '  Exported secrets can be inherited by AI processes even when the file is denied. Prefer credential injection where available.\n'
 	fi
 	if module_selected git; then printf '  Set personal Git identity/signing preferences in ~/.gitconfig_local.\n'; fi
