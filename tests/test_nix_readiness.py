@@ -44,7 +44,7 @@ timeout() {
             advance "$SERVICE_COST"
             return "$SERVICE_STATUS"
             ;;
-        /usr/bin/nix)
+        "$NIX_BINARY")
             [[ $LC_ALL == C ]] || exit 97
             [[ ${*:2} == '--extra-experimental-features nix-command flakes store ping --store daemon' ]] || exit 97
             record "ping $limit $(clock)"
@@ -78,6 +78,7 @@ printf 'ready at %s\n' "$(clock)"
             "DRY_RUN": str(int(dry_run)),
             "CLOCK": str(self.base / "clock"), "PING_ERROR": ping_error,
             "PING_READY_AT": str(ping_ready_at), "LC_ALL": "POSIX",
+            "NIX_BINARY": str(self.base / "usr/bin/nix"),
         }
         return subprocess.run(
             [test_dotfiles.BASH, "-c", script, "nix-readiness", str(self.module), function],

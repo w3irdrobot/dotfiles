@@ -63,7 +63,7 @@ class Fixture(unittest.TestCase):
                 text = text.replace("/usr/bin/bitwarden", str(self.base.resolve() / "usr/bin/bitwarden"))
                 text = text.replace("/opt/Bitwarden/bitwarden", str(self.base.resolve() / "opt/Bitwarden/bitwarden"))
                 text = text.replace("/usr/bin/discord", str(self.base / "usr/bin/discord"))
-                for fixed in ("/nix", "/etc/nix", "/run/systemd/system"):
+                for fixed in ("/usr/bin/nix", "/nix", "/etc/nix", "/run/systemd/system"):
                     text = re.sub(r"(?<![A-Za-z0-9_/])" + re.escape(fixed),
                                   str(self.base / fixed.lstrip("/")), text)
                 path.write_text(text)

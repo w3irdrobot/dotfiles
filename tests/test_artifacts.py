@@ -23,8 +23,6 @@ class Artifacts(unittest.TestCase):
         self.nix_binary = self.base / "usr/bin/nix"
         self.nix_socket = self.nix_root / "var/nix/daemon-socket/socket"
         self.nix_configuration = self.base / "etc/nix"
-        module = self.repo / "modules/nix.sh"
-        module.write_text(module.read_text().replace("/usr/bin/nix", str(self.nix_binary)))
         self.mock("rpm", f"""args = sys.argv[1:]
 if '-qf' in args and args[-1] == {str(self.nix_binary)!r}:
     owner = os.environ.get('TEST_NIX_OWNER', '')
@@ -72,6 +70,12 @@ printf 'continued\\n'
              str(self.repo / "modules/nix.sh"), str(int(dry_run)), function, *args],
             cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
         )
+
+    def test_native_binary_checks_are_redirected_to_the_fixture(self):
+        text = (self.repo / "modules/nix.sh").read_text()
+        self.assertIn(str(self.nix_binary), text)
+        self.assertNotIn("[[ -e /usr/bin/nix", text)
+        self.assertNotIn("[[ -x /usr/bin/nix", text)
 
     def run_nono(self):
         return subprocess.run(
