@@ -195,6 +195,29 @@ migration workflow and its SSH limitations. For disposable localhost certificate
 run `generate_local_cert` in an empty directory; it uses a private umask and
 refuses existing outputs or symlinks.
 
+## Mullvad exit-node picker
+
+Run `tailscale-exit-node` to pick an online US Tailscale Mullvad exit node with fzf.
+The first choice picks a random node, avoiding the current node when alternatives
+exist. Escape cancels without changes. Every switch enables local LAN access,
+keeps other Tailscale preferences, and waits for the selected node before printing
+the public IP and location from ipinfo.io. No disconnect or daemon restart is needed.
+If switching or verification fails, it stops without disconnecting or rolling back.
+
+This optional helper requires an already-connected Tailscale client with Mullvad
+access, plus `fzf`, `jq`, `curl`, and `shuf`. It does not install Tailscale or change
+services/operator permissions. If Tailscale denies permission, follow its suggested
+operator setup or run `sudo tailscale set --operator="$USER"` yourself.
+Link just the helper from this checkout (not part of the default installer):
+
+```bash
+stow --dir=stow --target="$HOME" tailscale
+tailscale-exit-node
+```
+
+The IP lookup uses bounded retries and bypasses HTTP proxy environment settings
+so it checks this machine's connection, rather than a configured proxy's IP.
+
 ## Updates
 
 Symlinks follow your local checkout, not new GitHub commits. Update configs,

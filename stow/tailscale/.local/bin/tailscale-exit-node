@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+usage() {
+	printf 'Usage: tailscale-exit-node\n\nPick an online US Mullvad exit node with fzf (or choose Random).\nLocal LAN access stays enabled. Requires tailscale, fzf, jq, curl, and shuf.\n'
+}
+
+require_commands() {
+	local command
+	for command in tailscale fzf jq curl shuf; do
+		if ! command -v "$command" >/dev/null; then
+			printf 'Missing command: %s\n' "$command" >&2
+			return 1
+		fi
+	done
+}
+
+select_node() {
+	local nodes="$1" selection code candidates
+	if selection="$(
+		{
+			printf 'Random\tChoose a different US node when possible\n'
+			jq -r '.[] | [.DNSName, .Location.City, (if .ExitNode then "current" else "" end)] | @tsv' <<<"$nodes"
+		} | FZF_DEFAULT_OPTS='' FZF_DEFAULT_OPTS_FILE='' fzf \
+			--no-multi --no-sort --delimiter=$'\t' \
+			--prompt='Mullvad US > ' --header='Select an exit node • Esc cancels' \
+			--height=80% --layout=reverse
+	)"; then
+		selection="${selection%%$'\t'*}"
+	else
+		code=$?
+		case "$code" in
+		1 | 130) return 130 ;;
+		*) return "$code" ;;
+		esac
+	fi
+	if [[ "$selection" == Random ]]; then
+		candidates="$(jq -r 'if any(.[]; .ExitNode != true) then .[] | select(.ExitNode != true) | .DNSName else .[].DNSName end' <<<"$nodes")"
+		selection="$(shuf -n 1 <<<"$candidates")"
+	fi
+	# Only accept a node from the filtered snapshot, never arbitrary picker output.
+	jq -er --arg name "$selection" '.[] | select(.DNSName == $name) | .DNSName' <<<"$nodes"
+}
+
+wait_for_node() {
+	local node="$1" status attempt
+	for ((attempt = 0; attempt < 15; attempt++)); do
+		status="$(tailscale status --json)"
+		if jq -e --arg node "$node" '.ExitNodeStatus.ID as $id |
+			.BackendState == "Running" and .ExitNodeStatus.Online == true and
+			any(.Peer[]?; .DNSName == $node and .ExitNode == true and .Online == true
+				and .ID == $id)
+		' <<<"$status" >/dev/null; then
+			return 0
+		fi
+		sleep 1
+	done
+	printf 'Timed out waiting for %s. Exit-node settings were kept; no disconnect/restart was attempted.\n' "$node" >&2
+	return 1
+}
+
+show_ip() {
+	local result attempt
+	# Fresh requests only; allow routing/DNS a few seconds to settle after switching.
+	for ((attempt = 0; attempt < 5; attempt++)); do
+		if result="$(curl --fail --silent --show-error --noproxy '*' --connect-timeout 3 --max-time 8 https://ipinfo.io/json)" &&
+			jq -e '.ip and .city and .country' <<<"$result" >/dev/null; then
+			jq '{ip, city, region, country, loc, org}' <<<"$result"
+			return 0
+		fi
+		sleep 1
+	done
+	printf 'Exit node selected, but the public IP/location lookup failed. Try myip once connectivity settles.\n' >&2
+	return 1
+}
+
+main() {
+	case "${1:-}" in
+	-h | --help)
+		usage
+		return 0
+		;;
+	'') ;;
+	*)
+		usage >&2
+		return 2
+		;;
+	esac
+	if (($# > 0)); then
+		usage >&2
+		return 2
+	fi
+	require_commands
+	local status nodes node code
+	status="$(tailscale status --json)"
+	if ! jq -e '.BackendState == "Running"' <<<"$status" >/dev/null; then
+		printf 'Tailscale is not running. Connect with tailscale up first.\n' >&2
+		return 1
+	fi
+	nodes="$(jq '[.Peer[]? | select(.ExitNodeOption == true and .Online == true
+		and .Location.CountryCode == "US" and (.DNSName | endswith(".mullvad.ts.net."))) ]
+		| sort_by(.Location.City, .DNSName)' <<<"$status")"
+	if [[ "$(jq length <<<"$nodes")" == 0 ]]; then
+		printf 'No online US Mullvad exit nodes found. Check your Tailscale Mullvad subscription/device access.\n' >&2
+		return 1
+	fi
+	if node="$(select_node "$nodes")"; then
+		printf 'Switching to %s (local LAN access enabled)…\n' "$node" >&2
+	else
+		code=$?
+		if [[ "$code" == 130 ]]; then
+			return 0
+		fi
+		return "$code"
+	fi
+	tailscale set --exit-node="${node%.}" --exit-node-allow-lan-access=true
+	wait_for_node "$node"
+	show_ip
+}
+
+main "$@"

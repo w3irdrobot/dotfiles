@@ -19,7 +19,7 @@ jobs:
       - name: Install lint tools (CI runner only)
         run: |
           sudo apt-get update
-          sudo apt-get install --yes shellcheck stow
+          sudo apt-get install --yes shellcheck stow jq
       - name: Install pinned shfmt (CI runner only)
         run: |
           set -euo pipefail
@@ -52,7 +52,7 @@ jobs:
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
             --workdir /src registry.fedoraproject.org/fedora:44 \
-            bash -c 'dnf install --assumeyes python3 stow git diffutils findutils util-linux shadow-utils && useradd --create-home tester && runuser -u tester -- python3 -B -m unittest discover -s tests -v'
+            bash -c 'dnf install --assumeyes python3 stow git diffutils findutils util-linux shadow-utils jq && useradd --create-home tester && runuser -u tester -- python3 -B -m unittest discover -s tests -v'
 
   package-existence:
     # Explicit network validation only on trusted master pushes, not PR code.

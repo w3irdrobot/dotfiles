@@ -41,3 +41,12 @@ class Prerequisites(unittest.TestCase):
         self.assertLess(verification, workflow.index('chmod +x "$tool_dir/shfmt"'))
         self.assertLess(verification, workflow.index('"$tool_dir/shfmt" --version'))
         self.assertLess(verification, workflow.index('>> "$GITHUB_PATH"'))
+
+    def test_exit_node_fixtures_have_jq_on_both_runners(self):
+        workflow = (ROOT / ".github/workflows/validate.yml").read_text()
+        apt = re.search(r"apt-get install --yes ([^\n]+)", workflow)
+        dnf = re.search(r"dnf install --assumeyes (.*?) &&", workflow)
+        self.assertIsNotNone(apt)
+        self.assertIsNotNone(dnf)
+        self.assertIn("jq", apt.group(1).split())
+        self.assertIn("jq", dnf.group(1).split())
