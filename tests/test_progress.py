@@ -22,7 +22,7 @@ class Progress(unittest.TestCase):
     def setUp(self):
         self.setUp_fixture()
         self.sentinel = "FAKE_PRIVATE_ENV_SENTINEL_DO_NOT_LOG_81f2"
-        for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
+        for name in ("EXA_API_KEY", "GITHUB_TOKEN", "MAPLE_API_KEY"):
             self.env[name] = self.sentinel
         self.mock("stow", "sys.exit(0)")
         self.mock("sudo", "[print(a) for a in sys.argv[1:] if not a.startswith('-')] if 'repoquery' in sys.argv else None")
@@ -125,7 +125,7 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         text = result.stdout
         for phrase in ("new terminal", "~/.bash_profile", "~/.bashrc", "~/.config/bash/variables.sh",
                        "examples/local-variables.sh", "mkdir -p", "cp -n", "! -e", "! -L",
-                       "chmod 0600", "EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY",
+                       "chmod 0600", "EXA_API_KEY", "GITHUB_TOKEN", "MAPLE_API_KEY",
                        "~/.gitconfig_local", "native Bitwarden", "~/.bitwarden-ssh-agent.sock",
                         "Nono and its pinned OpenCode pack are ready", "Log out and back in",
                        "mullvad-daemon.service", "Tor", "electrs", "per-project flakes"):
@@ -255,7 +255,7 @@ sys.exit(97)""")
         template = test_dotfiles.ROOT / "examples/local-variables.sh"
         text = template.read_text()
         self.assertTrue(all(not line.strip() or line.lstrip().startswith("#") for line in text.splitlines()))
-        for name in ("EXA_API_KEY", "GITHUB_MCP_TOKEN", "MAPLE_API_KEY"):
+        for name in ("EXA_API_KEY", "GITHUB_TOKEN", "MAPLE_API_KEY"):
             self.assertNotIn("# export " + name, text)
             self.assertIn(name, (test_dotfiles.ROOT / "stow/opencode/.config/opencode/opencode.jsonc").read_text())
         self.assertNotIn("set -", text)

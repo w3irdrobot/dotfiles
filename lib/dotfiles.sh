@@ -600,7 +600,7 @@ print_next_steps() {
 		printf '  Edit that private file yourself; setup never creates, reads, or modifies it. Managed nono profiles deny ~/.config/bash.\n'
 	fi
 	if module_selected opencode; then
-		printf '  OpenCode env references: EXA_API_KEY, GITHUB_MCP_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
+		printf '  OpenCode env references: EXA_API_KEY, GITHUB_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
 		printf '  Exported secrets can be inherited by AI processes even when the file is denied. Prefer credential injection where available.\n'
 	fi
 	if module_selected git; then printf '  Set personal Git identity/signing preferences in ~/.gitconfig_local.\n'; fi
