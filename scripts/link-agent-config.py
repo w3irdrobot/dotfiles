@@ -2,7 +2,6 @@
 """Link shared instructions and skills for selected local execution tools."""
 
 import argparse
-import json
 import os
 from pathlib import Path
 import sys
@@ -11,18 +10,25 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "agent-config/skills"
 INSTRUCTIONS = ROOT / "agent-config/instructions/AGENTS.md"
 TOOLS = ("maple", "codex", "claude", "opencode")
+STOW = ROOT / "stow/opencode/.config/opencode"
+
+
+def opencode_source(relative, canonical):
+    """Use the Stow adapter when present so either deployment order is safe."""
+    adapter = STOW / relative
+    if adapter.is_symlink() and adapter.resolve() == canonical.resolve():
+        return adapter
+    return canonical
 
 
 def links(home, tools=("maple",)):
     if not tools or len(set(tools)) != len(tools) or any(tool not in TOOLS for tool in tools):
         raise ValueError("Select unique tools from: " + ", ".join(TOOLS))
-    names = json.loads((ROOT / "agent-config/skills.json").read_text())
-    if not isinstance(names, list) or not names:
-        raise ValueError("Skill allowlist must be a nonempty list")
-    if any(not isinstance(name, str) or not name or
-           any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in name)
-           for name in names) or len(names) != len(set(names)):
-        raise ValueError("Skill allowlist contains invalid or duplicate names")
+    names = sorted(path.name for path in SKILLS.iterdir()
+                   if path.is_dir() and not path.name.startswith(".")
+                   and (path / "SKILL.md").is_file())
+    if not names:
+        raise ValueError("No skills found under agent-config/skills")
     result = [(home / ".agents/AGENTS.md", INSTRUCTIONS)]
     instruction_paths = {
         "codex": ".codex/AGENTS.md",
@@ -31,7 +37,8 @@ def links(home, tools=("maple",)):
     }
     for tool in tools:
         if tool in instruction_paths:
-            result.append((home / instruction_paths[tool], INSTRUCTIONS))
+            source = opencode_source("AGENTS.md", INSTRUCTIONS) if tool == "opencode" else INSTRUCTIONS
+            result.append((home / instruction_paths[tool], source))
     for name in names:
         source = SKILLS / name
         if not (source / "SKILL.md").is_file():
@@ -41,10 +48,12 @@ def links(home, tools=("maple",)):
             result.append((home / ".claude/skills" / name, source))
         if "opencode" in tools:
             # Keep explicit discovery working when external skill discovery is off.
-            result.append((home / ".config/opencode/skills" / name, source))
+            result.append((home / ".config/opencode/skills" / name,
+                           opencode_source(Path("skills") / name, source)))
     if "opencode" in tools:
         for source in sorted((ROOT / "agent-config/agents/opencode").glob("*.md")):
-            result.append((home / ".config/opencode/agents" / source.name, source))
+            result.append((home / ".config/opencode/agents" / source.name,
+                           opencode_source(Path("agents") / source.name, source)))
     return result
 
 
@@ -57,8 +66,7 @@ def preflight(home, plan):
     if not home.is_dir():
         raise ValueError(f"Target home must already exist: {home}")
     stow_root = ROOT / "stow/opencode/.config/opencode"
-    allowed = {stow_root.resolve(), SKILLS.resolve(),
-               (ROOT / "agent-config/agents/opencode").resolve()}
+    allowed = {stow_root.resolve()}
     for destination, source in plan:
         if not source.exists():
             raise ValueError(f"Missing source: {source}")
@@ -109,7 +117,8 @@ def main():
                 print(f"Would link: {destination} -> {source}")
             else:
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                destination.symlink_to(source, target_is_directory=source.is_dir())
+                destination.symlink_to(os.path.relpath(source, destination.parent),
+                                       target_is_directory=source.is_dir())
                 print(f"Linked: {destination} -> {source}")
     except (OSError, ValueError, RuntimeError) as error:
         print(f"agent-config: {error}", file=sys.stderr)

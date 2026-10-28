@@ -65,7 +65,7 @@ printf 'stow:%s\\n' "${STOW_PACKAGES[@]}"
     def test_default_ai_uses_opencode_not_claude(self):
         selected = self.selected()
         modules = {name for name in selected if ":" not in name}
-        self.assertEqual(modules, {"opencode", "nono"})
+        self.assertEqual(modules, {"opencode", "nono", "agent-config"})
 
     def test_default_desktop_includes_brave(self):
         selected = self.selected(groups="desktop")

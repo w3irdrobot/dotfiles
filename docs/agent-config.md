@@ -10,15 +10,36 @@ agent-config/
 ├── instructions/AGENTS.md       # Portable shared rules
 ├── instructions/legacy-opencode.md # Previous rules, for migration review only
 ├── skills/                     # All seven personal skills and supporting files
-├── skills.json                 # Explicit deployment allowlist
 └── agents/opencode/             # Existing OpenCode-format specialist definitions
 ```
 
-The old Stow `AGENTS.md`, `skills/`, and `agents/` locations now link back here;
+The old Stow instruction, skill, and agent entries now link back here;
 they are adapters, not separate editable copies. OpenCode provider/MCP settings,
 terminal preferences, themes, and sandbox integration remain tool-specific.
 
 ## Deploy to a node
+
+An agent can follow [SETUP.md](../agent-config/SETUP.md) to pull a reviewed
+revision from GitHub and deploy it. Give it the node/user, selected tools, and
+checkout path (or let it ask). It uses this same helper, not another installer.
+
+## New local workstation
+
+The normal `ai` group now selects the configuration-only `agent-config` module.
+`dotfiles install`, `dotfiles link`, and config/all updates with that selection
+preflight and deploy shared links for all four tools as part of the normal flow.
+The preflight runs before package transactions and reports existing instructions
+or foreign links as conflicts. Dry-runs never create links. Python 3 must be
+available for preflight and is also declared as a module dependency.
+
+This installs configuration, not the Codex, Claude Code, or Maple applications.
+OpenCode installation remains owned by its existing module. Selecting groups
+without `ai` skips shared configuration unless `--modules agent-config` is added.
+That explicit module can configure links without selecting workstation OpenCode
+settings or its application. For a subset of tools, use the standalone command
+below rather than selecting this all-tool workstation module.
+
+## Standalone local or remote deployment
 
 Use a stable clone of these dotfiles on the execution computer. It can live
 anywhere; do not run workstation provisioning to configure an agent server.
@@ -67,6 +88,10 @@ match. Back up and reconcile those files manually before removing a conflicting
 destination. Exact canonical links, including this checkout's Stow adapters, are
 reused. Symlinked parent directories are otherwise refused. The helper does not
 write missing files through an allowed Stow link into the source checkout.
+If an earlier PR revision installed whole-directory `skills` or `agents` links,
+review and unlink those exact home-level directory links before migrating to the
+individual-link layout. The helper and workstation preflight intentionally refuse
+to replace them automatically. Existing unrelated entries must be preserved.
 
 If you tried this PR's original four-skill helper, its `~/.agents/AGENTS.md` link
 points at the old `agent-config/AGENTS.md` location. Review and unlink that exact
@@ -93,6 +118,10 @@ still checked at use time, not provisioned by deployment. Project creation uses
 the node's checkout root; skill creation no longer assumes OpenCode-only tooling.
 Supporting scripts, references, and licenses move with the skills. The nono skill
 and plugin remain owned by their installed package, not this shared collection.
+The helper discovers non-hidden direct child directories containing `SKILL.md`;
+there is no separate skill manifest. New skills are automatically included on the
+next helper run. Stow has individual compatibility links for existing resources,
+not a whole-directory link, so package-managed entries stay outside the checkout.
 
 ## Agents are tool-specific
 
@@ -129,7 +158,7 @@ helper's dry-run and deployment again to add newly selected resources. SSH can r
 the same commands using each node's own checkout path; no host inventory or
 automatic remote updates are included.
 
-There is no pruning: removing a skill from the allowlist or deselecting a tool
+There is no pruning: removing a skill directory or deselecting a tool
 does not revoke previously installed links. Review and unlink them manually.
 Interrupted deployments leave completed links in place and can be rerun safely.
 Do not run concurrent deployment or edit link parents during deployment.
