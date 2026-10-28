@@ -47,6 +47,10 @@ it, and pass `--ref BRANCH`. The public URL follows `master`.
 
 ## Choose what to install
 
+For an opt-in subset of instructions and skills on local/remote agent nodes, see
+[agent configuration](docs/agent-config.md). It does not run workstation setup or
+sync credentials or the personal knowledge base.
+
 The default groups are `core`, `ai`, and `desktop`. Cloud/container tools,
 Bitcoin applications, and hardware-security tools are opt-in through `cloud`,
 `bitcoin`, and `hardware`. Group selection replaces the defaults; explicit
