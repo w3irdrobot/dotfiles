@@ -1,13 +1,13 @@
 ---
 name: skill-creator
-description: Create, review, or improve reusable OpenCode skills, including trigger descriptions, focused instructions, references, helper scripts, and proportionate validation. Use when the user asks to turn a workflow into a skill or refine an existing skill.
+description: Create, review, or improve reusable agent skills, including trigger descriptions, focused instructions, references, helper scripts, and proportionate validation. Use when the user asks to turn a workflow into a skill or refine an existing skill.
 license: Complete terms in LICENSE.txt
 ---
 
 # Create and improve skills
 
-Adapted from the existing local skill-creator guide. Modified 2026-10-07 to focus
-on OpenCode and proportionate validation rather than mandatory packaging.
+Adapted from the existing local skill-creator guide. Updated 2026-10-28 for
+shared use across coding tools and proportionate validation.
 
 Skills hold reusable guidance the model needs for a particular task. Keep
 repeatable behavior in tools or scripts and judgment-based choices in concise
@@ -23,8 +23,9 @@ already provides.
   what a successful result looks like. A skill should have a clear responsibility.
 - When editing, read the existing skill and relevant resources. Preserve useful
   behavior and distinguish the user's accepted choices from proposals.
-- For OpenCode-specific configuration or discovery, load `customize-opencode`.
-  Follow applicable project instructions and use the actual installed harness.
+- Identify the consuming tools and check their current discovery/metadata rules.
+  Load an available tool-specific guide when needed; do not assume a named skill
+  or tool exists. Keep shared instructions portable and extensions explicit.
 
 ## Write the smallest useful skill
 
@@ -75,7 +76,8 @@ my-skill/
 ## Finish and iterate
 
 Report the installed path, useful behavior, and verification results concisely.
-Remind the user to restart OpenCode after changing skills. Package with the
+Verify discovery in the consuming tool; OpenCode supports reload on save or
+`/reload`, while other tools may need a fresh session. Package with the
 bundled `scripts/package_skill.py` only when distribution is requested; local
 installation does not require a `.skill` archive.
 

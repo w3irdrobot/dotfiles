@@ -47,9 +47,10 @@ it, and pass `--ref BRANCH`. The public URL follows `master`.
 
 ## Choose what to install
 
-For an opt-in subset of instructions and skills on local/remote agent nodes, see
-[agent configuration](docs/agent-config.md). It does not run workstation setup or
-sync credentials or the personal knowledge base.
+For shared instructions and skills across Maple, Codex, Claude Code, and OpenCode
+on local/remote nodes, see [agent configuration](docs/agent-config.md).
+`agent-config/` owns that content; tool-specific paths link to it. Deployment does
+not run workstation setup or sync credentials or the personal knowledge base.
 
 The workstation's [OpenCode configuration](docs/opencode.md) includes the MCP
 setup, optional Proxmox prerequisites, and the boundary for machine-local values.

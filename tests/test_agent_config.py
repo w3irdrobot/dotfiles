@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -25,8 +26,10 @@ class AgentConfigTests(unittest.TestCase):
 
     def run_linker(self, *args):
         return subprocess.run(
-            [sys.executable, str(SCRIPT), "--home", str(self.home), *args],
+            [sys.executable, str(SCRIPT), "--home", str(self.home), "--tools", "maple", *args],
             text=True, capture_output=True, check=False,
+            env={key: value for key, value in os.environ.items()
+                 if key not in {"CODEX_HOME", "CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME"}},
         )
 
     def test_dry_run_has_no_side_effects(self):
@@ -107,6 +110,58 @@ class AgentConfigTests(unittest.TestCase):
             ):
                 with self.assertRaises(ValueError):
                     linker.links(self.home)
+
+    def test_all_tools_share_one_source_and_keep_opencode_agents_scoped(self):
+        result = self.run_linker("--tools", "maple,codex,claude,opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in (".agents/AGENTS.md", ".codex/AGENTS.md", ".claude/CLAUDE.md",
+                     ".config/opencode/AGENTS.md"):
+            self.assertEqual((self.home / name).resolve(), linker.INSTRUCTIONS)
+        for base in (".agents/skills", ".claude/skills", ".config/opencode/skills"):
+            self.assertEqual((self.home / base / "create-project").resolve(),
+                             linker.SKILLS / "create-project")
+        self.assertTrue((self.home / ".config/opencode/agents/rust-engineer.md").is_file())
+        self.assertFalse((self.home / ".claude/agents").exists())
+        result = self.run_linker("--tools", "maple,codex,claude,opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_tool_selection_and_codex_override_preflight(self):
+        for tools in ("", "codex,codex", "t3code", "maple,unknown"):
+            self.assertNotEqual(self.run_linker("--tools", tools).returncode, 0)
+        override = self.home / ".codex/AGENTS.override.md"
+        override.parent.mkdir()
+        override.write_text("Existing override")
+        self.assertNotEqual(self.run_linker("--tools", "codex").returncode, 0)
+        self.assertFalse((self.home / ".agents").exists())
+
+    def test_stow_layout_reuses_canonical_resources_without_writing_checkout(self):
+        destination = self.home / ".config/opencode"
+        destination.parent.mkdir()
+        destination.symlink_to(ROOT / "stow/opencode/.config/opencode")
+        result = self.run_linker("--tools", "opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((destination / "skills/rust-conventions").resolve(),
+                         linker.SKILLS / "rust-conventions")
+
+    @unittest.skipUnless(shutil.which("stow"), "GNU Stow is not installed")
+    def test_real_stow_then_all_tool_deployment(self):
+        result = subprocess.run(
+            ["stow", "--no-folding", "--dir", str(ROOT / "stow"), "--target", str(self.home), "opencode"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = self.run_linker("--tools", "maple,codex,claude,opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.home / ".config/opencode/AGENTS.md").resolve(), linker.INSTRUCTIONS)
+        self.assertEqual((self.home / ".claude/skills/skill-creator/SKILL.md").read_text(),
+                         (linker.SKILLS / "skill-creator/SKILL.md").read_text())
+
+    def test_custom_tool_home_refuses_before_writes(self):
+        with patch.dict(os.environ, {"CODEX_HOME": str(self.home / "custom")}), \
+                patch.object(sys, "argv", [str(SCRIPT), "--home", str(self.home),
+                                           "--tools", "codex"]):
+            self.assertEqual(linker.main(), 1)
+        self.assertEqual(list(self.home.iterdir()), [])
 
 
 if __name__ == "__main__":

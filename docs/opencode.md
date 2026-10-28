@@ -1,8 +1,8 @@
 # OpenCode workstation configuration
 
-`stow/opencode/.config/opencode/` owns the workstation's global configuration,
-terminal preferences, instructions, agents, themes, and personal skills. This is
-separate from the opt-in [portable agent configuration](agent-config.md).
+`stow/opencode/.config/opencode/` owns the workstation's tool configuration,
+terminal preferences, and themes. Its instruction, skill, and agent paths link
+to the canonical [shared agent configuration](agent-config.md).
 
 The tracked MCP set is Exa, GitHub, and optional Proxmox; Linear was removed to
 match the local setup. Exa and GitHub refer to `EXA_API_KEY` and `GITHUB_TOKEN`.

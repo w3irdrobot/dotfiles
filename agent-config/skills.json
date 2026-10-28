@@ -2,5 +2,8 @@
   "bash-conventions",
   "rust-conventions",
   "opentofu-conventions",
-  "frontend-design"
+  "frontend-design",
+  "create-project",
+  "skill-creator",
+  "youtube-transcript"
 ]

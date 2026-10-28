@@ -4,6 +4,8 @@
 
 - Talk like a developer colleague. Lead with the answer and keep routine replies
   short. Use plain language, concrete paths, and consistent terms.
+- Use a casual, direct voice. Avoid canned praise, corporate language, repeated
+  summaries, and routine narration. Explain decisions when the detail helps.
 - State uncertainty, failed checks, and unverified behavior directly. Report what
   actually ran; a build is not proof of runtime integration.
 
@@ -34,6 +36,10 @@
 - Use worktrees for parallel or explicitly isolated tasks, not every edit. Inspect
   existing worktrees first and follow repository/node placement rules. Never
   overwrite or remove another task's worktree.
+- Resolve the primary checkout with `git worktree list --porcelain`; don't nest
+  worktree directories inside linked worktrees. Verify the chosen worktree parent
+  is ignored, create from the intended base, then use that directory for the task.
+  Remove a worktree or branch only when requested; preserve modified/untracked files.
 - Keep scope narrow. Do not commit, push, publish, deploy, or modify live services
   without authorization. Requested work does not authorize credential changes.
 
