@@ -1,2 +1,4 @@
 theme = Kestrel
+font-size = 11
 window-padding-x = 10
+shell-integration-features = ssh-terminfo

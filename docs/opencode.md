@@ -46,6 +46,24 @@ on save; `/reload` forces a reload. Check connection state with `opencode mcp li
 or `/mcps`. Configuration syntax checks do not prove authenticated access or tool
 authorization. No live Proxmox actions are needed to validate these dotfiles.
 
+### Workstation-only overrides
+
+For projects under your home directory, `~/.opencode/opencode.jsonc` can hold a
+non-secret machine override without editing the tracked global defaults. Keep the
+Proxmox server disabled in Stow. In the private override, declare the **complete**
+server definition with `disabled: false`, its local command, and environment map.
+MCP servers replace earlier definitions by name; a fragment containing only
+`disabled` and environment values is not a valid local server definition.
+
+Keep authentication as an environment reference such as `{env:PROXMOX_API_KEY}`.
+Do not copy resolved credentials into the override. This home-level configuration
+does not apply to workspaces outside your home, and closer `.opencode` configs
+can override it. OpenCode skips project discovery when the current location is
+its global configuration directory, so verify this override from a repository,
+not from `~/.config/opencode`. If a newly created configuration is not discovered
+by an already loaded location, use `/reload`; do not restart the background service
+just to apply settings.
+
 ## Keep local fixes in source control
 
 Compare the live `~/.config/opencode` directory with the Stow source, including
