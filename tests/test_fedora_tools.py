@@ -64,7 +64,12 @@ else: sys.exit(97)
              "--key", "TerminalApplication", "ghostty"],
             ["kwriteconfig6", "--file", "kdeglobals", "--group", "General",
              "--key", "TerminalService", "com.mitchellh.ghostty.desktop"],
+            ["kwriteconfig6", "--file", "kglobalshortcutsrc", "--group", "services",
+             "--group", "org.kde.konsole.desktop", "--key", "_launch", "none"],
+            ["kwriteconfig6", "--file", "kglobalshortcutsrc", "--group", "services",
+             "--group", "com.mitchellh.ghostty.desktop", "--key", "_launch", "Ctrl+Alt+T"],
         ], [c for c in self.calls() if c[0] == "kwriteconfig6"])
+        self.assertFalse(any(c[0] == "gdbus" for c in self.calls()))
 
     @unittest.skipUnless(shutil.which("kwriteconfig6"), "KConfig writer not installed")
     def test_ghostty_preserves_desktop_settings_and_is_idempotent(self):
@@ -74,9 +79,16 @@ else: sys.exit(97)
         config.parent.mkdir(parents=True)
         config.write_text("[General]\nColorScheme=Kestrel\nTerminalApplication=konsole\n"
                           "\n[KDE]\nSingleClick=false\n")
+        shortcuts = config.with_name("kglobalshortcutsrc")
+        shortcuts.write_text("[kwin]\nOverview=Meta+W,Meta+W,Overview\n")
         result = self.run_module("ghostty")
         self.assertEqual(0, result.returncode, result.stderr)
         first = config.read_text()
+        first_shortcuts = shortcuts.read_text()
+        for entry in ("Overview=Meta+W,Meta+W,Overview",
+                      "[services][org.kde.konsole.desktop]\n_launch=none",
+                      "[services][com.mitchellh.ghostty.desktop]\n_launch=Ctrl+Alt+T"):
+            self.assertIn(entry, first_shortcuts)
         for entry in ("ColorScheme=Kestrel", "SingleClick=false",
                       "TerminalApplication=ghostty",
                       "TerminalService=com.mitchellh.ghostty.desktop"):
@@ -84,6 +96,32 @@ else: sys.exit(97)
         result = self.run_module("ghostty")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual(first, config.read_text())
+        self.assertEqual(first_shortcuts, shortcuts.read_text())
+
+    def test_ghostty_updates_running_plasma_shortcut(self):
+        self.env["DBUS_SESSION_BUS_ADDRESS"] = "fixture-session"
+        self.mock("gdbus", '''
+method = sys.argv[sys.argv.index('--method') + 1]
+if method.endswith('NameHasOwner'): print('(true,)')
+elif method.endswith('doRegister'): print('()')
+elif method.endswith('setShortcut'):
+    if sys.argv[-2] == '[201326676]': print('([201326676],)')
+    else: print('(@ai [],)')
+else: sys.exit(97)
+''')
+        result = self.run_module("ghostty")
+        self.assertEqual(0, result.returncode, result.stderr)
+        calls = [c for c in self.calls() if c[0] == "gdbus"]
+        self.assertEqual(5, len(calls))
+        self.assertIn("org.kde.konsole.desktop", calls[-2][-3])
+        self.assertEqual(['[]', '6'], calls[-2][-2:])
+        self.assertIn("com.mitchellh.ghostty.desktop", calls[-1][-3])
+        self.assertEqual(['[201326676]', '6'], calls[-1][-2:])
+
+    def test_ghostty_reports_live_shortcut_conflicts(self):
+        self.env["DBUS_SESSION_BUS_ADDRESS"] = "fixture-session"
+        self.mock("gdbus", "print('(true,)' if 'org.freedesktop.DBus.NameHasOwner' in sys.argv else '(@ai [],)')")
+        self.assert_failed(self.run_module("ghostty"), "Could not assign Ctrl+Alt+T")
 
     def test_ghostty_missing_writer_fails_without_changes(self):
         (self.path / "kwriteconfig6").unlink()
