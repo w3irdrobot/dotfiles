@@ -114,6 +114,28 @@ class AgentConfigTests(unittest.TestCase):
             plan = linker.links(self.home)
         self.assertEqual([destination.name for destination, _ in plan], ["AGENTS.md", "new-skill"])
 
+    def test_node_setup_skills_and_shared_contract_deploy_to_all_consumers(self):
+        names = (
+            "setup-execution-node", "provision-execution-node",
+            "configure-node-runtime", "configure-node-git",
+            "install-maple-agent", "install-t3code", "install-codex",
+            "install-claude-code", "deploy-agent-config",
+        )
+        result = self.run_linker("--tools", "maple,codex,claude,opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for base in (".agents/skills", ".claude/skills", ".config/opencode/skills"):
+            for name in names:
+                with self.subTest(base=base, skill=name):
+                    skill = self.home / base / name
+                    self.assertTrue(skill.is_symlink())
+                    self.assertEqual(skill.resolve(), linker.SKILLS / name)
+                    self.assertTrue((skill / "SKILL.md").is_file())
+                    contract = skill / "../provision-execution-node/references/node-contract.md"
+                    self.assertTrue(contract.is_file())
+        result = self.run_linker("--tools", "maple,codex,claude,opencode", "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Would link:", result.stdout)
+
     def test_all_tools_share_one_source_and_keep_opencode_agents_scoped(self):
         result = self.run_linker("--tools", "maple,codex,claude,opencode")
         self.assertEqual(result.returncode, 0, result.stderr)

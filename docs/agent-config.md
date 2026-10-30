@@ -9,7 +9,7 @@ remote computer executing tasks. No agent software or credentials are installed.
 agent-config/
 ├── instructions/AGENTS.md       # Portable shared rules
 ├── instructions/legacy-opencode.md # Previous rules, for migration review only
-├── skills/                     # All seven personal skills and supporting files
+├── skills/                     # Shared personal skills and supporting files
 └── agents/opencode/             # Existing OpenCode-format specialist definitions
 ```
 
@@ -112,7 +112,7 @@ actual checkout paths, worktree conventions, and tools. For the existing worksta
 The shared instructions ask the model to read this file. It is not executable
 configuration or a native automatic import, so verify that it was read in a fresh task.
 
-All seven personal skills are now shared: Bash, Rust, OpenTofu, frontend design,
+Personal skills are shared, including Bash, Rust, OpenTofu, frontend design,
 project creation, skill creation, and YouTube transcripts. Tool prerequisites are
 still checked at use time, not provisioned by deployment. Project creation uses
 the node's checkout root; skill creation no longer assumes OpenCode-only tooling.
@@ -122,6 +122,47 @@ The helper discovers non-hidden direct child directories containing `SKILL.md`;
 there is no separate skill manifest. New skills are automatically included on the
 next helper run. Stow has individual compatibility links for existing resources,
 not a whole-directory link, so package-managed entries stay outside the checkout.
+
+## Execution-node setup skills
+
+Use `setup-execution-node` to coordinate an approved selection of stages, or run
+each stage independently; selecting one child does not authorize the next. For
+example, ask to “use setup-execution-node to plan a node with Maple and Codex,
+testing one stage at a time,” or “use install-t3code on this node.” Missing
+consequential inputs are questions, not invented defaults. Previously agreed
+answers can be reused from the conversation.
+
+| Skill | Responsibility |
+| --- | --- |
+| `setup-execution-node` | Gather inputs once, approve selected stages, sequence, verify, pause/resume |
+| `provision-execution-node` | Capacity, OS, CPU/RAM/disks, Btrfs layout, execution user, private access |
+| `configure-node-runtime` | Selected Nix/container tools, build concurrency, cache/storage policy |
+| `configure-node-git` | Explicit author identity, hosting authentication, optional SSH signing |
+| `install-maple-agent` | Verified Maple bundle, optional user service, remote pairing |
+| `install-t3code` | Verified T3 runtime, optional user service, selected access method |
+| `install-codex` | Complete Codex/provider runtime, including release-matched helpers |
+| `install-claude-code` | Claude Code runtime and authentication handoff |
+| `deploy-agent-config` | This repository's reviewed shared links and node guidance |
+
+A usual order is provisioning, runtime/Git, whichever apps/providers are wanted,
+then shared configuration. App installations are separate choices, not a bundle;
+providers can be installed before hosts. Each stage has its own acceptance checks.
+Live smoke tests require an approved disposable workspace and provider allowance.
+The coordinator loads these skills rather than duplicating their procedures or
+spawning subagents. Resume checkpoints are recorded in the conversation; completed
+stages are rechecked before being skipped. It does not authorize VM destruction.
+
+The skills share an [execution-node contract](../agent-config/skills/provision-execution-node/references/node-contract.md).
+Btrfs is the default for new node filesystems, not permission to convert existing
+disks. Sizes, layout, OS, accounts, release policy, and exposure still need explicit
+answers. No migration or standalone diagnosis skill is included. Node destruction
+is a separate action with exact-resource confirmation; creating skills does not
+authorize deleting a VM.
+
+These are guided workflows, not a universal provisioning script. Frontmatter and
+disposable-home deployment tests do not verify real OS installation or provider
+integration. Test each selected skill against the replacement node separately;
+do not consider historical work on the original VM an end-to-end test of them.
 
 ## Agents are tool-specific
 
