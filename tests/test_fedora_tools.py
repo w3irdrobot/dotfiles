@@ -1,6 +1,7 @@
 """Custom Fedora tool setup uses the shared platform contract."""
 
 import subprocess
+import shutil
 import unittest
 
 import test_dotfiles
@@ -55,6 +56,47 @@ else: sys.exit(97)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(any(c[0] == "bat" and "--source" in c for c in self.calls()))
 
+    def test_ghostty_sets_only_plasma_terminal_keys(self):
+        result = self.run_module("ghostty")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual([
+            ["kwriteconfig6", "--file", "kdeglobals", "--group", "General",
+             "--key", "TerminalApplication", "ghostty"],
+            ["kwriteconfig6", "--file", "kdeglobals", "--group", "General",
+             "--key", "TerminalService", "com.mitchellh.ghostty.desktop"],
+        ], [c for c in self.calls() if c[0] == "kwriteconfig6"])
+
+    @unittest.skipUnless(shutil.which("kwriteconfig6"), "KConfig writer not installed")
+    def test_ghostty_preserves_desktop_settings_and_is_idempotent(self):
+        (self.path / "kwriteconfig6").unlink()
+        (self.path / "kwriteconfig6").symlink_to(shutil.which("kwriteconfig6"))
+        config = self.home / ".config/kdeglobals"
+        config.parent.mkdir(parents=True)
+        config.write_text("[General]\nColorScheme=Kestrel\nTerminalApplication=konsole\n"
+                          "\n[KDE]\nSingleClick=false\n")
+        result = self.run_module("ghostty")
+        self.assertEqual(0, result.returncode, result.stderr)
+        first = config.read_text()
+        for entry in ("ColorScheme=Kestrel", "SingleClick=false",
+                      "TerminalApplication=ghostty",
+                      "TerminalService=com.mitchellh.ghostty.desktop"):
+            self.assertIn(entry, first)
+        result = self.run_module("ghostty")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(first, config.read_text())
+
+    def test_ghostty_missing_writer_fails_without_changes(self):
+        (self.path / "kwriteconfig6").unlink()
+        self.assert_failed(self.run_module("ghostty"), "Install the kf6-kconfig package first")
+
+    def test_ghostty_rejects_arguments(self):
+        result = subprocess.run(
+            [test_dotfiles.BASH, str(self.repo / "modules/ghostty.sh"), "--unknown"],
+            env=self.env, text=True, capture_output=True, timeout=20,
+        )
+        self.assert_failed(result, "takes no arguments")
+        self.assertFalse(any(c[0] == "kwriteconfig6" for c in self.calls()))
+
     def test_vscodium_extension_setup_accepts_fedora_44(self):
         result = self.run_module("vscodium")
         self.assertEqual(0, result.returncode, result.stderr)
@@ -65,9 +107,9 @@ else: sys.exit(97)
 
     def test_old_distro_or_wrong_fedora_release_stops_before_tool_execution(self):
         for text in ("ID=arch\n", "ID=manjaro\n", "ID=fedora\nVERSION_ID=43\n"):
-            for module in ("bat", "vscodium"):
+            for module in ("bat", "vscodium", "ghostty"):
                 with self.subTest(text=text, module=module):
                     self.log.unlink(missing_ok=True)
                     self.os_release.write_text(text)
                     self.assert_failed(self.run_module(module), "Only Fedora KDE Plasma Desktop 44")
-                    self.assertFalse(any(c[0] in ("bat", "codium", "sudo") for c in self.calls()))
+                    self.assertFalse(any(c[0] in ("bat", "codium", "kwriteconfig6", "sudo") for c in self.calls()))

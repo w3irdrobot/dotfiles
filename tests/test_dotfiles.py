@@ -82,6 +82,8 @@ class Fixture(unittest.TestCase):
                      "brew", "nix-env", "systemctl", "chsh", "flatpak", "git", "stow"):
             self.mock(name, "sys.exit(97)")
         self.mock("rpm", "sys.exit(1)")
+        self.mock("ghostty", "sys.exit(0)")
+        self.mock("kwriteconfig6", "sys.exit(0)")
         # BSD realpath lacks GNU -m; use stdlib's equivalent in the mocked PATH.
         self.mock("realpath", "print(os.path.realpath(sys.argv[-1]))")
 

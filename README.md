@@ -149,6 +149,11 @@ PowerDevil, and login/session management. The desktop group adds KDE portal
 support. Clipboard helpers prefer Wayland with an X11 fallback, and XWayland
 apps can run without global Electron/Ozone flags.
 
+The `ghostty` module (in `core`) sets Plasma's default terminal to Ghostty during
+install and system/all updates. It merges only `General/TerminalApplication` and
+`General/TerminalService` in `~/.config/kdeglobals`, preserving other desktop
+settings. Config-only `link`/updates do not apply this preference.
+
 Test portal file pickers, screen sharing, and an unlocked Secret Service provider
 for apps such as Signal. Use KWallet if its installed version supports your setup,
 or choose another provider. Wallet configuration and autostart are yours to manage.
