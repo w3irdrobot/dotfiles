@@ -15,7 +15,7 @@ Loading this skill is not permission to provision a node or run every stage.
    Establish whether this is a new node, setup on an existing node, or a resumed
    plan. Confirm the exact target and execution user; do not infer that a named
    existing VM should be replaced or destroyed.
-2. Ask which stages, hosts (Maple/T3), and providers (Codex/Claude) are wanted.
+2. Ask which stages, agent host (Maple), and providers (Codex/Claude) are wanted.
    There is no default application bundle. An individual app-only request belongs
    to its own skill, not this full workflow. A setup request alone does not select
    provider authentication, live paid tests, or public exposure.
@@ -53,13 +53,13 @@ plan; request separate exact-resource authorization if the user wants them.
 | Build tools and storage policy, if selected | [configure-node-runtime](../configure-node-runtime/SKILL.md) | Reachable node and approved execution user; no implicit tool bundle |
 | Repository identity/access, if selected | [configure-node-git](../configure-node-git/SKILL.md) | Reachable node; user-controlled authentication/signing |
 | Selected providers | [install-codex](../install-codex/SKILL.md), [install-claude-code](../install-claude-code/SKILL.md) | Approved release/home/auth policies; install only selected providers |
-| Selected hosts | [install-maple-agent](../install-maple-agent/SKILL.md), [install-t3code](../install-t3code/SKILL.md) | Host installation can precede providers, but provider execution tests cannot |
+| Selected host | [install-maple-agent](../install-maple-agent/SKILL.md) | Host installation can precede providers, but provider execution tests cannot |
 | Shared instructions, if selected | [deploy-agent-config](../deploy-agent-config/SKILL.md) | Reviewed source revision and actual selected consumer homes |
 
 Dependencies can already exist; inspect them rather than reinstalling them.
 Missing prerequisites are questions or blockers, not authority to add stages.
-Git hosting access is not needed just to install public release artifacts. Don't
-require Maple for T3 or vice versa. Keep task worktrees and app state separate;
+Git hosting access is not needed just to install public release artifacts. Host
+and provider selection are independent. Keep task worktrees and app state separate;
 shared provider homes are a deliberate choice, not security isolation.
 
 Follow each selected skill in the current session; this is not automatic

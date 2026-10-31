@@ -10,7 +10,7 @@ provisioning skill or the other setup stages.
   missing important inputs before mutating anything; batch related questions.
   Offer recommendations, but do not turn recommendations into selected values.
 - Resolve the exact target/node, OS user/home, OS/architecture, and authorized
-  action. “Set up an agent” does not select Maple, T3, Codex, or Claude. Each
+  action. “Set up an agent” does not select Maple, Codex, or Claude. Each
   application has its own skill and is independently installable.
 - Do not assume machine names, IPs, VM IDs, RAM/disk/CPU sizes, usernames, paths,
   credentials, release numbers, or accounts from the original Maple VM.

@@ -128,7 +128,7 @@ not a whole-directory link, so package-managed entries stay outside the checkout
 Use `setup-execution-node` to coordinate an approved selection of stages, or run
 each stage independently; selecting one child does not authorize the next. For
 example, ask to “use setup-execution-node to plan a node with Maple and Codex,
-testing one stage at a time,” or “use install-t3code on this node.” Missing
+testing one stage at a time,” or “use install-codex on this node.” Missing
 consequential inputs are questions, not invented defaults. Previously agreed
 answers can be reused from the conversation.
 
@@ -139,7 +139,6 @@ answers can be reused from the conversation.
 | `configure-node-runtime` | Selected Nix/container tools, build concurrency, cache/storage policy |
 | `configure-node-git` | Explicit author identity, hosting authentication, optional SSH signing |
 | `install-maple-agent` | Verified Maple bundle, optional user service, remote pairing |
-| `install-t3code` | Verified T3 runtime, optional user service, selected access method |
 | `install-codex` | Complete Codex/provider runtime, including release-matched helpers |
 | `install-claude-code` | Claude Code runtime and authentication handoff |
 | `deploy-agent-config` | This repository's reviewed shared links and node guidance |

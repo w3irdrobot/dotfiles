@@ -118,7 +118,7 @@ class AgentConfigTests(unittest.TestCase):
         names = (
             "setup-execution-node", "provision-execution-node",
             "configure-node-runtime", "configure-node-git",
-            "install-maple-agent", "install-t3code", "install-codex",
+            "install-maple-agent", "install-codex",
             "install-claude-code", "deploy-agent-config",
         )
         result = self.run_linker("--tools", "maple,codex,claude,opencode")
