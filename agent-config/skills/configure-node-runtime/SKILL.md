@@ -1,6 +1,6 @@
 ---
 name: configure-node-runtime
-description: Configure a headless coding node's project build runtime, Nix, optional rootless Podman, cache placement, and resource limits. Use after provisioning when development tools and build storage need setup. Does not install agent apps, configure Git credentials, or repartition disks.
+description: Configure a headless coding node's project build runtime, Nix, optional rootless Podman, optional virtual-desktop dependencies for GUI testing, cache placement, and resource limits. Use after provisioning when development tools, GUI prerequisites, or build storage need setup. Does not install agent apps, configure Git credentials, or repartition disks.
 ---
 
 # Configure a node's build runtime
@@ -16,6 +16,11 @@ per-build compiler jobs, cache locations/budget, minimum free-space reserve, and
 cleanup/retention choices. Ask which tools beyond project environments are needed
 (for example Git, Python, ripgrep, just, ShellCheck, or shfmt). Do not install a
 blanket package list or reuse the former VM's two-build/four-job settings.
+
+Ask whether the node needs GUI viewing/testing of application builds. If selected,
+read [virtual desktop prerequisites](references/virtual-desktop.md) and distinguish
+administrator-owned packages from user-owned desktop/driver setup. Do not add a
+desktop to every headless node automatically.
 
 Inspect actual CPU/RAM, disk and Btrfs usage, mounts/subvolumes, existing tools,
 configs, Nix distribution, and container state before proposing changes.
@@ -44,6 +49,10 @@ configs, Nix distribution, and container state before proposing changes.
 6. Keep node-specific resource and checkout conventions in non-secret node guidance,
    not in portable shared instructions. Reconcile an existing node file with the
    user; shared agent-config deployment is a separate skill.
+7. If GUI testing was selected, install only the approved OS-level prerequisites
+   from the virtual desktop reference. User-session lifecycle, CUA installation,
+   MCP registration, and application smoke tests require their own selected scope;
+   package installation alone does not establish a working GUI.
 
 ## Acceptance
 
