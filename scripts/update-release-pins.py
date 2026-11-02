@@ -213,6 +213,22 @@ def prepare(tool):
     return files
 
 
+def commit_changes(paths):
+    if not paths:
+        print('Release pins are unchanged; no commit needed.')
+        return
+    relative = [str(path.relative_to(ROOT)) for path in paths]
+    try:
+        # --only includes these tracked files, not unrelated staged changes.
+        # Honor the existing author/signing policy and hooks; never push.
+        subprocess.run(['git', '-C', str(ROOT), 'commit', '--only',
+                        '-m', 'chore: refresh upstream release pins', '--', *relative], check=True)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ValueError('Pins were refreshed, but the commit failed. Changes are preserved; '
+                         'resolve Git identity/signing/hook issues and commit them manually. No installation was run.') from error
+    print('Release pin changes committed; review with git show before installing.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tool', choices=TOOLS, action='append', help='refresh only this tool (repeatable; default: all tools)')
@@ -220,9 +236,9 @@ def main():
     args = parser.parse_args()
     tools = list(dict.fromkeys(args.tool)) if args.tool else TOOLS
     if args.dry_run:
-        print('PLAN ONLY: would refresh pins for ' + ', '.join(tools) + '; no network or writes.')
+        print('PLAN ONLY: would refresh and commit pins for ' + ', '.join(tools) + '; no network, writes, or commits.')
         return
-    # Refuse unrelated work rather than overwriting it; never fetch/pull/commit.
+    # Refuse unrelated work rather than overwriting it; never fetch or pull.
     status = subprocess.check_output(['git', '-C', str(ROOT), 'status', '--porcelain'], text=True)
     if status:
         raise ValueError('Checkout must be clean before refreshing release pins; preserve/review your work first')
@@ -256,8 +272,9 @@ def main():
             if not path.is_symlink():
                 path.write_text(content)
         raise
-    print('Pins prepared only. Review git diff, then explicitly run dotfiles install with the desired selections.')
-    print('No binaries installed, launchers changed, services restarted, or commits created.')
+    commit_changes([path for path, content in edits.items() if content != originals[path]])
+    print('Explicitly run dotfiles install with the desired selections to apply the pins.')
+    print('No binaries installed, launchers changed, services restarted, or commits pushed.')
 
 
 if __name__ == '__main__':

@@ -272,10 +272,13 @@ signing key and a valid detached signature. Key rotations, downgrades, and chang
 to an already-pinned release fail for manual review. The nono runtime pack stays
 pinned separately; refreshing its binary does not change sandbox integration.
 
-Review `git diff` before applying pins with an explicit `dotfiles install` using
-your desired groups/modules. The refresh command never installs artifacts, switches
-launchers, restarts services, pulls the checkout, or commits. Its dry-run performs
-no network requests or writes. OpenCode/nono installs switch only launchers pointing
+The refresh command attempts to commit only its changed pin files using the existing
+Git identity, signing policy, and hooks. Unchanged pins need no commit. If committing
+fails, changes remain available for a manual commit; credentials and signing settings
+are never changed automatically. Review `git show` before applying pins with an explicit
+`dotfiles install` using your desired groups/modules. The refresh command never installs
+artifacts, switches launchers, restarts services, pulls the checkout, or pushes commits.
+Its dry-run performs no network requests, writes, or commits. OpenCode/nono installs switch only launchers pointing
 to known, checksum-verified managed binaries, retaining old releases for rollback.
 Do not use OpenCode's
 self-updater to replace the pinned binary. Resolve conflicting older

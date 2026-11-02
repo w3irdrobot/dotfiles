@@ -64,16 +64,20 @@ class ReleasePins(unittest.TestCase):
 
     def test_opencode_prepares_exact_sources_without_executing(self):
         data = archive()
-        info = {'version': '2.1.5', 'dist': {'tarball': 'https://registry.npmjs.org/a',
+        current = next(line.split('=')[1] for line in (ROOT / 'modules/opencode.sh').read_text().splitlines()
+                       if line.startswith('readonly OPENCODE_VERSION='))
+        major, minor, release = pins.version(current)
+        following = f'{major}.{minor}.{release + 1}'
+        info = {'version': following, 'dist': {'tarball': 'https://registry.npmjs.org/a',
                 'integrity': 'sha512-' + base64.b64encode(hashlib.sha512(data).digest()).decode()}}
         with patch.object(pins, 'metadata', return_value=info), patch.object(pins, 'download', return_value=data), \
                 patch.object(pins.subprocess, 'run', side_effect=AssertionError('must not execute')):
             old, new, files, digest, _ = pins.native('opencode')
-        self.assertEqual((old, new), ('2.1.4', '2.1.5'))
+        self.assertEqual((old, new), (current, following))
         self.assertEqual(digest, pins.sha256(b'binary'))
-        self.assertIn('OPENCODE_VERSION=2.1.5', files[ROOT / 'modules/opencode.sh'])
-        self.assertIn('/opencode/2.1.5/opencode', files[ROOT / 'install.sh'])
-        self.assertEqual((ROOT / 'modules/opencode.sh').read_text().count('OPENCODE_VERSION=2.1.4'), 1)
+        self.assertIn(f'OPENCODE_VERSION={following}', files[ROOT / 'modules/opencode.sh'])
+        self.assertIn(f'/opencode/{following}/opencode', files[ROOT / 'install.sh'])
+        self.assertEqual((ROOT / 'modules/opencode.sh').read_text().count(f'OPENCODE_VERSION={current}'), 1)
 
     def test_existing_version_digest_changes_fail(self):
         with patch.object(pins, 'native', return_value=('2.1.4', '2.1.4', {}, '0' * 64, None)):
@@ -152,9 +156,53 @@ class ReleasePins(unittest.TestCase):
             path.write_text('original')
             with patch.object(sys, 'argv', ['pins', '--tool', 'signal']), \
                     patch.object(pins.subprocess, 'check_output', side_effect=['', 'git@github.com:w3irdrobot/dotfiles.git\n', '']), \
-                    patch.object(pins, 'prepare', return_value={path: 'updated'}):
+                    patch.object(pins, 'prepare', return_value={path: 'updated'}), \
+                    patch.object(pins, 'commit_changes') as commit:
                 pins.main()
             self.assertEqual(path.read_text(), 'updated')
+            commit.assert_called_once_with([path])
+
+    def test_unchanged_pins_do_not_attempt_commit(self):
+        with patch.object(pins.subprocess, 'run') as run:
+            pins.commit_changes([])
+        run.assert_not_called()
+
+    def test_commit_failure_preserves_refreshed_pins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'pin'
+            path.write_text('original')
+            with patch.object(sys, 'argv', ['pins', '--tool', 'signal']), \
+                    patch.object(pins.subprocess, 'check_output', side_effect=['', 'git@github.com:w3irdrobot/dotfiles.git\n', '']), \
+                    patch.object(pins, 'prepare', return_value={path: 'updated'}), \
+                    patch.object(pins, 'ROOT', Path(directory)), \
+                    patch.object(pins.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, ['git', 'commit'])):
+                with self.assertRaisesRegex(ValueError, 'Changes are preserved'):
+                    pins.main()
+            self.assertEqual(path.read_text(), 'updated')
+
+    def test_commit_includes_only_generated_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.run(['git', '-C', directory, *args], check=True, capture_output=True, text=True)
+            git('init', '-b', 'master')
+            # Test-local identity/signing settings only; never change the real checkout.
+            git('config', 'user.name', 'Fixture')
+            git('config', 'user.email', 'fixture@example.invalid')
+            git('config', 'commit.gpgsign', 'false')
+            git('config', 'core.hooksPath', str(root / 'no-hooks'))
+            pin, other = root / 'pin', root / 'other'
+            pin.write_text('old')
+            other.write_text('old')
+            git('add', '--', 'pin', 'other')
+            git('commit', '-m', 'fixture')
+            pin.write_text('new')
+            other.write_text('unrelated')
+            git('add', '--', 'other')
+            with patch.object(pins, 'ROOT', root):
+                pins.commit_changes([pin])
+            self.assertEqual('pin', git('diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD').stdout.strip())
+            self.assertEqual('other', git('diff', '--cached', '--name-only').stdout.strip())
 
 
 class ManagedBinary(unittest.TestCase):
