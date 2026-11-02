@@ -88,7 +88,7 @@ preflight_native_opencode_paths() {
 
 check_native_opencode_path() {
 	local candidate=$1 explicit=$2 actual native
-	local managed=$HOME/.local/share/dotfiles/opencode/2.1.4/opencode
+	local managed=$HOME/.local/share/dotfiles/opencode/2.2.5/opencode
 	[[ -e $candidate || -L $candidate ]] || return 0
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks

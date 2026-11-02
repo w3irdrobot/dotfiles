@@ -17,7 +17,7 @@ check_destination() {
 }
 
 preflight_nono() {
-	NONO_TARGET=$HOME/.local/share/dotfiles/nono/0.80.0/nono
+	NONO_TARGET=$HOME/.local/share/dotfiles/nono/0.81.0/nono
 	NONO_LINK=$HOME/.local/bin/nono
 	local target=$NONO_TARGET link=$NONO_LINK
 	check_destination "$target"
@@ -197,9 +197,9 @@ install_nono() (
 	trap 'rm -rf -- "$scratch"' EXIT
 	archive=$scratch/nono.tar.gz
 	wget --https-only --output-document="$archive" \
-		https://github.com/nolabs-ai/nono/releases/download/v0.80.0/nono-v0.80.0-x86_64-unknown-linux-gnu.tar.gz
+		https://github.com/nolabs-ai/nono/releases/download/v0.81.0/nono-v0.81.0-x86_64-unknown-linux-gnu.tar.gz
 	# Immutable release asset digest published by GitHub's release API.
-	printf '%s  %s\n' 6da665b61999570c10dffc7da78828fe1fb7f3cac53319e505cebecaef17037f "$archive" | sha256sum --check --strict -
+	printf '%s  %s\n' 7ecc33ff9c349bdfa84b4496e7a7555f67bcc33f1e125c7df9efb653c6c4e569 "$archive" | sha256sum --check --strict -
 	# Extract only the expected member, never arbitrary archive paths.
 	binary=$scratch/nono
 	tar --extract --gzip --to-stdout --file="$archive" nono >"$binary"
