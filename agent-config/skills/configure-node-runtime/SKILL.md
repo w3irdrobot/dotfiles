@@ -1,6 +1,6 @@
 ---
 name: configure-node-runtime
-description: Configure a headless coding node's project build runtime, Nix, optional rootless Podman, optional virtual-desktop dependencies for GUI testing, cache placement, and resource limits. Use after provisioning when development tools, GUI prerequisites, or build storage need setup. Does not install agent apps, configure Git credentials, or repartition disks.
+description: Configure a headless coding node's project build runtime, Nix, optional rootless Podman, optional virtual desktop and CUA Driver for GUI testing, cache placement, and resource limits. Use after provisioning when development tools, GUI automation, or build storage need setup. Does not install provider/agent-host apps, configure Git credentials, or repartition disks.
 ---
 
 # Configure a node's build runtime
@@ -18,9 +18,11 @@ cleanup/retention choices. Ask which tools beyond project environments are neede
 blanket package list or reuse the former VM's two-build/four-job settings.
 
 Ask whether the node needs GUI viewing/testing of application builds. If selected,
-read [virtual desktop prerequisites](references/virtual-desktop.md) and distinguish
-administrator-owned packages from user-owned desktop/driver setup. Do not add a
-desktop to every headless node automatically.
+read [virtual desktop and CUA setup](references/virtual-desktop.md). Include both
+administrator-owned packages and user-owned CUA Driver installation in the GUI
+setup plan, unless the request is explicitly package-only. Resolve the driver
+release policy and desktop lifecycle before execution. Do not add a desktop or
+driver to every headless node automatically.
 
 Inspect actual CPU/RAM, disk and Btrfs usage, mounts/subvolumes, existing tools,
 configs, Nix distribution, and container state before proposing changes.
@@ -49,10 +51,11 @@ configs, Nix distribution, and container state before proposing changes.
 6. Keep node-specific resource and checkout conventions in non-secret node guidance,
    not in portable shared instructions. Reconcile an existing node file with the
    user; shared agent-config deployment is a separate skill.
-7. If GUI testing was selected, install only the approved OS-level prerequisites
-   from the virtual desktop reference. User-session lifecycle, CUA installation,
-   MCP registration, and application smoke tests require their own selected scope;
-   package installation alone does not establish a working GUI.
+7. If GUI testing was selected, follow the virtual desktop reference: install the
+   approved OS prerequisites as administrator and CUA Driver as the execution
+   user, configure the approved session lifecycle, and verify actual rendering/input.
+   Honor explicit package-only scope. MCP registration remains optional; package
+   or driver installation alone does not establish a working GUI.
 
 ## Acceptance
 

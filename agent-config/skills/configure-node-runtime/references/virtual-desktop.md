@@ -1,8 +1,11 @@
-# Optional virtual desktop prerequisites
+# Optional virtual desktop and CUA Driver
 
 Use when an execution node needs to view and operate GUI application builds.
-This is an opt-in runtime component, not a workstation bootstrap or permission
-to install CUA, start services, expose a display, or change the hypervisor.
+This is an opt-in runtime component, not a workstation bootstrap. A selected GUI
+setup includes OS prerequisites, user-level CUA Driver installation, approved
+desktop lifecycle, and rendering/input acceptance. An explicitly package-only
+request does not include the driver. Never infer permission to expose a display
+or change the hypervisor.
 
 ## Resolve scope
 
@@ -40,7 +43,45 @@ Verify requested package states/versions with `dpkg-query`, check `dpkg --audit`
 and check command availability as the execution user. Record package versions in
 the handoff. This proves prerequisites only; do not label rendering verified.
 
-## Separately selected user-level setup
+## Install CUA Driver as the execution user
+
+For selected GUI setup, install the driver after the OS packages; do not leave it
+as an optional follow-up or report it installed merely because dependencies exist.
+Inspect any existing driver version, executable path, ownership, and running
+desktop/driver jobs first. Reuse a matching installation; stop before replacing
+an active or mismatched version. Never reinstall a working driver blindly.
+
+Consult the current first-party
+[quickstart](https://cua.ai/docs/cua-driver/quickstart) and
+[connection guide](https://cua.ai/docs/cua-driver/guides/connect-your-agent).
+Resolve the approved release policy to an exact supported version. As the normal
+execution user, create a private scratch directory and download both
+`https://cua.ai/driver/install.sh` and
+`https://cua.ai/driver/_install-rust.sh` there under those exact filenames.
+Inspect both scripts, including artifact sources and verification behavior. Keeping
+the helper beside the wrapper makes the reviewed wrapper execute that local copy
+rather than download an unreviewed helper during execution; verify that behavior
+against the current scripts before running them.
+
+With `reviewed_dir` set to that directory and `version` set to the resolved exact
+release, run the reviewed installer as the execution user, not root:
+
+```bash
+CUA_DRIVER_RS_VERSION="$version" bash "$reviewed_dir/install.sh" \
+  --bin-dir "$HOME/.local/bin" --no-modify-path --require-signature
+"$HOME/.local/bin/cua-driver" --version
+```
+
+Check current signature-verifier prerequisites first. If `--require-signature`
+needs a missing verifier such as cosign, obtain approval for a verified install
+of that prerequisite; do not silently omit signature verification. Verify the
+release checksums as well, record the exact installed version, artifact source,
+verification evidence, and executable path. Verify command availability in a
+fresh login without rewriting shell startup files. CLI version checks establish
+installation only, not a ready desktop. Do not change provider authentication,
+install MCP configuration, or register extra skills as an installer side effect.
+
+## Configure the approved user session
 
 - Run the desktop, target application/MDE launcher, and driver as the execution
   user. Give them the same `DISPLAY`, private `XAUTHORITY`, and D-Bus session
@@ -49,13 +90,6 @@ the handoff. This proves prerequisites only; do not label rendering verified.
   variables scoped to desktop-aware launchers, not every provider process.
 - Disable X11 TCP listening and retain X authorization; never use `xhost +`.
   Human viewing/VNC and network exposure are separate choices, not dependencies.
-- If CUA is selected, consult its current first-party
-  [quickstart](https://cua.ai/docs/cua-driver/quickstart) and
-  [connection guide](https://cua.ai/docs/cua-driver/guides/connect-your-agent).
-  Resolve the approved release policy to an exact version and inspect both
-  `install.sh` and its downloaded `_install-rust.sh` helper before execution.
-  Verify checksums and supplied signatures, record provenance, and avoid implicit
-  shell-profile changes. Do not blindly pipe a moving installer into a shell.
 - CLI-first operation is sufficient; MCP and skill registration are optional,
   explicit changes. Start the driver inside the intended desktop session. Review
   input permission scope; a shared desktop is not isolation from the same user's

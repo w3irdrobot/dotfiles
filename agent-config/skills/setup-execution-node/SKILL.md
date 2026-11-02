@@ -20,9 +20,10 @@ Loading this skill is not permission to provision a node or run every stage.
    to its own skill, not this full workflow. A setup request alone does not select
    provider authentication, live paid tests, or public exposure.
    Ask whether application GUI viewing/testing is needed. Offer the optional
-   virtual-desktop prerequisites through `configure-node-runtime`; keep package
-   installation separate from user-level desktop/driver setup and real rendering
-   acceptance. Do not silently add either to a headless-only plan.
+   virtual desktop and CUA Driver through `configure-node-runtime`. When GUI setup
+   is selected, include administrator-owned packages, user-level driver installation,
+   desktop lifecycle, and real rendering/input acceptance in the approved plan;
+   honor explicitly package-only requests. Do not add GUI setup to a headless-only plan.
 3. Load each selected child skill using the current harness's skill loader. If it
    is not discoverable, read its canonical `SKILL.md` via the relative links below.
    Stop if a required skill/reference is unavailable; do not invent its workflow.
@@ -54,7 +55,7 @@ plan; request separate exact-resource authorization if the user wants them.
 | Stage | Focused skill | Dependency / boundary |
 | --- | --- | --- |
 | New infrastructure, if selected | [provision-execution-node](../provision-execution-node/SKILL.md) | Capacity and approved storage/access plan; skip for an existing node |
-| Build tools, storage policy, and optional GUI prerequisites, if selected | [configure-node-runtime](../configure-node-runtime/SKILL.md) | Reachable node and approved execution user; no implicit tool bundle; desktop/driver setup is separately selected |
+| Build tools, storage policy, and optional GUI setup, if selected | [configure-node-runtime](../configure-node-runtime/SKILL.md) | Reachable node and approved execution user; selected GUI setup includes desktop prerequisites and user-level CUA Driver, unless explicitly package-only |
 | Repository identity/access, if selected | [configure-node-git](../configure-node-git/SKILL.md) | Reachable node; user-controlled authentication/signing |
 | Selected providers | [install-codex](../install-codex/SKILL.md), [install-claude-code](../install-claude-code/SKILL.md) | Approved release/home/auth policies; install only selected providers |
 | Selected host | [install-maple-agent](../install-maple-agent/SKILL.md) | Host installation can precede providers, but provider execution tests cannot |
