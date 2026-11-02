@@ -131,6 +131,17 @@ class Fixture(unittest.TestCase):
                 self.assertEqual(before, self.snapshot())
                 self.assertFalse([c for c in self.calls() if c[0] != "uname"])
 
+    def test_update_defaults_to_all_with_options(self):
+        self.mock('stow', "sys.exit(0 if '--simulate' in sys.argv else 97)")
+        self.git_fixture()
+        before = self.snapshot()
+        implicit = self.run_cli('update', '--dry-run', '--groups', 'cloud')
+        explicit = self.run_cli('update', 'all', '--dry-run', '--groups', 'cloud')
+        self.assertEqual(0, implicit.returncode, implicit.stderr)
+        self.assertEqual(0, explicit.returncode, explicit.stderr)
+        self.assertEqual(explicit.stdout, implicit.stdout)
+        self.assertEqual(before, self.snapshot())
+
     def test_unsupported_host_refuses_install(self):
         self.mock("uname", 'print("FreeBSD" if "-s" in sys.argv else "x86_64")')
         self.assert_failed(self.run_cli("install"))

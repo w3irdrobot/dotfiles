@@ -19,13 +19,14 @@ check_destination() {
 preflight_nono() {
 	NONO_TARGET=$HOME/.local/share/dotfiles/nono/0.80.0/nono
 	NONO_LINK=$HOME/.local/bin/nono
-	local target=$NONO_TARGET link=$NONO_LINK expected actual
+	local target=$NONO_TARGET link=$NONO_LINK
 	check_destination "$target"
 	check_destination "$link"
 	if [[ -L $link ]]; then
-		expected=$(realpath -m "$target")
-		actual=$(realpath -m "$link")
-		[[ $actual == "$expected" && -e $link ]] || die "Conflicting or dangling nono link: $link"
+		if [[ $(readlink -- "$link") != "$target" ]]; then
+			python3 "$ROOT/scripts/native-release.py" nono "$link" "$HOME" || die "Conflicting or dangling nono link: $link"
+		fi
+		[[ -e $link ]] || die "Conflicting or dangling nono link: $link"
 	elif [[ -e $link ]]; then
 		die "Unmanaged nono binary: $link; inspect and move it yourself first."
 	fi
@@ -210,7 +211,14 @@ install_nono() (
 		mkdir -p "$(dirname "$target")"
 		install -m 0755 "$binary" "$target"
 	fi
-	if [[ ! -L $link ]]; then
+	if [[ -L $link && $(readlink -- "$link") != "$target" ]]; then
+		python3 "$ROOT/scripts/native-release.py" nono "$link" "$HOME" || die 'nono launcher changed during setup.'
+		local staging
+		staging=$(mktemp -d "${link%/*}/.nono-link.XXXXXXXX")
+		trap 'rm -f -- "$staging/nono"; rmdir -- "$staging"; rm -rf -- "$scratch"' EXIT
+		ln -s -- "$target" "$staging/nono"
+		mv -T -- "$staging/nono" "$link"
+	elif [[ ! -L $link ]]; then
 		mkdir -p "$(dirname "$link")"
 		ln -s "$target" "$link"
 	fi

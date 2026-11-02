@@ -2,6 +2,7 @@
 
 import hashlib
 import io
+import json
 import re
 import subprocess
 import tarfile
@@ -163,6 +164,43 @@ os.chmod(args[1], int(args[0], 8))
             self.assertEqual(0, result.returncode, result.stderr)
         self.assertFalse((self.home / "native-version-ran").exists())
         self.assertFalse(any(c[0] in ("curl", "tar") for c in self.calls()))
+
+    def prepare_previous_launcher(self):
+        self.fake_native()
+        previous = self.native.parent.parent / '2.1.3/opencode'
+        previous.parent.mkdir()
+        previous.write_bytes(b'previous binary; must not execute')
+        previous.chmod(0o755)
+        digest = hashlib.sha256(previous.read_bytes()).hexdigest()
+        history_path = self.repo / 'modules/native-release-history.json'
+        history = json.loads(history_path.read_text())
+        history['opencode']['2.1.3'] = digest
+        history_path.write_text(json.dumps(history))
+        for name in ('install.sh', 'lib/dotfiles.sh'):
+            path = self.repo / name
+            marker = '# Previous verified OpenCode releases (maintained by update-release-pins).'
+            path.write_text(path.read_text().replace(marker, marker + f'\n\t2.1.3) digest={digest} ;;'))
+        link = self.home / '.local/bin/opencode'
+        link.parent.mkdir(parents=True)
+        link.symlink_to(previous)
+        return previous, link
+
+    def test_upgrade_switches_only_verified_previous_launcher(self):
+        previous, link = self.prepare_previous_launcher()
+        result = self.run_module('opencode')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(self.native, link.readlink())
+        self.assertTrue(previous.exists())
+        self.assertEqual([], list(link.parent.glob('.opencode-link.*')))
+        self.assertFalse((self.home / 'native-version-ran').exists())
+
+    def test_interrupted_switch_retains_previous_launcher_and_cleans_staging(self):
+        previous, link = self.prepare_previous_launcher()
+        self.mock('mv', 'sys.exit(44)')
+        result = self.run_module('opencode')
+        self.assertEqual(44, result.returncode, result.stderr)
+        self.assertEqual(previous, link.readlink())
+        self.assertEqual([], list(link.parent.glob('.opencode-link.*')))
 
     def test_binary_symlink_and_conflicting_parent_are_refused(self):
         self.native.symlink_to(self.base / "missing")

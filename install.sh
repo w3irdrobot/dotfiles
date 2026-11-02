@@ -25,7 +25,7 @@ run() {
 	printf '+ ' >&2
 	printf '%q ' "$@" >&2
 	printf '\n' >&2
-	if ((! dry_run)); then "$@"; fi
+	if ((!dry_run)); then "$@"; fi
 }
 
 check_platform() {
@@ -93,10 +93,27 @@ check_native_opencode_path() {
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
 	# and the explicitly protected startup path still require inspection.
-	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
+	if ((!explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
 	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
 	native=$(realpath -m -- "$managed") || die 'Could not resolve managed OpenCode path; inspect it manually.'
-	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate; inspect and move it manually. Leaving it unchanged."
+	if [[ $actual == "$native" ]]; then return 0; fi
+	# Only the managed launcher may point to a previously verified release.
+	local previous digest='' parent
+	previous=$(readlink -- "$candidate") || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	[[ $candidate == "$HOME/.local/bin/opencode" && $previous == "$HOME/.local/share/dotfiles/opencode/"* ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	[[ ${previous#"$HOME/.local/share/dotfiles/opencode/"} =~ ^([0-9]+\.[0-9]+\.[0-9]+)/opencode$ ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	case ${BASH_REMATCH[1]} in
+	# Previous verified OpenCode releases (maintained by update-release-pins).
+	2.1.4) digest=ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7 ;;
+	*) die "Unknown managed OpenCode release: $previous" ;;
+	esac
+	parent=${previous%/*}
+	while [[ $parent != "$HOME" && $parent != / ]]; do
+		[[ ! -L $parent && -d $parent ]] || die "Conflicting OpenCode parent: $parent"
+		parent=${parent%/*}
+	done
+	[[ -f $previous && ! -L $previous && -x $previous ]] || die "Conflicting OpenCode binary: $previous"
+	printf '%s  %s\n' "$digest" "$previous" | sha256sum --check --strict --status - || die "Modified managed OpenCode binary: $previous"
 }
 
 bootstrap_git() {
@@ -189,7 +206,7 @@ main() {
 	[[ $ref != -* ]] || die 'Invalid branch.'
 	# With wget | bash, stdin carries source code, not prompt responses. All
 	# interactive descendants must read the terminal instead of consuming it.
-	if ((! dry_run)) && [[ ! -t 0 ]]; then
+	if ((!dry_run)) && [[ ! -t 0 ]]; then
 		local terminal_input
 		if ! { exec {terminal_input}</dev/tty; } 2>/dev/null; then
 			die 'Interactive installation requires a terminal; run from a terminal or use --dry-run.'

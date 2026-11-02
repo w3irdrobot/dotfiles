@@ -13,7 +13,7 @@ run() {
 	printf '+ ' >&2
 	printf '%q ' "$@" >&2
 	printf '\n' >&2
-	if ((! DRY_RUN)); then "$@"; fi
+	if ((!DRY_RUN)); then "$@"; fi
 }
 
 check_platform() {
@@ -89,18 +89,18 @@ load_modules() {
 				manual=$value
 				;;
 			default)
-				((! saw_default)) || die "Duplicate default in $file"
+				((!saw_default)) || die "Duplicate default in $file"
 				saw_default=1
 				case $value in true | false) default_enabled=$value ;; *) die "Invalid default in $file (expected true or false)" ;; esac
 				;;
 			group)
-				((! saw_group)) || die "Duplicate group in $file"
+				((!saw_group)) || die "Duplicate group in $file"
 				saw_group=1
 				group=$value
 				case $group in core | ai | desktop | cloud | bitcoin | hardware) ;; *) die "Invalid group in $file" ;; esac
 				;;
 			packages)
-				((! saw_packages)) || die "Duplicate packages in $file"
+				((!saw_packages)) || die "Duplicate packages in $file"
 				saw_packages=1
 				read -r -a module_packages <<<"$value"
 				for package in "${module_packages[@]}"; do
@@ -248,7 +248,7 @@ link_configs() {
 		fi
 	fi
 	if ((create_launcher)); then link_launcher; fi
-	if module_selected nix && ((! DRY_RUN)); then
+	if module_selected nix && ((!DRY_RUN)); then
 		phase 'Native Nix: validating the daemon and linked client features'
 		validate_nix
 		log 'Native Nix daemon and linked client features validated.'
@@ -502,10 +502,27 @@ check_native_opencode_path() {
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
 	# and the explicitly protected startup path still require inspection.
-	if ((! explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
+	if ((!explicit)) && [[ ! -L $candidate && (! -f $candidate || ! -x $candidate) ]]; then return 0; fi
 	actual=$(realpath -m -- "$candidate") || die "Could not resolve OpenCode shadow: $candidate; inspect it manually. Leaving it unchanged."
 	native=$(realpath -m -- "$managed") || die 'Could not resolve managed OpenCode path; inspect it manually.'
-	[[ $actual == "$native" ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate; inspect and move it manually. Leaving it unchanged."
+	if [[ $actual == "$native" ]]; then return 0; fi
+	# Only the managed launcher may point to a previously verified release.
+	local previous digest='' parent
+	previous=$(readlink -- "$candidate") || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	[[ $candidate == "$HOME/.local/bin/opencode" && $previous == "$HOME/.local/share/dotfiles/opencode/"* ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	[[ ${previous#"$HOME/.local/share/dotfiles/opencode/"} =~ ^([0-9]+\.[0-9]+\.[0-9]+)/opencode$ ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
+	case ${BASH_REMATCH[1]} in
+	# Previous verified OpenCode releases (maintained by update-release-pins).
+	2.1.4) digest=ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7 ;;
+	*) die "Unknown managed OpenCode release: $previous" ;;
+	esac
+	parent=${previous%/*}
+	while [[ $parent != "$HOME" && $parent != / ]]; do
+		[[ ! -L $parent && -d $parent ]] || die "Conflicting OpenCode parent: $parent"
+		parent=${parent%/*}
+	done
+	[[ -f $previous && ! -L $previous && -x $previous ]] || die "Conflicting OpenCode binary: $previous"
+	printf '%s  %s\n' "$digest" "$previous" | sha256sum --check --strict --status - || die "Modified managed OpenCode binary: $previous"
 }
 
 # shellcheck source=modules/nix.sh
@@ -539,9 +556,9 @@ setup_modules() {
 		elif [[ $module == nix ]]; then
 			setup_nix --bootstrap
 		elif [[ $module == bitwarden ]]; then
-			if ((! DRY_RUN)); then validate_bitwarden_install; fi
+			if ((!DRY_RUN)); then validate_bitwarden_install; fi
 		elif [[ $module == discord ]]; then
-			if ((! DRY_RUN)); then validate_discord_install; fi
+			if ((!DRY_RUN)); then validate_discord_install; fi
 		elif [[ $module == signal ]]; then
 			install_signal_appimage
 		elif [[ -f $ROOT/modules/$module.sh ]]; then
@@ -554,7 +571,7 @@ setup_modules() {
 docker_membership() {
 	((DOCKER_GROUP)) || return 0
 	phase 'Docker access: explicitly requested group membership'
-	if ((! DRY_RUN)); then getent group docker >/dev/null || die 'Docker group does not exist; install Docker first.'; fi
+	if ((!DRY_RUN)); then getent group docker >/dev/null || die 'Docker group does not exist; install Docker first.'; fi
 	local user
 	user=$(id -un)
 	if id -nG "$user" | tr ' ' '\n' | grep -qx docker; then return 0; fi

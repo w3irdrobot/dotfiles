@@ -85,7 +85,7 @@ users. Keep the checkout in place because the launcher and config links use it.
 | `dotfiles link` | Link selected configs and create/reuse the launcher; no package installation |
 | `dotfiles update configs` | Safely fast-forward the checkout and relink configs |
 | `dotfiles update system` | Update Fedora RPMs, selected tool setup, and installed user Flatpaks; no Git update |
-| `dotfiles update all` | Update the checkout, Fedora RPMs, selected tool setup, user Flatpaks, and config links |
+| `dotfiles update` | Update the checkout, Fedora RPMs, selected tool setup, user Flatpaks, and config links |
 | `dotfiles check-updates` | Report installed/pinned/published Bitwarden and Discord RPM versions; no installation |
 | `dotfiles secrets export` | Interactively export selected GPG/SSH/Sparrow material to an encrypted archive |
 | `dotfiles secrets import` | Interactively restore an archive with the existing conflict protections |
@@ -234,7 +234,7 @@ packages, or both explicitly:
 ```bash
 bash bin/dotfiles update configs
 bash bin/dotfiles update system
-bash bin/dotfiles update all
+bash bin/dotfiles update
 ```
 
 Config updates verify the repository origin and require a clean, non-diverged
@@ -251,8 +251,33 @@ running them. The managed launcher is `~/.local/bin/opencode`, pointing to
 `~/.local/share/dotfiles/opencode/2.1.4/opencode`; setup verifies its binary hash.
 
 Nix itself updates through DNF. Each project owns its `flake.lock` updates;
-Nix garbage collection is separate maintenance. OpenCode/nono version/digest changes need
-a reviewed repository change and another install run. Do not use OpenCode's
+Nix garbage collection is separate maintenance. Prepare upstream release changes explicitly:
+
+```bash
+dotfiles update-release-pins --tool opencode
+dotfiles update-release-pins
+dotfiles update-release-pins --dry-run
+```
+
+Both update commands default to all; no `all` argument or `--all` flag is needed.
+Use `update configs` or `update system` to limit installation updates, and `--tool`
+to limit pin refreshes. Existing `update all` remains supported.
+
+Run pin refreshes from a clean checkout. The command downloads stable releases temporarily,
+verifies upstream integrity where available, and edits repository pins only. It
+supports OpenCode, nono, Bitwarden, Discord, and Signal; repeat `--tool` to select
+several. Discord supplies no independent checksum: its pin records the official
+HTTPS download hash after RPM identity validation. Signal requires its existing
+signing key and a valid detached signature. Key rotations, downgrades, and changes
+to an already-pinned release fail for manual review. The nono runtime pack stays
+pinned separately; refreshing its binary does not change sandbox integration.
+
+Review `git diff` before applying pins with an explicit `dotfiles install` using
+your desired groups/modules. The refresh command never installs artifacts, switches
+launchers, restarts services, pulls the checkout, or commits. Its dry-run performs
+no network requests or writes. OpenCode/nono installs switch only launchers pointing
+to known, checksum-verified managed binaries, retaining old releases for rollback.
+Do not use OpenCode's
 self-updater to replace the pinned binary. Resolve conflicting older
 links manually rather than replacing unmanaged or dangling destinations.
 

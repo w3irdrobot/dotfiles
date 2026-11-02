@@ -38,6 +38,9 @@ preflight_opencode() {
 	if [[ -e $OPENCODE_LINK && ! -L $OPENCODE_LINK ]]; then
 		die "Unmanaged OpenCode launcher: $OPENCODE_LINK; inspect and move it manually."
 	fi
+	if [[ -L $OPENCODE_LINK && $(readlink -- "$OPENCODE_LINK") != "$OPENCODE_TARGET" ]]; then
+		python3 "$ROOT/scripts/native-release.py" opencode "$OPENCODE_LINK" "$HOME" || die 'Existing OpenCode launcher failed verification.'
+	fi
 	if [[ -e $OPENCODE_TARGET || -L $OPENCODE_TARGET ]]; then verify_opencode_binary "$OPENCODE_TARGET"; fi
 }
 
@@ -64,7 +67,14 @@ setup_opencode() (
 	else
 		log "Pinned OpenCode $OPENCODE_VERSION is already installed and verified."
 	fi
-	if [[ ! -L $link ]]; then
+	if [[ -L $link && $(readlink -- "$link") != "$target" ]]; then
+		python3 "$ROOT/scripts/native-release.py" opencode "$link" "$HOME" || die 'OpenCode launcher changed during setup.'
+		local staging
+		staging=$(mktemp -d "${link%/*}/.opencode-link.XXXXXXXX")
+		trap 'rm -f -- "$staging/opencode"; rmdir -- "$staging"; if [[ -n ${temp:-} ]]; then rm -rf -- "$temp"; fi' EXIT
+		ln -s -- "$target" "$staging/opencode"
+		mv -T -- "$staging/opencode" "$link"
+	elif [[ ! -L $link ]]; then
 		mkdir -p -- "${link%/*}"
 		ln -s -- "$target" "$link"
 	fi

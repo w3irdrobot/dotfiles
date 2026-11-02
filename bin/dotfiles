@@ -28,10 +28,12 @@ source "$ROOT/lib/dotfiles.sh"
 DOTFILES_PHASE='CLI argument validation'
 
 usage() {
-	printf '%s\n' 'Usage: dotfiles install|link|update configs|update system|update all' \
+	printf '%s\n' 'Usage: dotfiles install|link|update [configs|system|all]' \
 		'  [--groups core,ai,desktop] [--modules NAME[,NAME]] [--dry-run] [--docker-group (install only)]' \
 		'       dotfiles secrets export|import [--dry-run]' \
 		'       dotfiles check-updates [--dry-run]' \
+		'       dotfiles update-release-pins [--tool NAME] [--dry-run]' \
+		'Update and update-release-pins default to all; --tool limits pin refreshes.' \
 		'Explicit modules are additive, including default=false modules and other groups.' \
 		'Groups: core, ai, desktop (defaults); cloud, bitcoin, hardware (optional).' \
 		'Config updates fast-forward this checkout; system updates never update project flakes.'
@@ -113,6 +115,9 @@ main() {
 		exit 2
 	}
 	shift
+	if [[ $command == update-release-pins ]]; then
+		exec python3 "$ROOT/scripts/update-release-pins.py" "$@"
+	fi
 	if [[ $command == secrets ]]; then
 		manage_secrets "$@"
 		return
@@ -122,9 +127,11 @@ main() {
 		return
 	fi
 	if [[ $command == update ]]; then
-		(($#)) || die 'update needs configs, system, or all'
-		scope=$1
-		shift
+		scope=all
+		if (($#)) && [[ $1 != -* ]]; then
+			scope=$1
+			shift
+		fi
 		case $scope in configs | system | all) ;; *) die "Unknown update scope: $scope" ;; esac
 	fi
 	while (($#)); do
@@ -168,7 +175,7 @@ main() {
 		phase 'Config checkout: verifying origin and applying a safe fast-forward update'
 		update_checkout
 		# Restart against the updated implementation and metadata, exactly once.
-		if ((! DRY_RUN)) && [[ ${DOTFILES_UPDATED:-0} != 1 ]]; then
+		if ((!DRY_RUN)) && [[ ${DOTFILES_UPDATED:-0} != 1 ]]; then
 			export DOTFILES_UPDATED=1
 			local -a args=(--groups "$GROUPS_CSV")
 			if [[ -n $MODULES_CSV ]]; then args+=(--modules "$MODULES_CSV"); fi
