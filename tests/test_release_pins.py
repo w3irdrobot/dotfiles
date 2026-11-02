@@ -122,8 +122,28 @@ class ReleasePins(unittest.TestCase):
         old = {'key_sha256': pins.sha256(b'download'), 'fingerprint': 'EXPECTED'}
         with patch.object(pins, 'metadata', return_value={'draft': False, 'prerelease': False, 'tag_name': 'v8.33.0'}), \
                 patch.object(pins, 'download', return_value=b'download'), \
-                patch.object(pins.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '[GNUPG:] VALIDSIG OTHER 123')):
+                patch.object(pins.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'[GNUPG:] VALIDSIG OTHER 123')):
             with self.assertRaisesRegex(ValueError, 'identity'):
+                pins.signal_pin(old)
+
+    def test_signal_binary_gpg_status_preserves_signature_verification(self):
+        old = {'key_sha256': pins.sha256(b'download'), 'fingerprint': 'EXPECTED'}
+        with patch.object(pins, 'metadata', return_value={'draft': False, 'prerelease': False, 'tag_name': 'v8.33.0'}), \
+                patch.object(pins, 'download', return_value=b'download'), \
+                patch.object(pins.subprocess, 'run', return_value=subprocess.CompletedProcess(
+                    [], 0, b'[GNUPG:] NOTATION_DATA \xb3\xff\n[GNUPG:] VALIDSIG EXPECTED 123\n', b'\xffdiagnostic')) as run:
+            result = pins.signal_pin(old)
+            self.assertEqual('8.33.0', result['version'])
+            self.assertEqual(pins.sha256(b'download'), result['sha256'])
+            self.assertNotIn('text', run.call_args.kwargs)
+
+    def test_signal_failed_gpg_verification_is_not_accepted(self):
+        old = {'key_sha256': pins.sha256(b'download'), 'fingerprint': 'EXPECTED'}
+        with patch.object(pins, 'metadata', return_value={'draft': False, 'prerelease': False, 'tag_name': 'v8.33.0'}), \
+                patch.object(pins, 'download', return_value=b'download'), \
+                patch.object(pins.subprocess, 'run', side_effect=[subprocess.CompletedProcess([], 0),
+                    subprocess.CalledProcessError(1, ['gpg'], output=b'[GNUPG:] VALIDSIG EXPECTED 123')]):
+            with self.assertRaises(subprocess.CalledProcessError):
                 pins.signal_pin(old)
 
     def test_writes_only_pins_after_verification(self):

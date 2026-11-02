@@ -147,8 +147,10 @@ def signal_pin(old):
         command = ['gpg', '--homedir', directory, '--batch', '--no-auto-key-retrieve']
         subprocess.run(command + ['--import', str(temp / 'key.asc')], check=True, capture_output=True)
         result = subprocess.run(command + ['--status-fd', '1', '--verify', str(temp / 'image.gpg'), str(temp / 'image')],
-                                check=True, capture_output=True, text=True)
-        if not any(line.startswith('[GNUPG:] VALIDSIG ') and old['fingerprint'] in line.split()
+                                check=True, capture_output=True)
+        # GPG status records can contain binary notation data. Inspect only the
+        # ASCII VALIDSIG fields instead of decoding the entire output as UTF-8.
+        if not any(line.startswith(b'[GNUPG:] VALIDSIG ') and old['fingerprint'].encode('ascii') in line.split()
                    for line in result.stdout.splitlines()):
             raise ValueError('Signal signature has an unexpected signing identity')
     return {**old, 'version': new, 'sha256': sha256(image)}
