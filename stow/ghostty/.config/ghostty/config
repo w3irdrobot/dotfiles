@@ -2,3 +2,7 @@ theme = Kestrel
 font-size = 11
 window-padding-x = 10
 shell-integration-features = ssh-terminfo
+
+# Treat unmodified keypad Enter as Return for TUIs that miss Kitty KP_ENTER.
+# The laptop also reports KP_ENTER while Num Lock is enabled.
+keybind = numpad_enter=text:\r

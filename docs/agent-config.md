@@ -113,8 +113,8 @@ The shared instructions ask the model to read this file. It is not executable
 configuration or a native automatic import, so verify that it was read in a fresh task.
 
 Personal skills are shared, including Bash, Rust, OpenTofu, frontend design,
-project creation, skill creation, and YouTube transcripts. Tool prerequisites are
-still checked at use time, not provisioned by deployment. Project creation uses
+design workflow, project creation, skill creation, and YouTube transcripts. Tool
+prerequisites are still checked at use time, not provisioned by deployment. Project creation uses
 the node's checkout root; skill creation no longer assumes OpenCode-only tooling.
 Supporting scripts, references, and licenses move with the skills. The nono skill
 and plugin remain owned by their installed package, not this shared collection.
@@ -122,6 +122,11 @@ The helper discovers non-hidden direct child directories containing `SKILL.md`;
 there is no separate skill manifest. New skills are automatically included on the
 next helper run. Stow has individual compatibility links for existing resources,
 not a whole-directory link, so package-managed entries stay outside the checkout.
+
+`design-workflow` and its writing/templates references live under
+`agent-config/skills/design-workflow/`. Its OpenCode Stow directory is only a
+symlink adapter, so the standard helper deploys the same skill to every selected
+consumer; no separate node-specific skill links are needed.
 
 ## Execution-node setup skills
 

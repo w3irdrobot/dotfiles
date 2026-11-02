@@ -136,6 +136,25 @@ class AgentConfigTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("Would link:", result.stdout)
 
+    def test_design_workflow_is_shared_with_its_references_and_stow_adapter(self):
+        source = linker.SKILLS / "design-workflow"
+        adapter = ROOT / "stow/opencode/.config/opencode/skills/design-workflow"
+        self.assertTrue(adapter.is_symlink())
+        self.assertEqual(adapter.resolve(), source)
+        result = self.run_linker("--tools", "maple,codex,claude,opencode")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for base in (".agents/skills", ".claude/skills", ".config/opencode/skills"):
+            with self.subTest(base=base):
+                skill = self.home / base / "design-workflow"
+                self.assertTrue(skill.is_symlink())
+                self.assertEqual(skill.resolve(), source)
+                for relative in ("SKILL.md", "references/templates.md", "references/writing.md"):
+                    self.assertTrue((skill / relative).is_file())
+                    self.assertEqual((skill / relative).read_bytes(), (source / relative).read_bytes())
+        result = self.run_linker("--tools", "maple,codex,claude,opencode", "--dry-run")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Would link:", result.stdout)
+
     def test_all_tools_share_one_source_and_keep_opencode_agents_scoped(self):
         result = self.run_linker("--tools", "maple,codex,claude,opencode")
         self.assertEqual(result.returncode, 0, result.stderr)
