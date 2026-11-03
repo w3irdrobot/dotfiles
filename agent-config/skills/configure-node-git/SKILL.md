@@ -20,6 +20,11 @@ identity from the workstation or confuse SSH Git authentication with signing.
 1. Inspect installed Git/gh, effective configuration origins, and existing auth
    status without printing credentials or private config contents. Preserve local
    overrides. Obtain approval to install missing packages and change config.
+   On Debian execution nodes, install or update `gh` from GitHub's verified upstream
+   release `.deb`, not the Debian repository version. Follow the runtime skill's
+   [GitHub CLI installation reference](../configure-node-runtime/references/github-cli.md).
+   Inspect and reuse suitable existing installations; do not silently upgrade an
+   existing binary or rerun authentication just because Git setup was selected.
 2. Have the user authenticate through `gh auth login` or the host's supported
    interactive workflow. Configure the agreed HTTPS credential helper or SSH
    access; do not import browser stores, copy keys, or pass tokens as arguments.

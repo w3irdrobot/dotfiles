@@ -14,7 +14,7 @@ Confirm target/user, OS, checkout root, representative project requirements, and
 whether Nix and rootless containers are wanted. Ask for missing build concurrency,
 per-build compiler jobs, cache locations/budget, minimum free-space reserve, and
 cleanup/retention choices. Ask which tools beyond project environments are needed
-(for example Git, Python, ripgrep, just, ShellCheck, or shfmt). Do not install a
+(for example Git, GitHub CLI, Python, ripgrep, just, ShellCheck, or shfmt). Do not install a
 blanket package list or reuse the former VM's two-build/four-job settings.
 
 Ask whether the node needs GUI viewing/testing of application builds. If selected,
@@ -34,6 +34,10 @@ configs, Nix distribution, and container state before proposing changes.
    For other OSes choose one supported Nix distribution and review its installer.
    Make the daemon, flake configuration, allowed users, and experimental features
    explicit. Keep execution users untrusted Nix clients, not daemon administrators.
+   For selected GitHub CLI installation on Debian nodes, use the verified upstream
+   GitHub release `.deb`, not Debian's `gh` package candidate. Follow
+   [GitHub CLI installation](references/github-cli.md); keep `gh` out of blanket
+   Debian package lists. This exception does not change other OS/package policies.
 2. Use repositories' pinned Nix development environments for Rust/Node/etc. Do
    not substitute global Rustup/NVM. Verify a representative project's declared
    workflow rather than assuming all repositories use the same flake attributes.
