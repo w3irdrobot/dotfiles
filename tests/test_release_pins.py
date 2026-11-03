@@ -64,6 +64,31 @@ class ReleasePins(unittest.TestCase):
             with self.subTest(url=url):
                 self.assertIsNone(pins.discord_release.URL.fullmatch(url))
 
+    def test_discord_url_migration_requires_unchanged_artifact_and_valid_urls(self):
+        old = {'version': '1.0.168', 'sha256': 'a' * 64,
+               'url': 'https://stable.dl2.discordapp.net/apps/linux/1.0.168/discord-1.0.168.rpm'}
+        migrated = {**old, 'url': 'https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/1.0.168/Discord.rpm'}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'modules').mkdir()
+            path = root / 'modules/discord-release.json'
+            path.write_text(json.dumps(old))
+            with patch.object(pins, 'ROOT', root), patch.object(pins, 'rpm_pin', return_value=migrated):
+                files = pins.prepare('discord')
+                self.assertEqual(migrated, json.loads(files[path]))
+                self.assertEqual(old, json.loads(path.read_text()))
+            for invalid in ({**migrated, 'sha256': 'b' * 64},
+                            {**migrated, 'url': migrated['url'].replace('/1.0.168/', '/1.0.169/')},
+                            {**migrated, 'url': 'https://example.invalid/Discord.rpm'}):
+                with self.subTest(pin=invalid), patch.object(pins, 'ROOT', root), \
+                        patch.object(pins, 'rpm_pin', return_value=invalid):
+                    with self.assertRaises(ValueError):
+                        pins.prepare('discord')
+            # An already-migrated pin is a no-op on subsequent runs.
+            path.write_text(json.dumps(migrated, indent=2) + '\n')
+            with patch.object(pins, 'ROOT', root), patch.object(pins, 'rpm_pin', return_value=migrated):
+                self.assertEqual(path.read_text(), pins.prepare('discord')[path])
+
     def test_cli_dry_run_without_network_or_writes(self):
         result = subprocess.run(['bash', str(ROOT / 'bin/dotfiles'), 'update-release-pins', '--dry-run'],
                                 capture_output=True, text=True)

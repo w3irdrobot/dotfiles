@@ -206,7 +206,16 @@ def prepare(tool):
         old, new = old_pin['version'], pin['version']
         if version(new) < version(old):
             raise ValueError(f'{tool}: refusing downgrade {old} -> {new}')
-        if new == old and pin != old_pin:
+        comparable_old = dict(old_pin)
+        if tool == 'discord':
+            # Discord can relocate an unchanged RPM between official layouts.
+            # Validate both versioned URLs, but compare artifact bytes by hash.
+            for release in (old_pin, pin):
+                match = discord_release.URL.fullmatch(release['url'])
+                if not match or match['version'] != release['version']:
+                    raise ValueError('Discord pin must use the exact stable vendor RPM URL')
+            comparable_old['url'] = pin['url']
+        if new == old and pin != comparable_old:
             raise ValueError(f'{tool}: upstream changed the existing pin; investigate manually')
         files = {path: json.dumps(pin, indent=2) + '\n'}
     print(f'{tool}: {old} -> {new}')

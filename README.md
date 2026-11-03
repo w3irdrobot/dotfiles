@@ -271,6 +271,8 @@ HTTPS download hash after RPM identity validation. Signal requires its existing
 signing key and a valid detached signature. Key rotations, downgrades, and changes
 to an already-pinned release fail for manual review. The nono runtime pack stays
 pinned separately; refreshing its binary does not change sandbox integration.
+Discord URL migrations between accepted official layouts are allowed when the
+version and artifact SHA256 remain unchanged.
 
 The refresh command attempts to commit only its changed pin files using the existing
 Git identity, signing policy, and hooks. Unchanged pins need no commit. If committing
