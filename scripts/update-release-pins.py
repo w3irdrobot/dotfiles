@@ -170,7 +170,7 @@ def rpm_pin(tool, old):
         with urllib.request.urlopen(urllib.request.Request(discord_release.LATEST,
                                      headers={'User-Agent': 'curl/8.0'}), timeout=60) as response:
             match = discord_release.URL.fullmatch(response.url)
-            if not match or match[1] != new:
+            if not match or match['version'] != new:
                 raise ValueError('Discord release changed during download; retry')
             data = response.read()
             pin = {'version': new, 'url': response.url, 'sha256': sha256(data)}

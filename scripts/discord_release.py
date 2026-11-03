@@ -9,7 +9,12 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
-URL = re.compile(r"https://stable\.dl2?\.discordapp\.net/apps/linux/([0-9]+\.[0-9]+\.[0-9]+)/discord-\1\.rpm")
+URL = re.compile(
+    r"https://stable\.dl2?\.discordapp\.net/"
+    r"(?:(?P<legacy>apps)/linux|distro/app/stable/linux/x64)/"
+    r"(?P<version>[0-9]+\.[0-9]+\.[0-9]+)/"
+    r"(?(legacy)discord-(?P=version)|Discord)\.rpm"
+)
 LATEST = "https://discord.com/api/download?platform=linux&format=rpm"
 
 
@@ -25,7 +30,7 @@ def load_pin():
         raise ValueError('Invalid Discord RPM pin fields')
     version_key(pin['version'])
     match = URL.fullmatch(pin['url']) if isinstance(pin['url'], str) else None
-    if not match or match[1] != pin['version']:
+    if not match or match['version'] != pin['version']:
         raise ValueError('Discord pin must use the exact stable vendor RPM URL')
     if not isinstance(pin['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', pin['sha256']):
         raise ValueError('Invalid Discord RPM SHA256 pin')
@@ -38,7 +43,7 @@ def published_version():
         match = URL.fullmatch(response.url)
         if not match:
             raise ValueError('Unexpected Discord stable RPM redirect; check vendor manually')
-        return match[1]
+        return match['version']
 
 
 def check_updates():

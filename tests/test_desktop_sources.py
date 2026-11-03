@@ -3,7 +3,9 @@
 import hashlib
 import importlib.util
 import json
+from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -21,6 +23,8 @@ class Discord(unittest.TestCase):
         test_bitwarden.Bitwarden.setUp(self)
         self.pin_path = self.repo / 'modules/discord-release.json'
         pin = json.loads(self.pin_path.read_text())
+        pin['version'] = '1.0.166'
+        pin['url'] = 'https://stable.dl2.discordapp.net/apps/linux/1.0.166/discord-1.0.166.rpm'
         pin['sha256'] = hashlib.sha256(self.payload.read_bytes()).hexdigest()
         self.pin_path.write_text(json.dumps(pin))
         self.env['TEST_VERSION'] = pin['version']
@@ -302,11 +306,32 @@ class DesktopReleasePins(unittest.TestCase):
         path=test_dotfiles.ROOT/'scripts/discord_release.py'
         spec=importlib.util.spec_from_file_location('discord_review',path)
         self.check=importlib.util.module_from_spec(spec); spec.loader.exec_module(self.check)
+        # Keep synthetic expectations independent of the current production pin.
+        temp = tempfile.TemporaryDirectory(prefix='dotfiles-discord-pin-')
+        self.addCleanup(temp.cleanup)
+        self.check.ROOT = Path(temp.name)
+        (self.check.ROOT / 'modules').mkdir()
+        (self.check.ROOT / 'modules/discord-release.json').write_text(json.dumps({
+            'version': '1.0.166',
+            'url': 'https://stable.dl2.discordapp.net/apps/linux/1.0.166/discord-1.0.166.rpm',
+            'sha256': '0' * 64,
+        }))
 
     def test_only_versioned_stable_vendor_rpm_urls_are_allowed(self):
         self.assertEqual('1.0.166',self.check.load_pin()['version'])
         for url in ('https://example.invalid/discord.rpm','https://stable.dl2.discordapp.net/apps/linux/1.0.166/discord-1.0.165.rpm','https://canary.dl2.discordapp.net/apps/linux/1.0.166/discord-1.0.166.rpm'):
             self.assertIsNone(self.check.URL.fullmatch(url))
+
+    def test_new_distro_layout_is_accepted_in_pins(self):
+        path = self.check.ROOT / 'modules/discord-release.json'
+        pin = json.loads(path.read_text())
+        pin['url'] = 'https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/1.0.166/Discord.rpm'
+        path.write_text(json.dumps(pin))
+        self.assertEqual(pin, self.check.load_pin())
+        pin['version'] = '1.0.167'
+        path.write_text(json.dumps(pin))
+        with self.assertRaisesRegex(ValueError, 'exact stable vendor'):
+            self.check.load_pin()
 
     def test_update_notice_compares_bootstrap_version_and_never_downloads_payload(self):
         import contextlib,io

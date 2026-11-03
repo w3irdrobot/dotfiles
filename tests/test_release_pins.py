@@ -39,6 +39,31 @@ def archive(data=b'binary', kind=tarfile.REGTYPE):
 
 
 class ReleasePins(unittest.TestCase):
+    def test_discord_official_rpm_layouts(self):
+        urls = (
+            'https://stable.dl.discordapp.net/apps/linux/1.0.168/discord-1.0.168.rpm',
+            'https://stable.dl2.discordapp.net/apps/linux/1.0.168/discord-1.0.168.rpm',
+            'https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/1.0.168/Discord.rpm',
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                response = unittest.mock.MagicMock()
+                response.__enter__.return_value.url = url
+                with patch.object(pins.discord_release.urllib.request, 'urlopen', return_value=response):
+                    self.assertEqual('1.0.168', pins.discord_release.published_version())
+
+    def test_discord_rejects_other_hosts_channels_architectures_and_filenames(self):
+        base = 'https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/1.0.168/Discord.rpm'
+        urls = (base.replace('https:', 'http:'), base.replace('stable.dl2', 'canary.dl2'),
+                base.replace('/stable/', '/canary/'), base.replace('/x64/', '/arm64/'),
+                base.replace('Discord.rpm', 'Discord.deb'), base + '?extra=1',
+                base.replace('Discord.rpm', 'discord-1.0.168.rpm'),
+                'https://stable.dl2.discordapp.net/apps/linux/1.0.168/discord-1.0.169.rpm',
+                'https://stable.dl2.discordapp.net/apps/linux/1.0.168/Discord.rpm')
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertIsNone(pins.discord_release.URL.fullmatch(url))
+
     def test_cli_dry_run_without_network_or_writes(self):
         result = subprocess.run(['bash', str(ROOT / 'bin/dotfiles'), 'update-release-pins', '--dry-run'],
                                 capture_output=True, text=True)
