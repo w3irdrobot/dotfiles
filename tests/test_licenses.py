@@ -9,11 +9,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # SHA-256 of the original public license bytes, captured before migration.
 # Keep these fixtures independent of Git refs and removed source paths.
-FRONTEND_SHA256 = "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
 FULL_SHA256 = "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+# julianoczkowski/designer-skills LICENSE at c259656 (see agent-config/skills/THIRD_PARTY.md).
+DESIGNER_SKILLS_SHA256 = "639a9026a236576de100ee30fb416c45d61641da8bab00a3df8744c3e0de31c7"
+DESIGNER_SKILLS = (
+    "brief-to-tasks", "design-brief", "design-flow", "design-review", "design-tokens",
+    "frontend-design", "grill-me", "information-architecture",
+)
 LICENSES = {
-    "stow/opencode/.config/opencode/skills/frontend-design/LICENSE.txt": FRONTEND_SHA256,
     "stow/opencode/.config/opencode/skills/skill-creator/LICENSE.txt": FULL_SHA256,
+    **{f"stow/opencode/.config/opencode/skills/{name}/LICENSE.txt": DESIGNER_SKILLS_SHA256
+       for name in DESIGNER_SKILLS},
 }
 
 
