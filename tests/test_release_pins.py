@@ -84,6 +84,44 @@ class ReleasePins(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'digest changed'):
                 pins.prepare('opencode')
 
+    def test_same_opencode_release_does_not_add_previous_release_record(self):
+        # A freshly updated pin has its predecessor in the guards, not itself.
+        # Rerunning against identical upstream bytes must be an exact no-op.
+        data = archive()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'modules').mkdir()
+            (root / 'lib').mkdir()
+            url = 'https://registry.npmjs.org/opencode.tgz'
+            binary_hash = pins.sha256(b'binary')
+            (root / 'modules/opencode.sh').write_text(
+                f'readonly OPENCODE_VERSION=2.2.5\nreadonly OPENCODE_URL={url}\n'
+                f'readonly OPENCODE_ARCHIVE_SHA256={pins.sha256(data)}\n'
+                f'readonly OPENCODE_BINARY_SHA256={binary_hash}\n')
+            guard = ('managed=$HOME/.local/share/dotfiles/opencode/2.2.5/opencode\n'
+                     '\t# Previous verified OpenCode releases (maintained by update-release-pins).\n'
+                     '\t2.1.4) digest=previous ;;\n')
+            for relative in ('install.sh', 'lib/dotfiles.sh'):
+                (root / relative).write_text(guard)
+            (root / 'README.md').write_text('/opencode/2.2.5/opencode\n')
+            (root / 'modules/native-release-history.json').write_text(json.dumps({'opencode': {'2.2.5': binary_hash}}))
+            info = {'version': '2.2.5', 'dist': {'tarball': url,
+                    'integrity': 'sha512-' + base64.b64encode(hashlib.sha512(data).digest()).decode()}}
+            with patch.object(pins, 'ROOT', root), patch.object(pins, 'metadata', return_value=info), \
+                    patch.object(pins, 'download', return_value=data):
+                for _ in range(2):
+                    old, new, files, _, _ = pins.native('opencode')
+                    self.assertEqual(('2.2.5', '2.2.5'), (old, new))
+                    self.assertTrue(all(path.read_text() == content for path, content in files.items()))
+                    pins.prepare('opencode')
+
+    def test_same_opencode_release_with_changed_artifact_still_fails(self):
+        path = ROOT / 'modules/opencode.sh'
+        with patch.object(pins, 'native', return_value=(
+                '2.2.5', '2.2.5', {path: path.read_text() + '# changed checksum\n'}, '0' * 64, None)):
+            with self.assertRaisesRegex(ValueError, 'upstream changed'):
+                pins.prepare('opencode')
+
     def test_downgrades_fail(self):
         with patch.object(pins, 'native', return_value=('2.1.4', '2.1.3', {}, '0' * 64, None)):
             with self.assertRaisesRegex(ValueError, 'downgrade'):

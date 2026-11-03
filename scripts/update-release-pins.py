@@ -109,7 +109,7 @@ def native(tool):
             source = source.replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
             marker = '\t# Previous verified OpenCode releases (maintained by update-release-pins).'
             record = f'\t{old}) digest={previous_hash} ;;'
-            if record not in source:
+            if old != new and record not in source:
                 source = replace_once(source, marker, marker + '\n' + record)
             files[guard] = source
         readme = ROOT / 'README.md'
