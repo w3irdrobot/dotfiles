@@ -136,6 +136,16 @@ IDs; reorder the index rather than renumbering existing documents. Each brief ha
   actually run; do not invent existing tooling or test targets.
 - Status and, after work, a short results/checks/gaps record.
 
+For new slice briefs, use the YAML frontmatter contract in
+[the templates](references/templates.md#slice-metadata). Keep `id`, `status`,
+`depends_on`, and `blockers` machine-readable so a workspace tracker can derive
+available work without interpreting prose. Scope IDs to the containing slice
+directory; keep dependencies and blockers aligned with the brief, and treat
+frontmatter as canonical over index summaries. Preserve established project
+contracts when they conflict; flag tracker incompatibility rather than silently
+converting existing plans. Existing prose-only briefs need migration only when
+requested.
+
 Do not hide unresolved architecture inside an implementation task. Identify which
 questions block which slice; unrelated questions need not block everything. Avoid
 giant first slices, scaffolding-only milestones, speculative future scope, and
@@ -145,6 +155,8 @@ action: refine the plan, implement one selected slice, or publish selected issue
 ## 4. Implement only the selected, authorized slice
 
 When implementation is requested, read its brief and current dependencies first.
+For structured briefs, check frontmatter dependencies and blockers as well as the
+prose; missing references or dependency cycles need resolution before proceeding.
 Resolve blockers with the user, then use repository workflows and applicable
 language skills. Do not automatically start the next slice.
 
@@ -158,6 +170,8 @@ skipped checks with reasons, and remaining gaps in the slice. Mocks and local te
 are not evidence for environments they did not exercise. Never mark a slice done
 with unmet acceptance criteria; distinguish implementation finished, checks
 pending, and ready for review.
+Update the brief's frontmatter status and blockers as work changes, then synchronize
+the slice index summary. Checking acceptance boxes alone does not mark work done.
 
 Stop after the slice with a concise account of changes, validation, and unresolved
 issues for review. Do not commit, push, deploy, or close issues without permission.

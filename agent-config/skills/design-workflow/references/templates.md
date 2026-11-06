@@ -1,6 +1,7 @@
 # Adaptable document shapes
 
-These are starting points, not schemas. Omit irrelevant sections, rename headings
+The prose sections are starting points; new slice briefs use the metadata contract
+below. Omit irrelevant sections, rename headings
 to suit the subject, and follow existing repository paths. Replace placeholders
 with actual content; do not leave empty ceremonial headings.
 
@@ -119,12 +120,57 @@ provisional or agreed plan. Planning alone does not authorize implementation.>
 every acceptance check here.>
 ```
 
+## Slice metadata
+
+Start each new slice brief with YAML frontmatter containing these four fields:
+
+```yaml
+---
+id: "002"
+status: planned
+depends_on: ["001"]
+blockers: []
+---
+```
+
+- `id`: a quoted numeric string matching the filename's numeric prefix and the
+  heading ID. Preserve leading zeros. IDs are unique within the containing slice
+  directory; separate feature plans may each have a `"001"`.
+- `status`: one of `planned`, `blocked`, `in progress`, `checks pending`,
+  `ready for review`, or `done`. Use these exact strings, choosing only the states
+  the plan needs.
+- `depends_on`: an array of quoted IDs from the same slice directory, or `[]`.
+  List direct prerequisites; keep references resolvable and unique, with no
+  self-dependencies or cycles. Describe their rationale in the brief.
+- `blockers`: an array of non-empty strings describing unresolved decisions or
+  other impediments beyond those dependencies, or `[]`. Include cross-plan
+  prerequisites here with a Markdown path/link until resolved. Remove an entry
+  only when its blocker is resolved.
+
+All four fields are required, including empty arrays. The frontmatter is canonical
+for tracking; do not add a second `Status:` line to the brief. Keep index summaries
+and dependency prose in sync with it. Existing project metadata contracts take
+precedence; converting legacy briefs is a separate, requested change.
+
+Availability is derived, not a stored status: a slice is available when its status
+is `planned`, `blockers` is empty, and every dependency is `done`. An unfinished
+dependency can hold a planned slice without changing its recorded status to
+`blocked`. Missing references, duplicate IDs, invalid metadata, and cycles are
+plan errors to resolve, not evidence that work is available. A blocked slice must
+identify its reason through `depends_on` or `blockers`.
+
 ## Slice brief: `docs/slices/001-<outcome>.md`
 
 ```markdown
+---
+id: "001"
+status: planned
+depends_on: []
+blockers: []
+---
+
 # 001 — <Observable outcome>
 
-Status: planned
 <Issue URL only if one exists.>
 
 ## Outcome
@@ -166,8 +212,7 @@ Not started. After implementation, record the meaningful changes, checks actuall
 run and outcomes, skipped checks with reasons, and remaining gaps or deviations.
 ```
 
-Useful statuses: planned, blocked, in progress, checks pending, ready for review,
-done. Use only what is helpful, not a mandatory state machine. "Ready for review"
+The metadata statuses are not a mandatory transition sequence. "Ready for review"
 means acceptance checks passed, but user review is still pending; "done" follows
 the agreed review process. If work is finished but required validation is not,
 say checks pending rather than implying completion.
