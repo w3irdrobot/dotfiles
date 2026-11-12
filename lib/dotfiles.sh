@@ -497,7 +497,7 @@ preflight_native_opencode_paths() {
 
 check_native_opencode_path() {
 	local candidate=$1 explicit=$2 actual native
-	local managed=$HOME/.local/share/dotfiles/opencode/2.2.6/opencode
+	local managed=$HOME/.local/share/dotfiles/opencode/2.2.7/opencode
 	[[ -e $candidate || -L $candidate ]] || return 0
 	[[ -e $candidate ]] || die "Dangling OpenCode shadow: $candidate; inspect and move it manually. Leaving it unchanged."
 	# Ordinary non-executable files cannot be dispatched through PATH. Symlinks
@@ -513,6 +513,7 @@ check_native_opencode_path() {
 	[[ ${previous#"$HOME/.local/share/dotfiles/opencode/"} =~ ^([0-9]+\.[0-9]+\.[0-9]+)/opencode$ ]] || die "Unmanaged OpenCode shadows the pinned binary: $candidate"
 	case ${BASH_REMATCH[1]} in
 	# Previous verified OpenCode releases (maintained by update-release-pins).
+	2.2.6) digest=50503d24577fa4117a7c95ee85b2cd679606a87eacf20ca54ed5db5c9e1cf895 ;;
 	2.2.5) digest=8d060e1d2fbb9bb44cf09ae6ed1f3f6a7cff070b5227e2f90970132b23a92050 ;;
 	2.1.4) digest=ca9b3ee262e33bb4e7aa0e1230dc61086a474c8c8016b980081d0719712fd2e7 ;;
 	*) die "Unknown managed OpenCode release: $previous" ;;

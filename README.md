@@ -248,7 +248,7 @@ and install transactions against that cache. Missing packages and incompatible
 OpenCode installations stop before either package transaction; there is no
 arbitrary fallback. Unmanaged OpenCode executables on `PATH` are refused without
 running them. The managed launcher is `~/.local/bin/opencode`, pointing to
-`~/.local/share/dotfiles/opencode/2.2.6/opencode`; setup verifies its binary hash.
+`~/.local/share/dotfiles/opencode/2.2.7/opencode`; setup verifies its binary hash.
 
 Nix itself updates through DNF. Each project owns its `flake.lock` updates;
 Nix garbage collection is separate maintenance. Prepare upstream release changes explicitly:

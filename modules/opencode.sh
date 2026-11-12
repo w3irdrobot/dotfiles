@@ -9,10 +9,10 @@ source "$ROOT/lib/dotfiles.sh"
 
 # Source: https://opencode.ai/v2/install, pinned native npm artifact, not npm install.
 # Registry SHA512 integrity was matched before recording both SHA256 digests.
-readonly OPENCODE_VERSION=2.2.6
-readonly OPENCODE_URL=https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/-/cli-linux-x64-baseline-2.2.6.tgz
-readonly OPENCODE_ARCHIVE_SHA256=00d8b036689fc35927d8f20f57000d5c091fe7a5a3345fef5326f330bfe6d0ce
-readonly OPENCODE_BINARY_SHA256=50503d24577fa4117a7c95ee85b2cd679606a87eacf20ca54ed5db5c9e1cf895
+readonly OPENCODE_VERSION=2.2.7
+readonly OPENCODE_URL=https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/-/cli-linux-x64-baseline-2.2.7.tgz
+readonly OPENCODE_ARCHIVE_SHA256=20512b0c5c5c30c51959ce13e11b19a630ce3b5bef56b486859bf38f8b27bcae
+readonly OPENCODE_BINARY_SHA256=589253d36810f21217edd51545cd435b328cdc3cf4f451fbe0cce6f88afcf5e1
 
 check_opencode_parent() {
 	local parent
@@ -30,7 +30,7 @@ verify_opencode_binary() {
 }
 
 preflight_opencode() {
-	OPENCODE_TARGET=$HOME/.local/share/dotfiles/opencode/2.2.6/opencode
+	OPENCODE_TARGET=$HOME/.local/share/dotfiles/opencode/2.2.7/opencode
 	OPENCODE_LINK=$HOME/.local/bin/opencode
 	check_opencode_parent "$OPENCODE_TARGET"
 	check_opencode_parent "$OPENCODE_LINK"
