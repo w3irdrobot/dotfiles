@@ -14,6 +14,10 @@ provisioning skill or the other setup stages.
   application has its own skill and is independently installable.
 - Do not assume machine names, IPs, VM IDs, RAM/disk/CPU sizes, usernames, paths,
   credentials, release numbers, or accounts from the original Maple VM.
+  Fedora is the default OS for all newly provisioned nodes, not only workstations.
+  Resolve a supported Fedora release and edition/image for the workload; do not
+  offer Debian/Ubuntu as the default. This policy does not authorize migrating or
+  reinstalling existing nodes. Maintain those using their actual OS conventions.
   Btrfs is the accepted filesystem default for newly provisioned nodes; this
   does not authorize conversion or formatting of an existing filesystem.
 - Read available node guidance and relevant project instructions. Inspect current

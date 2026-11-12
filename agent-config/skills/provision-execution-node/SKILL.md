@@ -15,7 +15,9 @@ Ask for missing consequential choices together. Do not reuse an old node's value
 
 - Provider/hypervisor, account/project or cluster/node, region where applicable,
   and new node name/identifier. Discover available IDs rather than guessing one.
-- OS/release/image and CPU architecture; vCPU count, RAM, swap size or no swap.
+- Fedora release/edition/image and CPU architecture; vCPU count, RAM, swap size or
+  no swap. Fedora is the default for new nodes; another OS requires an explicit
+  user choice. Do not infer a release from the workstation or an old VM.
 - Disk sizes, backing storage/pool, thin provisioning or reservations, and any
   separate data disks. Ask what “a lot more” means in actual GiB.
 - Btrfs is the accepted filesystem default. Confirm its scope (root and/or data),
@@ -41,7 +43,15 @@ to destroy the original or reuse its attached volumes.
    image partition/filesystem layout. Standard cloud images may not support a
    Btrfs root; propose a supported installer or image-building path instead of
    formatting an attached disk and hoping it boots. Do not install image-building
-   or VM software on the operator's machine without approval.
+    or VM software on the operator's machine without approval.
+   Fedora Cloud QCOW2/raw images are preinstalled disks, not installer ISOs.
+   Cloud-init simplifies identity/network setup but does not automatically encrypt
+   their existing root filesystem. For LUKS-encrypted root, prefer a verified
+   Fedora installer with an approved interactive or Kickstart storage plan, or a
+   separately reviewed encrypted image-build workflow. Do not attempt in-place
+   root encryption or confuse an encrypted data disk with encrypted root.
+   Confirm boot unlock/recovery before provisioning; never put passphrases in
+   cloud-init user-data, Kickstart files, logs, or the checkout.
 3. For Proxmox, discover available tools and their schemas; inspect the selected
    node, pools, bridges, existing VM IDs, and image inventory. Build an explicit
    VM/disk/boot plan, avoid passthrough or unrelated devices, await each task, and

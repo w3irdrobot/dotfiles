@@ -30,7 +30,10 @@ Loading this skill is not permission to provision a node or run every stage.
    Collect the selected skills' required inputs into one resolved plan. Batch
    missing questions without asking again for clear answers already given.
 4. For provisioning, get actual CPU/RAM/disk/swap sizes, provider/location/ID,
-   storage and OS choices, Btrfs scope/layout, and private/admin access. For other
+   storage and Fedora release/image choices, Btrfs scope/layout, and private/admin
+   access. Fedora is the new-node default from the shared contract; do not reopen
+   the OS-family question unless the user requests an exception. Existing nodes
+   retain their OS unless migration is separately approved. For other
    stages collect runtime/cache limits, Git identity/signing, exact releases or
    release policy, app paths/services/access, provider-home sharing/isolation,
    and reviewed shared-config source/revision as applicable. Ask only about
