@@ -3,15 +3,43 @@
 Run `just validate` for shell checks and disposable fixture tests. They cover
 argument handling, conflict safety, repeated runs, and failure paths without
 provisioning the developer's machine. See [test coverage](../tests/README.md).
-Real RPM dependency resolution, Nix daemon operation, and desktop integration
-need a Linux rehearsal.
+Fixtures do not establish real RPM dependency resolution, Nix daemon operation,
+or desktop integration.
 
 ## Verified scope
 
-**Fedora KDE Plasma Desktop 44 and System76 lemp14 hardware acceptance are
-pending.** The target changed on 2026-10-25; earlier Arch/Manjaro results below
-are historical evidence, not Fedora acceptance. The Arch-only VM drivers and
-paru build fixtures have been removed with that backend.
+**Fedora KDE Plasma Desktop 44 and 45 are supported.** Fedora 45 support uses
+Alex's existing upgraded KDE workstation and user-reported successful updates.
+A separate VM/hardware rehearsal is intentionally skipped for this support
+update; this is not fresh-install or comprehensive System76 lemp14 acceptance.
+The optional rehearsal procedure below remains available for future work.
+
+The original Fedora target changed on 2026-10-25; earlier Arch/Manjaro results
+below are historical evidence, not Fedora acceptance. The Arch-only VM drivers
+and paru build fixtures have been removed with that backend.
+
+## Fedora 45 support update
+
+On the existing Fedora 45 KDE x86_64 workstation, read-only DNF queries found
+all **76 module RPM names** in the configured sources after removing shfmt.
+The ten base dependencies and `nix`, `nix-core`, and `nix-daemon` were also
+resolved explicitly from Fedora's release/updates repositories. No package
+transaction or dependency solve was performed.
+
+shfmt had no package or `/usr/bin/shfmt` provider in the configured Fedora 45
+sources. It was removed from module selection, CI, and validation requirements
+rather than replaced with another source. Historical formatter results below
+remain unchanged.
+
+All **27 Fedora-specific fixture tests** passed, including both entrypoints
+accepting 44/45, refusing unsupported releases, and custom setup accepting 45.
+CI now has separate Fedora 44/45 matrix entries for fixture and package-metadata
+checks; those hosted jobs have not been run locally.
+
+Bash syntax and ShellCheck passed. The full fixture run executed **473 tests**
+and reported **21 failures** in OpenCode/nono/Bitwarden release-pin fixtures.
+An isolated archive of unchanged `HEAD` ran **471 tests** and reproduced the
+same 21 failures; these are existing failures, not Fedora 45 regressions.
 
 ## Kestrel VSIX and Nix prompt checks, 2026-10-26
 
@@ -33,7 +61,8 @@ real project dev-shell behavior remains a Fedora acceptance check.
 
 ## Disposable Linux VM
 
-Use the regular Fedora KDE Plasma Desktop 44 x86_64 ISO, not Kinoite/Atomic.
+If a rehearsal is requested, use the regular Fedora KDE Plasma Desktop 44 or 45
+x86_64 ISO, not Kinoite/Atomic.
 Verify the ISO checksum/signature, install into a disposable VM with systemd,
 Btrfs root, and a regular user with sudo, then take a hypervisor snapshot.
 Keep host-home mounts, personal SSH keys, and agent forwarding disabled.

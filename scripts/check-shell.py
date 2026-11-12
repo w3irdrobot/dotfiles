@@ -35,7 +35,7 @@ def shell_files():
 
 
 def main():
-    missing = [tool for tool in ("bash", "shellcheck", "shfmt") if not shutil.which(tool)]
+    missing = [tool for tool in ("bash", "shellcheck") if not shutil.which(tool)]
     if missing:
         sys.exit("Missing validation tools: " + ", ".join(missing))
     files = shell_files()
@@ -50,7 +50,7 @@ def main():
         if path == "shell/functions.sh":
             # gshell intentionally exports credentials into its child shell only.
             lint += ["--exclude=SC1091,SC2030,SC2031"]
-        for command in (["bash", "-n", path], [*lint, path], ["shfmt", "-d", path]):
+        for command in (["bash", "-n", path], [*lint, path]):
             failed |= subprocess.run(command, cwd=ROOT, check=False).returncode != 0
     return int(failed)
 

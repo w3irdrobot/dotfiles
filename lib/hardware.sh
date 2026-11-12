@@ -28,7 +28,7 @@ detect_system76() {
 
 report_desktop_session() {
 	case ${XDG_SESSION_TYPE:-} in
-	wayland) log 'Desktop session: Wayland. Fedora 44 KDE Plasma is the expected baseline.' ;;
+	wayland) log 'Desktop session: Wayland. Fedora 44/45 KDE Plasma is the expected baseline.' ;;
 	x11) log 'Desktop session: X11. Select Plasma (Wayland) at login for the expected baseline; setup will not switch sessions.' ;;
 	*)
 		if [[ -n ${WAYLAND_DISPLAY:-} ]]; then

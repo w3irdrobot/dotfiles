@@ -2,9 +2,10 @@
 
 ## Scope and ownership
 
-- Target x86_64 Fedora KDE Plasma Desktop 44 with Bash 5+. Do not run provisioning on
-  macOS. Leave the existing desktop, login, and networking settings alone.
-- Primary desktop baseline: Fedora 44 KDE Plasma on Wayland; no Arch support.
+- Target x86_64 Fedora KDE Plasma Desktop 44 and 45 with Bash 5+. Do not run
+  provisioning on macOS. Leave desktop, login, and networking settings alone.
+- Primary desktop baseline: Fedora 45 KDE Plasma on Wayland; retain Fedora 44
+  support, no Arch support.
   System76 packages are DMI-gated; service activation requires terminal
   confirmation. Firmware flashing and privileged groups remain manual.
 - `install.sh` is the downloadable bootstrap; `bin/dotfiles` is the local entry
@@ -30,8 +31,8 @@
   Nix environments, not global Rustup/NVM installations.
 - Prefer Fedora repository packages, then documented vendor RPMs and selected
   COPRs. Explicitly report applications requiring manual installation.
-  OpenCode V2 uses a pinned upstream binary until a verified Fedora 44 V2 RPM is
-  available; Nix uses Fedora nix/nix-daemon. Keep OpenCode artifact/hash and PATH
+  OpenCode V2 uses a pinned upstream binary until a verified V2 RPM is available
+  for supported Fedora releases; Nix uses Fedora nix/nix-daemon. Keep artifact/hash and PATH
   checks; never silently replace a conflicting executable.
   Nix daemon configuration is explicit; never mix upstream and repository Nix.
 - VSCodium's bundled Kestrel theme is built locally as a VSIX and registered with
@@ -93,14 +94,16 @@
 - Executable scripts use strict mode, optional `DEBUG=1` tracing, quoted
   expansions, arrays, focused helpers, and a thin `main`. Sourced libraries and
   interactive configs must not impose strict mode on their callers.
-- Use Bash syntax checks, ShellCheck, and shfmt. Keep checks scoped to changed
+- Use Bash syntax checks and ShellCheck. Keep checks scoped to changed
   files; do not mask errors with blanket exclusions or `|| true`.
 - Test idempotence, conflicts, argument validation, dry-run side effects,
   interrupted setup, and unsafe updates using disposable fixtures/mocks.
 - Use the repository's `justfile` and CI recipes for checks. Record skipped
   checks and missing tools honestly; mocks do not validate real installation.
-- Follow `docs/testing.md` for a separate Linux VM rehearsal. Do not install VM
-  software, launch VMs, or change the host without approval.
+- Fedora 45 support uses existing workstation experience; no separate rehearsal
+  is required for this update. Follow `docs/testing.md` when a separate Linux VM
+  rehearsal is requested. Do not install VM software, launch VMs, or change the
+  host without approval.
 - Pages publishes the standalone bootstrap only from `master`. PRs must not
   deploy or merge automatically. Search for a PR template before opening
   a PR and include verified checks plus remaining Fedora/Lemur Pro acceptance work.

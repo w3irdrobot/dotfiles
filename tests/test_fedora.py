@@ -65,16 +65,24 @@ else:
     def transactions(self):
         return [c for c in self.calls() if c[:2] == ["sudo", "dnf"] and any(a in c for a in ("upgrade", "install"))]
 
-    def test_fedora_44_is_the_only_supported_distribution_version(self):
+    def test_only_fedora_44_and_45_are_supported_by_both_entrypoints(self):
         self.minimal_modules()
         self.mock("stow", "sys.exit(0)")
-        for text in ("ID=arch\n", "ID=manjaro\n", "ID=fedora\nVERSION_ID=43\n", "ID=fedora\nVERSION_ID=45\n"):
-            self.os_release.write_text(text)
-            self.assert_failed(self.run_cli("link", "--dry-run"), "Only Fedora KDE Plasma Desktop 44")
-            self.assertEqual({}, self.snapshot())
-        self.os_release.write_text('ID="fedora"\nVERSION_ID="44"\n')
-        result = self.run_cli("link", "--dry-run")
-        self.assertEqual(0, result.returncode, result.stderr)
+        self.mock("git", "sys.exit(0 if 'check-ref-format' in sys.argv else 97)")
+        for bootstrap, args in ((False, ("link", "--dry-run")), (True, ("--dry-run",))):
+            for text in ("ID=arch\n", "ID=manjaro\n", "ID=fedora\n",
+                         "ID=fedora\nVERSION_ID=43\n", "ID=fedora\nVERSION_ID=46\n"):
+                with self.subTest(bootstrap=bootstrap, os_release=text):
+                    self.os_release.write_text(text)
+                    self.assert_failed(self.run_cli(*args, bootstrap=bootstrap),
+                                       "Only Fedora KDE Plasma Desktop 44 and 45")
+                    self.assertEqual({}, self.snapshot())
+            for version in (44, 45):
+                with self.subTest(bootstrap=bootstrap, version=version):
+                    self.os_release.write_text(f'ID="fedora"\nVERSION_ID="{version}"\n')
+                    result = self.run_cli(*args, bootstrap=bootstrap)
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    self.assertEqual({}, self.snapshot())
 
     def test_refreshed_rpm_metadata_precedes_upgrade_and_install(self):
         result = self.packages()

@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Fedora 44 / DNF5 only. Entrypoints own strict mode and logging.
+# Fedora 44/45 / DNF5 only. Entrypoints own strict mode and logging.
 MANUAL_MODULES=()
 selected_repositories() {
 	REPOSITORIES=()

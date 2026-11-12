@@ -56,6 +56,13 @@ else: sys.exit(97)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(any(c[0] == "bat" and "--source" in c for c in self.calls()))
 
+    def test_custom_setup_accepts_fedora_45(self):
+        self.os_release.write_text('ID=fedora\nVERSION_ID=45\n')
+        for module in ("bat", "vscodium", "ghostty"):
+            with self.subTest(module=module):
+                result = self.run_module(module)
+                self.assertEqual(0, result.returncode, result.stderr)
+
     def test_ghostty_sets_only_plasma_terminal_keys(self):
         result = self.run_module("ghostty")
         self.assertEqual(0, result.returncode, result.stderr)
@@ -144,10 +151,10 @@ else: sys.exit(97)
         self.assertEqual(1, sum(c[-1].endswith('.vsix') for c in installed))
 
     def test_old_distro_or_wrong_fedora_release_stops_before_tool_execution(self):
-        for text in ("ID=arch\n", "ID=manjaro\n", "ID=fedora\nVERSION_ID=43\n"):
+        for text in ("ID=arch\n", "ID=manjaro\n", "ID=fedora\nVERSION_ID=43\n", "ID=fedora\nVERSION_ID=46\n"):
             for module in ("bat", "vscodium", "ghostty"):
                 with self.subTest(text=text, module=module):
                     self.log.unlink(missing_ok=True)
                     self.os_release.write_text(text)
-                    self.assert_failed(self.run_module(module), "Only Fedora KDE Plasma Desktop 44")
+                    self.assert_failed(self.run_module(module), "Only Fedora KDE Plasma Desktop 44 and 45")
                     self.assertFalse(any(c[0] in ("bat", "codium", "kwriteconfig6", "sudo") for c in self.calls()))

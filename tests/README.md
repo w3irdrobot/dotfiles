@@ -1,11 +1,9 @@
 # Tests
 
-Run `just validate` (Bash syntax, ShellCheck, shfmt, and Python stdlib tests).
-CI pins shfmt 3.14.1 from the official mvdan/sh release and verifies its SHA256
-before execution. Use that version when reproducing formatter differences;
-older versions can disagree on default-style spacing. Native checks do not
-require an exact formatter version. CI's Fedora test dependencies include
-diffutils (`cmp`), also declared by the core, nono, and GnuPG module metadata.
+Run `just validate` (Bash syntax, ShellCheck, and Python stdlib tests).
+shfmt is no longer installed or required by this repository. CI's Fedora test
+dependencies include diffutils (`cmp`), also declared by the core, nono, and
+GnuPG module metadata.
 Tests use temporary homes/repositories and an allowlisted command PATH. Package
 managers, sudo, network clients, and Git network operations are mocked. Fixed
 Linux host paths in **fixture copies only** are redirected to fixture os-release,
@@ -25,8 +23,8 @@ verify selection across groups, strict boolean metadata, selector rejection,
 preservation across config-update restarts/bootstrap, dry-run exclusion of local
 off-module configs, and custom provisioner failures stopping before linking.
 Real GNU Stow tests clearly skip when Stow is absent; CI supplies Stow both on
-Ubuntu and inside a disposable Fedora 44 container. The latter runs tests as an
-unprivileged user with the source bind-mounted read-only.
+Ubuntu and inside disposable Fedora 44 and 45 containers. The latter run tests
+as an unprivileged user with the source bind-mounted read-only.
 
 SSH export fixtures cover normalized equals-form directives, inherited/repeated
 identities, wildcard/negated hosts, `Match all`, unsupported-condition refusal,
@@ -36,7 +34,7 @@ explicit fixture configs compares supported flattened settings with OpenSSH;
 these configs contain no executable conditions or real user key/config paths.
 
 `just check-packages` explicitly queries configured Fedora RPM sources through
-DNF5. Run it on Fedora 44 after configuring the documented repositories. It
+DNF5. Run it on Fedora 44 or 45 after configuring the documented repositories. It
 refreshes metadata, but installs no applications. Missing names are reported;
 there is no arbitrary source fallback. This checks existence, not dependency
 solving, trust, or real installation. The offline command works on macOS.
@@ -45,8 +43,11 @@ read-only checkout permissions, no persisted credentials, and no deployment.
 
 ## Linux rehearsal
 
-Use a disposable x86_64 Fedora KDE Plasma Desktop 44 VM with systemd, a snapshot, and a regular
-user with sudo. Do not run these installation checks on a workstation.
+This is optional and intentionally skipped for the Fedora 45 support update;
+existing upgraded-workstation experience is not fresh-install verification.
+If requested, use a disposable x86_64 Fedora KDE Plasma Desktop 44 or 45 VM with
+systemd, a snapshot, and a regular user with sudo. Do not run these installation
+checks on a workstation.
 
 - Review and perform bootstrap/install; confirm Fedora-packaged Nix daemon,
   new-login environment, `nix store ping --store daemon`, and a project flake.

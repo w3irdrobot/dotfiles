@@ -150,7 +150,7 @@ class Fixture(unittest.TestCase):
 
     def test_unsupported_distribution_refuses_install(self):
         self.os_release.write_text("ID=ubuntu\n")
-        self.assert_failed(self.run_cli("install"), "Only Fedora KDE Plasma Desktop 44")
+        self.assert_failed(self.run_cli("install"), "Only Fedora KDE Plasma Desktop 44 and 45")
         self.assertEqual({}, self.snapshot())
         self.assertFalse([c for c in self.calls() if c[0] != "uname"])
 

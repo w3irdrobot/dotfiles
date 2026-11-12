@@ -1,6 +1,6 @@
 # Fedora package sources
 
-Dotfiles installs Fedora 44 RPMs first. Selected applications add the following
+Dotfiles installs Fedora 44/45 RPMs first. Selected applications add the following
 repository definitions from `repos/` as `/etc/yum.repos.d/dotfiles-<name>.repo`:
 
 | Module | Source | RPMs allowed from that source |
@@ -29,7 +29,7 @@ Fedora supplies Nix (`nix nix-daemon`), Bitcoin Core
 (`bitcoin-core-server bitcoin-core-utils`), Docker-compatible Moby
 (`moby-engine docker-cli docker-compose docker-buildx`), and most CLI tools.
 Docker daemon activation remains manual. No RPM Fusion repository is enabled.
-Base dependencies select `wget2-wget`, Fedora 44's RPM providing `/usr/bin/wget`,
+Base dependencies select `wget2-wget`, the Fedora RPM providing `/usr/bin/wget`,
 rather than the virtual `wget` capability; package preflight uses concrete RPM names.
 See [migration sources](fedora-migration.md) for the researched upstream links.
 

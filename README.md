@@ -1,7 +1,7 @@
 # Dotfiles
 
 My Linux workstation setup: Bash, DNF5, Fedora-packaged Nix, and GNU Stow.
-The only supported target is **Fedora KDE Plasma Desktop 44, x86_64**, with Bash
+The supported targets are **Fedora KDE Plasma Desktop 44 and 45, x86_64**, with Bash
 5+ and Wayland. Use the regular RPM-based edition, not Kinoite/Atomic. Desktop,
 login, SELinux, and networking settings stay yours to manage.
 
@@ -16,8 +16,9 @@ wget -O- https://dotfiles.w3ird.tech/install.sh | bash
 
 You need `wget`, networking, sudo access, and a terminal for interactive RPM package and
 signing-key confirmation. Start with Fedora's KDE edition. Test the live USB on
-the laptop before installing. This Fedora port has local fixture coverage, not
-yet a completed Fedora VM or Lemur Pro hardware rehearsal.
+the laptop before installing. Fedora 45 support builds on the existing upgraded
+workstation and user-reported successful updates; a fresh-install rehearsal has
+not been performed. See [validation scope](docs/testing.md#verified-scope).
 
 The public bootstrap is published from `master`; local edits are not published
 automatically. Piping executes the downloaded code immediately. To inspect it
@@ -167,8 +168,9 @@ power, and firmware-manager packages. DMI detection gates explicit
 and asks before enabling daemons or masking competing power backends. Plasma
 PowerDevil stays intact; firmware flashing and privileged groups remain manual.
 See [System76 setup](docs/system76.md).
-Fedora KDE/Wayland and Lemur Pro lemp14 hardware acceptance remain pending;
-[the testing guide](docs/testing.md) separates current checks from historical Arch results.
+Separate Fedora KDE/Wayland and Lemur Pro lemp14 acceptance remains unverified;
+it is not required for this Fedora 45 support update. [The testing guide](docs/testing.md)
+separates workstation experience from fresh-install checks and historical Arch results.
 
 ## Local settings and credentials
 

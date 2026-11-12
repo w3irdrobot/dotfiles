@@ -96,5 +96,5 @@ class RemoteMetadata(unittest.TestCase):
 
     def test_missing_dnf_reports_environment_requirement(self):
         with patch.object(CHECK.shutil, "which", return_value=None):
-            with self.assertRaisesRegex(ValueError, "requires Fedora 44"):
+            with self.assertRaisesRegex(ValueError, "requires Fedora 44 or 45"):
                 CHECK.validate_remote({"fixture"})

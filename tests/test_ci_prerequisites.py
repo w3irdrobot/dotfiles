@@ -8,6 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Prerequisites(unittest.TestCase):
+    def test_both_fedora_jobs_cover_supported_releases(self):
+        workflow = (ROOT / ".github/workflows/validate.yml").read_text()
+        for job in ("fedora-stow", "package-existence"):
+            with self.subTest(job=job):
+                # Job properties are indented four spaces; stop only at another job.
+                body = re.split(r"\n  [a-z][a-z-]*:", workflow.split(f"  {job}:\n", 1)[1])[0]
+                self.assertIn("fedora: [44, 45]", body)
+                self.assertIn("registry.fedoraproject.org/fedora:${{ matrix.fedora }}", body)
+
     def test_comparison_helpers_declare_diffutils(self):
         for module, group in (("diffutils", "core"), ("nono", "ai"), ("gnupg", "core")):
             with self.subTest(module=module):
@@ -25,22 +34,11 @@ class Prerequisites(unittest.TestCase):
         self.assertIsNotNone(install)
         self.assertIn("diffutils", install.group(1).split())
 
-    def test_ci_formatter_is_pinned_and_verified_before_execution(self):
+    def test_shfmt_is_not_a_package_or_validation_requirement(self):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text()
-        self.assertNotRegex(workflow, r"apt-get install[^\n]*\bshfmt\b")
-        self.assertIn(
-            "https://github.com/mvdan/sh/releases/download/v3.14.1/"
-            "shfmt_v3.14.1_linux_amd64", workflow
-        )
-        self.assertIn(
-            "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf",
-            workflow,
-        )
-        self.assertIn('mktemp -d "$RUNNER_TEMP/shfmt.XXXXXX"', workflow)
-        verification = workflow.index("sha256sum --check --strict -")
-        self.assertLess(verification, workflow.index('chmod +x "$tool_dir/shfmt"'))
-        self.assertLess(verification, workflow.index('"$tool_dir/shfmt" --version'))
-        self.assertLess(verification, workflow.index('>> "$GITHUB_PATH"'))
+        self.assertNotIn("shfmt", workflow)
+        self.assertNotIn("shfmt", (ROOT / "scripts/check-shell.py").read_text())
+        self.assertFalse((ROOT / "modules/shfmt.conf").exists())
 
     def test_exit_node_fixtures_have_jq_on_both_runners(self):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text()

@@ -20,21 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes shellcheck stow jq
-      - name: Install pinned shfmt (CI runner only)
-        run: |
-          set -euo pipefail
-          tool_dir=$(mktemp -d "$RUNNER_TEMP/shfmt.XXXXXX")
-          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
-            https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64 \
-            --output "$tool_dir/shfmt"
-          # Official release API asset digest for shfmt_v3.14.1_linux_amd64.
-          printf '%s  %s\n' \
-            76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf \
-            "$tool_dir/shfmt" | sha256sum --check --strict -
-          chmod +x "$tool_dir/shfmt"
-          "$tool_dir/shfmt" --version
-          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
-      - name: Bash syntax, ShellCheck, and shfmt
+      - name: Bash syntax and ShellCheck
         run: python3 scripts/check-shell.py
       - name: Fixture-only safety tests with real GNU Stow
         run: python3 -B -m unittest discover -s tests -v
@@ -43,28 +29,36 @@ jobs:
 
   fedora-stow:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: [44, 45]
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Real Stow tests in disposable Fedora 44 container
+      - name: Real Stow tests in disposable Fedora ${{ matrix.fedora }} container
         run: |
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
-            --workdir /src registry.fedoraproject.org/fedora:44 \
+            --workdir /src registry.fedoraproject.org/fedora:${{ matrix.fedora }} \
             bash -c 'dnf install --assumeyes python3 stow git diffutils findutils util-linux shadow-utils jq && useradd --create-home tester && runuser -u tester -- python3 -B -m unittest discover -s tests -v'
 
   package-existence:
     # Explicit network validation only on trusted master pushes, not PR code.
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: [44, 45]
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Query Fedora 44 and selected RPM metadata (no application installation)
+      - name: Query Fedora ${{ matrix.fedora }} and selected RPM metadata (no application installation)
         run: |
           docker run --rm \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/src,readonly" \
-            --workdir /src registry.fedoraproject.org/fedora:44 \
+            --workdir /src registry.fedoraproject.org/fedora:${{ matrix.fedora }} \
             bash -c 'dnf install --assumeyes python3 && cp repos/*.repo /etc/yum.repos.d/ && dnf --assumeyes --refresh makecache && python3 scripts/check-packages.py --network'

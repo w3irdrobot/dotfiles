@@ -3,7 +3,7 @@
 The installer adds the repository Nix package, enables its daemon, and turns on
 `nix-command` and `flakes` through user configuration. Each project owns its
 toolchains and lockfiles; DNF owns workstation RPMs and system packages. Fedora
-44 splits native Nix into `nix`, `nix-core`, and `nix-daemon`; setup explicitly
+44/45 split native Nix into `nix`, `nix-core`, and `nix-daemon`; setup explicitly
 selects `nix nix-daemon` and verifies that `nix-core` owns `/usr/bin/nix`.
 
 A project can start with a `flake.nix` like this:

@@ -26,7 +26,7 @@ check_platform() {
 	version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release)
 	version=${version//\"/}
 	version=${version//\'/}
-	[[ $distro == fedora && $version == 44 ]] || die 'Only Fedora KDE Plasma Desktop 44 is supported.'
+	[[ $distro == fedora && ( $version == 44 || $version == 45 ) ]] || die 'Only Fedora KDE Plasma Desktop 44 and 45 are supported.'
 	[[ ! -e /run/ostree-booted ]] || die 'Fedora Atomic desktops are unsupported; use the regular KDE Plasma Desktop installation.'
 	((EUID != 0)) || die 'Run as your regular user, not root.'
 	[[ $HOME == /* && -d $HOME ]] || die 'HOME must be an existing absolute directory.'
