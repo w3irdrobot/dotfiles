@@ -22,6 +22,10 @@ ssh agent-node '~/.local/bin/node-cleanup --dry-run'
 
 # Disposable/local inspection, with activity unknown and therefore protected:
 python3 scripts/node-cleanup.py --root /explicit/project/root --dry-run
+
+# Save a usage snapshot, or override a node's history-enabled configuration:
+node-cleanup --dry-run --save-history
+node-cleanup --dry-run --no-history
 ```
 
 ## Scope agreed on 2026-11-10
@@ -50,6 +54,8 @@ outputs, not verified disposable content. Their `du` allocated sizes do not
 establish Btrfs exclusive/reclaimable space and must not be summed across overlap.
 Directory mtime is only a hint, not workspace last-use time. The report does not
 inspect shared Nix/Cargo caches, container volumes, or external target directories.
+Explicit `usage_paths` now add bounded size measurements of selected external
+caches; they do not make those directories cleanup candidates.
 
 Clean work with no known owner reference can be marked `retirement_review_only`.
 Every row still has `deletion_permitted: false`: local remote-tracking refs may be
@@ -74,6 +80,53 @@ Review actual candidates before choosing grace periods, explicit retirement
 markers, artifact eligibility, owner-mediated workspace removal, and a weekly
 report timer/output location. Apply-mode and scheduling are subsequent work;
 this slice installs neither a deletion mode nor a timer.
+
+## Usage history and metrics preservation — 2026-11-12
+
+Report runs can retain private, immutable JSON documents under
+`$XDG_STATE_HOME/node-cleanup/history/YYYY-MM-DD/<report-id>.json` (default
+`~/.local/state/node-cleanup/history/`). History is opt-in in generic invocations;
+the agent-node configuration enables it by default. `--save-history` and
+`--no-history` override configuration; `--history-dir` overrides the destination.
+With history enabled, `--dry-run` means **no cleanup**, not zero writes: the only
+intended persistent output is its history file. There is no automatic pruning,
+upload, timer, or deletion mode. `--apply` still fails before any side effects.
+
+Each report retains filesystem used/free/total bytes, per-workspace artifact
+estimates and protection reasons, timestamps, host, collector SHA-256, unique
+report ID, and explicit configured cache-size observations. `usage_paths` accepts
+up to 32 absolute directory paths. Every size has an observation time and status;
+missing directories record zero, failed checks record unknown rather than zero.
+Measurements share the existing runtime budget and are not an atomic snapshot.
+Independent `du` totals can overlap through hardlinks/reflinks: don't sum them.
+
+All history events say `inventory_not_cleanup`: they are neither cleanup markers
+nor evidence that space was reclaimed. Run reports before and after an approved
+cleanup for comparable usage observations; a future deletion implementation must
+record actual cleanup start/results separately, including failures or interruption.
+Partial inventories are retained with `checks_complete: false` and their warnings.
+History-write failures are visible, never claim success, and cause exit 1.
+
+The report's `preserved_data` explicitly protects:
+
+- `~/.cache/build-metrics/`, including existing Cargo JSONL and validation data;
+- a custom `CARGO_METRICS_DIR`, when exported;
+- the selected history destination and default node-cleanup state directory;
+- `~/.local/libexec/cargo-metrics/`, containing the installed collector.
+
+Protected trees aren't traversed for workspace discovery. A workspace or possible
+output containing preserved data is explicitly protected. Any future cleanup/apply
+path must honor these protections, including ancestors and symlink aliases.
+This report-only tool cannot prevent deletion by unrelated tools or manual commands.
+It does not move or duplicate the existing Cargo records; historical timings remain
+readable even if their referenced worktrees or compiler outputs are later removed.
+
+Files are mode 0600, history directories 0700. Publication is atomic and refuses
+overwriting an existing report; public/foreign/symlinked destinations are refused.
+Reports contain private paths and Git/size metadata but no file contents, raw
+provider responses, command output, credentials or task transcripts. They remain
+node-local, outside Git and build-cache cleanup areas. Saved size observations
+start when this feature is enabled; past storage usage cannot be reconstructed.
 
 ## Results
 
@@ -103,3 +156,24 @@ The rerun observed 939 GiB free on the project filesystem. Largest measured
 output: `github.com/w3irdrobot/theboatingaccident/target`, about 43 GiB allocated;
 other measured Rust targets were roughly 7–11 GiB each. Shared/exclusive Btrfs
 accounting remains unverified. No workspace data or services were changed.
+
+### History extension verification — 2026-11-12
+
+All 31 cleanup-specific tests passed locally and against a byte-identical copy of
+the installed node script in disposable fixtures. All 17 Cargo collector tests
+also passed locally; Python parsing and `git diff --check` passed. The old node
+script/config were SHA-256 checked before replacement and preserved under the
+private default node-cleanup state's `backups/` directory. The node's shared
+dotfiles checkout was not updated.
+
+A real `node-cleanup --dry-run --json` saved its first immutable history file at
+`~/.local/state/node-cleanup/history/2026-11-12/3be9d40d-b7e5-4b00-b788-6a232473a20b.json`.
+Its parsed JSON matches stdout and its mode is 0600. The report includes 69
+workspace rows and successful shared-cache/incremental/dependency size readings.
+Paseo activity was known, but discovery hit the existing depth limit, so the
+report correctly retained `checks_complete: false` and exited 1. This incomplete
+inventory is useful history, not authorization to clean anything.
+
+All 7,178 pre-existing Cargo metric files remained present with their prior
+contents unchanged. No build artifacts, workspaces or services were cleaned,
+removed or restarted. No scheduling or actual cleanup markers were added.

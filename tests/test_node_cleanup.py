@@ -220,6 +220,140 @@ class NodeCleanupTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("Refusing", result.stderr)
 
+    def test_history_is_private_immutable_and_independent_of_build_outputs(self):
+        history = self.base / "state/node-cleanup/history"
+        (self.repo / "target").mkdir()
+        (self.repo / "target/artifact").write_bytes(b"x" * 8192)
+        first = self.inventory().report()
+        path = cleanup.save_history(first, history)
+        original = path.read_bytes()
+        (self.repo / "target/artifact").write_bytes(b"y" * 16384)
+        second = self.inventory().report()
+        second_path = cleanup.save_history(second, history)
+        self.assertNotEqual(path, second_path)
+        self.assertEqual(path.read_bytes(), original)
+        self.assertEqual(json.loads(original)["event"], "inventory_not_cleanup")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(history.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(list(path.parent.glob("*.tmp")), [])
+        with self.assertRaises(FileExistsError):
+            cleanup.save_history(first, history)
+        self.assertEqual(path.read_bytes(), original)
+
+    def test_partial_report_is_saved_with_uncertainty_intact(self):
+        report = cleanup.Inventory(self.root).report()
+        self.assertFalse(report["checks_complete"])
+        path = cleanup.save_history(report, self.base / "history")
+        saved = json.loads(path.read_text())
+        self.assertFalse(saved["checks_complete"])
+        self.assertTrue(saved["warnings"])
+        self.assertTrue(saved["history"]["saved"])
+
+    def test_public_or_symlinked_history_is_refused(self):
+        report = self.inventory().report()
+        public = self.base / "public"
+        public.mkdir(mode=0o755)
+        with self.assertRaises(cleanup.CheckError):
+            cleanup.save_history(report, public)
+        self.assertEqual(list(public.iterdir()), [])
+        private = self.base / "private"
+        private.mkdir(mode=0o700)
+        alias = self.base / "alias"
+        alias.symlink_to(private, target_is_directory=True)
+        with self.assertRaises(cleanup.CheckError):
+            cleanup.save_history(report, alias / "history")
+        self.assertEqual(list(private.iterdir()), [])
+
+    def test_historical_data_overlap_protects_workspace_and_artifact(self):
+        metrics = self.repo / "target/metrics"
+        metrics.mkdir(parents=True)
+        sentinel = metrics / "sentinel.jsonl"
+        sentinel.write_text('{"event":"start"}\n')
+        row = self.row(self.inventory(protected_paths=[metrics]))
+        self.assertIn("historical_data_or_collector_overlap", row["protected_reasons"])
+        self.assertEqual(row["artifacts"][0]["classification"], "protected_historical_data_overlap")
+        self.assertFalse(row["deletion_permitted"])
+        self.assertEqual(sentinel.read_text(), '{"event":"start"}\n')
+
+    def test_history_root_is_not_traversed_even_if_it_contains_a_repository(self):
+        history = self.root / "retained-history"
+        history.mkdir()
+        (history / ".git").mkdir()
+        inv = self.inventory(protected_paths=[history])
+        self.assertNotIn(history, inv.discover())
+
+    def test_metrics_override_and_default_history_are_preserved(self):
+        custom = self.repo / "measurements"
+        with patch.dict(os.environ, {"CARGO_METRICS_DIR": str(custom)}):
+            kept = cleanup.preserved_paths(self.base / "history")
+        self.assertIn(custom, kept)
+        self.assertIn(Path.home()/".cache/build-metrics", kept)
+        self.assertIn(self.base/"history", kept)
+
+    def test_tracked_sizes_and_missing_directories_are_recorded(self):
+        shared = self.base / "shared-cache"
+        shared.mkdir()
+        (shared / "artifact").write_bytes(b"x" * 8192)
+        missing = self.base / "missing-cache"
+        report = self.inventory(usage_paths=[shared, missing]).report()
+        measured, absent = report["tracked_usage"]
+        self.assertEqual(measured["status"], "measured")
+        self.assertGreaterEqual(measured["allocated_bytes"], 8192)
+        self.assertEqual(absent["status"], "missing")
+        self.assertEqual(absent["allocated_bytes"], 0)
+        self.assertFalse(missing.exists())
+        self.assertIn("used_bytes", report["storage"])
+
+    def test_tracked_size_failures_are_explicit_and_incomplete(self):
+        shared = self.base / "cache"
+        shared.mkdir()
+        inv = self.inventory(usage_paths=[shared])
+        with patch.object(inv, "allocated_bytes", return_value=None):
+            report = inv.report()
+        self.assertFalse(report["checks_complete"])
+        self.assertEqual(report["tracked_usage"][0]["status"], "unavailable")
+        self.assertIsNone(report["tracked_usage"][0]["allocated_bytes"])
+
+    def test_cli_history_can_be_enabled_and_disabled_by_override(self):
+        history = self.base / "history"
+        config = self.base / "config.json"
+        config.write_text(json.dumps({"root": str(self.root), "save_history": True,
+                                      "history_dir": str(history)}))
+        command = [sys.executable, str(SCRIPT), "--config", str(config), "--dry-run", "--json"]
+        result = subprocess.run(command, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 1)  # Activity is unknown, but history is still useful.
+        report = json.loads(result.stdout)
+        self.assertTrue(report["history"]["saved"])
+        self.assertEqual(json.loads(Path(report["history"]["path"]).read_text()), report)
+        before = set(history.glob("*/*.json"))
+        result = subprocess.run(command + ["--no-history"], text=True, capture_output=True)
+        self.assertFalse(json.loads(result.stdout)["history"]["enabled"])
+        self.assertEqual(set(history.glob("*/*.json")), before)
+
+    def test_failed_history_write_is_reported_without_success_claim(self):
+        history = self.base / "not-a-directory"
+        history.write_text("preserve this file")
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--root", str(self.root),
+            "--config", str(self.base / "missing.json"), "--save-history",
+            "--history-dir", str(history), "--json",
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 1)
+        report = json.loads(result.stdout)
+        self.assertFalse(report["history"]["saved"])
+        self.assertTrue(any("History was not saved" in w for w in report["warnings"]))
+        self.assertEqual(history.read_text(), "preserve this file")
+
+    def test_apply_cannot_write_history_even_when_enabled(self):
+        history = self.base / "history"
+        result = subprocess.run([
+            sys.executable, str(SCRIPT), "--root", str(self.root), "--apply",
+            "--save-history", "--history-dir", str(history),
+        ], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(history.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
