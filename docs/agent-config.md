@@ -128,6 +128,23 @@ not a whole-directory link, so package-managed entries stay outside the checkout
 symlink adapter, so the standard helper deploys the same skill to every selected
 consumer; no separate node-specific skill links are needed.
 
+## Delegation and review skills
+
+These came out of running a multi-slice feature with sub-agent teams. Shared
+habits that apply to every task, such as the edge-case test and the scratch
+rules, live in `instructions/AGENTS.md` instead.
+
+| Skill | Responsibility |
+| --- | --- |
+| `program-pm` | Run a multi-slice program: keep the plan current, delegate slice teams, run the independent final review, gate outward-facing steps |
+| `de-slop` | Readability standard for code, tests, docs, and history, for implementers and reviewers |
+| `upstream-contribution` | Read an outside project's contribution and AI rules first, then shape the work to fit |
+
+`program-pm` carries brief templates for slice teams and final reviewers, plus
+notes on the current model roster. The roster and the orchestration notes
+describe one setup at one time; check them against the node before use. Slice
+documents themselves still come from `design-workflow`.
+
 ## Execution-node setup skills
 
 Use `setup-execution-node` to coordinate an approved selection of stages, or run

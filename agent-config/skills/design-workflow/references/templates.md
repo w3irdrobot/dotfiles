@@ -186,6 +186,9 @@ blockers: []
 <Required earlier slices; design/spec/decision links; unresolved blockers.
 Say none if there are none.>
 
+<Choices settled for this slice while it is being worked, each with its date and
+reason. Design-level choices also go in the decision log.>
+
 ## Implementation plan
 
 <Proposed public API changes and likely files/modules. Distinguish proposed
@@ -200,6 +203,8 @@ paths from existing ones.>
 - [ ] <Observable behavior that establishes the outcome.>
 - [ ] <Relevant failure behavior or boundary condition.>
 - [ ] <Required integration or environment-specific evidence, if applicable.>
+- [ ] <For code: formatter and linter clean, a fresh reviewer finds it
+      maintainable, and the history is one concern per commit.>
 
 ## Validation plan
 
@@ -210,6 +215,8 @@ requirements, and manual checks. These are planned, not claimed results.>
 
 Not started. After implementation, record the meaningful changes, checks actually
 run and outcomes, skipped checks with reasons, and remaining gaps or deviations.
+For delegated work, also name the models used, the review rounds, and the
+evidence paths.
 ```
 
 The metadata statuses are not a mandatory transition sequence. "Ready for review"
