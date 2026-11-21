@@ -2,7 +2,7 @@
 
 Run `just validate` (Bash syntax, ShellCheck, and Python stdlib tests).
 shfmt is no longer installed or required by this repository. CI's Fedora test
-dependencies include diffutils (`cmp`), also declared by the core, nono, and
+dependencies include diffutils (`cmp`), also declared by the core and
 GnuPG module metadata.
 Tests use temporary homes/repositories and an allowlisted command PATH. Package
 managers, sudo, network clients, and Git network operations are mocked. Fixed

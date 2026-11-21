@@ -107,10 +107,10 @@ credentials and redact traces before sharing them. `dotfiles secrets` suppresses
 DEBUG/xtrace/verbose tracing before dispatching the migration helper.
 
 Packages come from Fedora first, with narrowly scoped vendor RPM repositories
-for Brave/Mullvad and documented community RPM sources for Ghostty, VSCodium,
+for Brave/Tailscale and documented community RPM sources for Ghostty, VSCodium,
 System76, and lazygit. Definitions in `repos/` require package signatures and
 are added only for selected modules. Existing conflicting definitions stop setup.
-OpenCode V2 and nono use pinned, checksum-verified upstream binaries. Arch,
+OpenCode V2 uses a pinned, checksum-verified upstream binary. Arch,
 pacman, paru, and AUR are no longer supported.
 
 Bitwarden uses a pinned, checksum-verified native upstream RPM. Run
@@ -120,8 +120,9 @@ automatic latest-version install. Sign-in and SSH-agent activation stay manual.
 
 Discord uses a reviewed vendor RPM bootstrapper; its first launch downloads the
 client separately. Signal uses the official signature-verified AppImage and then
-its built-in updater. Telegram and Gear Lever (AppImage integration) use verified
-user Flathub apps. System/all updates also update installed user Flatpaks;
+its built-in updater. Proton Mail uses Proton's own signed RPM, pinned by version
+and SHA512 in `modules/protonmail.sh`. Telegram, Spotify, and Gear Lever (AppImage
+integration) use user Flathub apps. System/all updates also update installed user Flatpaks;
 system-wide Flatpak installations stay untouched. See [package details](docs/packages.md).
 
 **Some selected modules currently require manual application installation**, most
@@ -137,8 +138,8 @@ manual resolution before setup. See [project environments](docs/nix-projects.md)
 
 The Bitcoin group installs Fedora Bitcoin Core; Sparrow remains manual. Review Tor, storage
 paths, and service configuration before using the supplied configs; electrs
-installation and wallet/key migration remain manual. Mullvad login, connection,
-and daemon setup are also manual. Docker-group membership requires an explicit
+installation and wallet/key migration remain manual. Enabling `tailscaled` and
+logging in to Tailscale are also manual. Docker-group membership requires an explicit
 `install --docker-group` and grants root-equivalent access.
 
 ## Desktop and hardware
@@ -186,11 +187,9 @@ mode `0600` and ideally a `0700` parent directory. Setup never creates, reads, o
 changes the private file. Move legacy `local/bash/variables.sh` settings yourself;
 that file and old home-level helper files are no longer sourced.
 
-Managed nono profiles deny `~/.config/bash`, but **exported secrets can still
-reach AI child processes**. Prefer credential injection where available; Bitwarden
+**Exported secrets reach AI child processes.** Prefer credential injection where available; Bitwarden
 injection is not configured automatically. Bash suppresses xtrace/verbose output
 while sourcing private overrides. Keep tracing and debug traps out of that file.
-Unsandboxed tools are outside these file-access protections.
 
 Keep Git identity/signing overrides in `~/.gitconfig_local` and imported SSH host
 definitions in `~/.ssh/config.local`, not the symlinked repository configs. Sign
@@ -205,7 +204,7 @@ migration workflow and its SSH limitations. For disposable localhost certificate
 run `generate_local_cert` in an empty directory; it uses a private umask and
 refuses existing outputs or symlinks.
 
-## Mullvad exit-node picker
+## Tailscale exit-node picker
 
 Run `tailscale-exit-node` to pick an online US Tailscale Mullvad exit node with fzf.
 The first choice picks a random node, avoiding the current node when alternatives
@@ -215,10 +214,11 @@ the public IP and location from ipinfo.io. No disconnect or daemon restart is ne
 If switching or verification fails, it stops without disconnecting or rolling back.
 
 This optional helper requires an already-connected Tailscale client with Mullvad
-access, plus `fzf`, `jq`, `curl`, and `shuf`. It does not install Tailscale or change
-services/operator permissions. If Tailscale denies permission, follow its suggested
+access, plus `fzf`, `jq`, `curl`, and `shuf`. The `tailscale` module (in `desktop`)
+installs Tailscale and links this helper but does not change services or operator
+permissions. If Tailscale denies permission, follow its suggested
 operator setup or run `sudo tailscale set --operator="$USER"` yourself.
-Link just the helper from this checkout (not part of the default installer):
+To link just the helper without the module:
 
 ```bash
 stow --dir=stow --target="$HOME" tailscale
@@ -267,12 +267,11 @@ to limit pin refreshes. Existing `update all` remains supported.
 
 Run pin refreshes from a clean checkout. The command downloads stable releases temporarily,
 verifies upstream integrity where available, and edits repository pins only. It
-supports OpenCode, nono, Bitwarden, Discord, and Signal; repeat `--tool` to select
+supports OpenCode, Bitwarden, Discord, and Signal; repeat `--tool` to select
 several. Discord supplies no independent checksum: its pin records the official
 HTTPS download hash after RPM identity validation. Signal requires its existing
 signing key and a valid detached signature. Key rotations, downgrades, and changes
-to an already-pinned release fail for manual review. The nono runtime pack stays
-pinned separately; refreshing its binary does not change sandbox integration.
+to an already-pinned release fail for manual review.
 Discord URL migrations between accepted official layouts are allowed when the
 version and artifact SHA256 remain unchanged.
 
@@ -282,7 +281,7 @@ fails, changes remain available for a manual commit; credentials and signing set
 are never changed automatically. Review `git show` before applying pins with an explicit
 `dotfiles install` using your desired groups/modules. The refresh command never installs
 artifacts, switches launchers, restarts services, pulls the checkout, or pushes commits.
-Its dry-run performs no network requests, writes, or commits. OpenCode/nono installs switch only launchers pointing
+Its dry-run performs no network requests, writes, or commits. OpenCode installs switch only launchers pointing
 to known, checksum-verified managed binaries, retaining old releases for rollback.
 Do not use OpenCode's
 self-updater to replace the pinned binary. Resolve conflicting older
@@ -295,19 +294,6 @@ snapshots are retained, package state is recorded under
 reboot warning. See [protected system upgrades](docs/upgrades.md) for checks and
 live-media rollback steps. Separate `/boot`, `/efi`, and `/boot/efi` partitions
 are not included in the root snapshot.
-
-### Sandboxed AI sessions
-
-AI setup installs nono and pins its `nolabs-ai/opencode@0.4.0` runtime pack. The
-pack supplies the base sandbox integration inherited by the custom profiles;
-registry-managed conflicts stop setup instead of forcing replacement.
-
-Run `ai` from a project directory. Its dev profile grants that directory;
-`ai setup` grants the dotfiles checkout. Broad `$HOME` access conflicts with
-credential protections. Sessions allowed to edit dotfiles can also change shell
-code that later runs outside the sandbox: review those edits before opening a
-new shell. Application, provider, and MCP sign-ins are separate manual steps.
-Configure only the services you use.
 
 ## Repository layout
 

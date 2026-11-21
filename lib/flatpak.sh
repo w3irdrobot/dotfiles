@@ -4,6 +4,7 @@ selected_flatpaks() {
 	FLATPAK_APPS=()
 	if module_selected telegram; then FLATPAK_APPS+=(org.telegram.desktop); fi
 	if module_selected gearlever; then FLATPAK_APPS+=(it.mijorus.gearlever); fi
+	if module_selected spotify; then FLATPAK_APPS+=(com.spotify.Client); fi
 }
 
 inspect_user_flathub() {

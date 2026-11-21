@@ -70,8 +70,3 @@ Compare the live `~/.config/opencode` directory with the Stow source, including
 symlink targets. Preserve machine-local values as environment references rather
 than publishing hostnames, usernames, tokens, or service state. `service.json`
 belongs to OpenCode's local runtime; never copy it into Stow.
-
-The `nono-sandbox` plugin and skill are symlinks into nono's installed OpenCode
-package. Their owner is the pinned nono package setup, not a second vendored copy
-under `stow/opencode`. Do not copy them merely because they appear only in the
-live directory. Configuration changes do not authorize changing sandbox grants.

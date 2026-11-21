@@ -94,7 +94,7 @@ class ReleasePins(unittest.TestCase):
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('PLAN ONLY', result.stdout)
-        self.assertIn('opencode, nono, bitwarden, discord, signal', result.stdout)
+        self.assertIn('opencode, bitwarden, discord, signal', result.stdout)
 
     def test_invalid_tools_and_redundant_all_selector_fail(self):
         for args in (['--tool', 'unknown'], ['--all'], ['all']):

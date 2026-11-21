@@ -52,6 +52,9 @@
   Remove a worktree or branch only when requested; preserve modified/untracked files.
 - Keep scope narrow. Do not commit, push, publish, deploy, or modify live services
   without authorization. Requested work does not authorize credential changes.
+- When downloading binaries or packages, always try to validate both the checksum
+  and the signature against vendor-published values and keys. Look for them before
+  settling for less, and say plainly which checks were available and which ran.
 
 ## Testing and review
 

@@ -6,7 +6,7 @@ selected_repositories() {
 	local module
 	for module in "${MODULES[@]}"; do
 		case $module in
-		brave | ghostty | vscodium | system76 | mullvad | lazygit)
+		brave | ghostty | vscodium | system76 | tailscale | lazygit)
 			REPOSITORIES+=("$module")
 			;;
 		esac

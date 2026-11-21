@@ -6,7 +6,7 @@ repository definitions from `repos/` as `/etc/yum.repos.d/dotfiles-<name>.repo`:
 | Module | Source | RPMs allowed from that source |
 | --- | --- | --- |
 | brave | Brave vendor stable | brave-browser, brave-keyring |
-| mullvad | Mullvad vendor stable | mullvad-vpn |
+| tailscale | Tailscale vendor stable | tailscale |
 | vscodium | Upstream-documented paulcarroty repository | codium |
 | ghostty | Upstream-documented scottames/ghostty COPR | ghostty |
 | system76 | System76-documented szydell/system76 COPR | system76-driver, system76-firmware, system76-power, firmware-manager |
@@ -184,10 +184,34 @@ Use its GUI to integrate/manage other AppImages; its own Flatpak sandbox does
 not make the AppImages it launches sandboxed. The initial Signal pin/signature
 flow remains separate from Gear Lever's GUI/update features.
 
+## Proton Mail
+
+Proton Mail installs from Proton's own RPM rather than Flathub, which Proton
+does not publish directly. `modules/protonmail.sh` pins the version and the SHA512
+from Proton's `version.json`, downloads that release, checks the hash, then checks
+its RPM signature against Proton's signing key in
+`repos/RPM-GPG-KEY-proton-mail` (primary fingerprint
+`1C27DF7A717BCBCAC760A84C0DB4B0701E5FB04A`, as published in
+[Proton's verification guide](https://proton.me/support/mail-desktop-verify-rpm-fedora)).
+The check uses a throwaway keyring, so the system RPM keyring is unchanged.
+Newer installed versions are kept. To update, copy the RPM entry's version and
+SHA512 from <https://proton.me/download/mail/linux/version.json> and rerun
+`dotfiles install`. If Proton rotates its key, replace the key file and
+fingerprint after checking them against that guide.
+
+## Removed Fedora defaults
+
+The `debloat` module (in `desktop`) removes Fedora KDE apps this setup does not
+use: the KMail/Kontact/Akonadi suite and Kleopatra, KDE games, niche apps
+(Kamoso, KMouth, Qrca, KRFB, KRDC, NeoChat, KDE Connect), Plasma Welcome,
+Discover, and Firefox. The list lives in `modules/debloat.sh`. Only installed
+packages are passed to an interactive `dnf remove`, so review the transaction.
+
 ## User Flatpaks
 
-Telegram uses the verified Flathub app `org.telegram.desktop`; Gear Lever uses
-`it.mijorus.gearlever`. Selecting either installs Fedora's `flatpak` package and
+Telegram (`org.telegram.desktop`), Spotify (`com.spotify.Client`), and Gear Lever
+(`it.mijorus.gearlever`) come from Flathub.
+Selecting any of them installs Fedora's `flatpak` package and
 adds the official **user** Flathub remote if absent. A conflicting remote URL,
 disabled/signature-verification-disabled remote, or app from another user remote
 stops setup rather than being replaced. Existing system Flatpaks and system

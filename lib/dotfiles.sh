@@ -542,7 +542,6 @@ preflight_custom_modules() {
 		vscodium) bash "$ROOT/modules/vscodium.sh" --check ;;
 		system76) bash "$ROOT/modules/system76.sh" --check ;;
 		opencode) bash "$ROOT/modules/opencode.sh" --check ;;
-		nono) bash "$ROOT/modules/$module.sh" --check ;;
 		esac
 	done
 }
@@ -629,7 +628,7 @@ print_next_steps() {
 		printf '    (umask 077; mkdir -p %q)\n' "$HOME/.config/bash"
 		printf '    if [[ ! -e %q && ! -L %q ]]; then (umask 077; cp -n -- %q %q); fi\n' "$variables" "$variables" "$ROOT/examples/local-variables.sh" "$variables"
 		printf '    if [[ -f %q && ! -L %q ]]; then chmod 0600 -- %q; fi\n' "$variables" "$variables" "$variables"
-		printf '  Edit that private file yourself; setup never creates, reads, or modifies it. Managed nono profiles deny ~/.config/bash.\n'
+		printf '  Edit that private file yourself; setup never creates, reads, or modifies it.\n'
 	fi
 	if module_selected opencode; then
 		printf '  OpenCode env references: EXA_API_KEY, GITHUB_TOKEN, MAPLE_API_KEY. Configure only the services you use; no values were installed.\n'
@@ -638,15 +637,8 @@ print_next_steps() {
 	if module_selected git; then printf '  Set personal Git identity/signing preferences in ~/.gitconfig_local.\n'; fi
 	if module_selected ssh; then printf '  Add SSH keys and authenticate manually; dotfiles did not generate or import keys.\n'; fi
 	if module_selected bitwarden; then printf '  Log in to native Bitwarden, unlock the vault, and enable its SSH agent. Default socket: ~/.bitwarden-ssh-agent.sock.\n'; fi
-	if module_selected nono; then
-		if [[ $command == link ]] || ((DRY_RUN)); then
-			printf '  Install prepares nono and its pinned OpenCode pack; linking and dry-runs do not install the pack.\n'
-		else
-			printf '  Nono and its pinned OpenCode pack are ready. Sign in manually only to services you use; no authentication was automated.\n'
-		fi
-	fi
 	if ((DOCKER_GROUP)); then printf '  Log out and back in for Docker membership if it changed (root-equivalent access).\n'; fi
-	if module_selected mullvad; then printf '  Manage mullvad-daemon.service and connect in Mullvad manually when ready; dotfiles did not change networking.\n'; fi
+	if module_selected tailscale; then printf '  Enable tailscaled and log in manually: sudo systemctl enable --now tailscaled; sudo tailscale up; sudo tailscale set --operator=%s.\n' "$USER"; fi
 	if module_selected bitcoin || module_selected electrs || module_selected sparrow; then
 		printf '  Bitcoin: review Tor, absolute storage paths, and service setup manually. Wallet/key migration is separate.\n'
 		if module_selected electrs; then printf '  Set up electrs manually in its project Nix environment; check storage, ports, and Tor before starting it.\n'; fi

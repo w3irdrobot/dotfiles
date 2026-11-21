@@ -48,12 +48,3 @@ The development shell is not a sandbox, does not vendor application dependencies
 and does not automatically reconcile Cargo/npm lockfiles. Keep those project
 lockfiles as well. DNF updates Nix itself; Nix garbage collection and
 project lockfile updates remain separate, explicit maintenance tasks.
-
-## Nix inside nono
-
-Installing Nix does not change sandbox permissions. Before using it through a
-sandboxed AI session, inspect the inherited runtime profile and test a locked
-project environment. These dotfiles do not automatically add `/nix` grants.
-If access is denied, diagnose the specific path/operation with `nono why` and
-deliberately approve the required scope; do not disable the sandbox or grant the
-whole filesystem to make a build work.

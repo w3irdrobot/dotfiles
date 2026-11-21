@@ -65,7 +65,7 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         ))
         self.assertIn("Next steps:", result.stdout)
         self.assertNotIn("Next steps:", result.stderr)
-        for text in ("nono pull", "EXA_API_KEY", "Bitwarden", "mullvad-daemon", "variables.sh"):
+        for text in ("EXA_API_KEY", "Bitwarden", "tailscaled", "variables.sh"):
             self.assertNotIn(text, result.stdout)
         self.assert_no_secrets(result)
 
@@ -115,7 +115,7 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assert_no_secrets(result)
 
     def test_selected_followups_are_private_manual_and_nonoverwriting(self):
-        selected = ("bash", "opencode", "git", "ssh", "bitwarden", "nono", "nix", "mullvad", "bitcoin", "electrs")
+        selected = ("bash", "opencode", "git", "ssh", "bitwarden", "nix", "tailscale", "bitcoin", "electrs")
         variables = self.home / ".config/bash/variables.sh"
         variables.parent.mkdir(parents=True)
         variables.write_text(self.sentinel)
@@ -127,8 +127,8 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
                        "examples/local-variables.sh", "mkdir -p", "cp -n", "! -e", "! -L",
                        "chmod 0600", "EXA_API_KEY", "GITHUB_TOKEN", "MAPLE_API_KEY",
                        "~/.gitconfig_local", "native Bitwarden", "~/.bitwarden-ssh-agent.sock",
-                        "Nono and its pinned OpenCode pack are ready", "Log out and back in",
-                       "mullvad-daemon.service", "Tor", "electrs", "per-project flakes"):
+                       "Log out and back in",
+                       "tailscale up", "Tor", "electrs", "per-project flakes"):
             self.assertIn(phrase, text)
         self.assertIn("instructions only", text)
         self.assertIn("No personal credentials", text)
@@ -137,13 +137,6 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assertEqual([], self.calls())
         self.assert_no_secrets(result)
 
-    def test_link_does_not_claim_nono_pack_was_installed(self):
-        result = self.helper('print_next_steps link\n', ("nono",))
-        self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("linking and dry-runs do not install the pack", result.stdout)
-        self.assertNotIn("pack are ready", result.stdout)
-        self.assertNotIn("nono pull", result.stdout)
-
     def test_provider_followups_without_managed_bash_do_not_claim_exports_are_loaded(self):
         result = self.helper('print_next_steps link\n', ("opencode",))
         self.assertEqual(0, result.returncode, result.stderr)
@@ -151,18 +144,16 @@ sys.exit(0 if '-Si' in sys.argv else 97)""")
         self.assertNotIn("private export setup", result.stdout)
         self.assertIn("Linking did not install packages", result.stdout)
         self.assertNotIn("mkdir -p", result.stdout)
-        self.assertNotIn("nono pull", result.stdout)
         self.assert_no_secrets(result)
 
     def test_update_followups_are_short_and_keep_selections_explicit(self):
         result = self.helper('MODULES_CSV=opencode; print_next_steps update configs\n',
-                             ("bash", "opencode", "nono", "bitwarden"))
+                             ("bash", "opencode", "bitwarden"))
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Restart affected apps", result.stdout)
         self.assertIn("Config updates do not install new dependencies", result.stdout)
         self.assertIn("repeat --groups core,ai,desktop --modules opencode", result.stdout)
         self.assertNotIn("EXA_API_KEY", result.stdout)
-        self.assertNotIn("nono pull", result.stdout)
         self.assertLessEqual(len(result.stdout.splitlines()), 6)
         self.assert_no_secrets(result)
 

@@ -200,9 +200,9 @@ class AgentConfigTests(unittest.TestCase):
         self.assertEqual((self.home / ".claude/skills/skill-creator/SKILL.md").read_text(),
                          (linker.SKILLS / "skill-creator/SKILL.md").read_text())
         # Package-managed extras stay in the home, not the canonical sources.
-        extra = self.home / ".config/opencode/skills/nono-fixture"
+        extra = self.home / ".config/opencode/skills/package-fixture"
         extra.mkdir()
-        self.assertFalse((linker.SKILLS / "nono-fixture").exists())
+        self.assertFalse((linker.SKILLS / "package-fixture").exists())
 
     def test_custom_tool_home_refuses_before_writes(self):
         with patch.dict(os.environ, {"CODEX_HOME": str(self.home / "custom")}), \

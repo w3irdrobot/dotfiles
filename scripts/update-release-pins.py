@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location('dotfiles_check_updates', ROOT / 'scripts/check-updates.py')
 check_updates = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(check_updates)
-TOOLS = ('opencode', 'nono', 'bitwarden', 'discord', 'signal')
+TOOLS = ('opencode', 'bitwarden', 'discord', 'signal')
 
 
 def download(url):
@@ -82,52 +82,38 @@ def replace_once(text, old, new):
 def native(tool):
     path = ROOT / f'modules/{tool}.sh'
     text = path.read_text()
-    if tool == 'opencode':
-        old = re.search(r'OPENCODE_VERSION=([0-9.]+)', text)[1]
-        info = metadata('https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/latest')
-        new = info['version']
-        version(new)
-        if version(new)[0] != 2:
-            raise ValueError('OpenCode major-version changes require manual review')
-        archive = download(info['dist']['tarball'])
-        integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
-        if integrity != info['dist']['integrity']:
-            raise ValueError('npm SHA512 integrity mismatch')
-        binary = member(archive, 'package/bin/opencode')
-        previous_hash = re.search(r'OPENCODE_BINARY_SHA256=([a-f0-9]{64})', text)[1]
-        changes = {
-            'OPENCODE_VERSION': new, 'OPENCODE_URL': info['dist']['tarball'],
-            'OPENCODE_ARCHIVE_SHA256': sha256(archive), 'OPENCODE_BINARY_SHA256': sha256(binary),
-        }
-        for key, value in changes.items():
-            text = re.sub(rf'(?m)^readonly {key}=.*$', f'readonly {key}={value}', text)
-        text = text.replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
-        files = {path: text}
-        for relative in ('install.sh', 'lib/dotfiles.sh'):
-            guard = ROOT / relative
-            source = guard.read_text()
-            source = source.replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
-            marker = '\t# Previous verified OpenCode releases (maintained by update-release-pins).'
-            record = f'\t{old}) digest={previous_hash} ;;'
-            if old != new and record not in source:
-                source = replace_once(source, marker, marker + '\n' + record)
-            files[guard] = source
-        readme = ROOT / 'README.md'
-        files[readme] = readme.read_text().replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
-        return old, new, files, sha256(binary), previous_hash
-    old = re.search(r'/dotfiles/nono/([0-9.]+)/nono', text)[1]
-    release = metadata('https://api.github.com/repos/nolabs-ai/nono/releases/latest')
-    new = release['tag_name'].removeprefix('v')
+    old = re.search(r'OPENCODE_VERSION=([0-9.]+)', text)[1]
+    info = metadata('https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/latest')
+    new = info['version']
     version(new)
-    name = f'nono-v{new}-x86_64-unknown-linux-gnu.tar.gz'
-    url, archive = checked_asset(release, name)
-    previous = re.search(r"printf '%s  %s\\n' ([a-f0-9]{64})", text)[1]
-    text = text.replace(f'/nono/{old}/nono', f'/nono/{new}/nono')
-    text = re.sub(r'https://github.com/nolabs-ai/nono/releases/download/[^\s]+', url, text)
-    text = replace_once(text, previous, sha256(archive))
-    binary_hash = sha256(member(archive, 'nono'))
-    return old, new, {path: text}, binary_hash, None
-
+    if version(new)[0] != 2:
+        raise ValueError('OpenCode major-version changes require manual review')
+    archive = download(info['dist']['tarball'])
+    integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
+    if integrity != info['dist']['integrity']:
+        raise ValueError('npm SHA512 integrity mismatch')
+    binary = member(archive, 'package/bin/opencode')
+    previous_hash = re.search(r'OPENCODE_BINARY_SHA256=([a-f0-9]{64})', text)[1]
+    changes = {
+        'OPENCODE_VERSION': new, 'OPENCODE_URL': info['dist']['tarball'],
+        'OPENCODE_ARCHIVE_SHA256': sha256(archive), 'OPENCODE_BINARY_SHA256': sha256(binary),
+    }
+    for key, value in changes.items():
+        text = re.sub(rf'(?m)^readonly {key}=.*$', f'readonly {key}={value}', text)
+    text = text.replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
+    files = {path: text}
+    for relative in ('install.sh', 'lib/dotfiles.sh'):
+        guard = ROOT / relative
+        source = guard.read_text()
+        source = source.replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
+        marker = '\t# Previous verified OpenCode releases (maintained by update-release-pins).'
+        record = f'\t{old}) digest={previous_hash} ;;'
+        if old != new and record not in source:
+            source = replace_once(source, marker, marker + '\n' + record)
+        files[guard] = source
+    readme = ROOT / 'README.md'
+    files[readme] = readme.read_text().replace(f'/opencode/{old}/opencode', f'/opencode/{new}/opencode')
+    return old, new, files, sha256(binary), previous_hash
 
 def signal_pin(old):
     release = metadata('https://api.github.com/repos/signalapp/Signal-Desktop/releases/latest')
@@ -186,7 +172,7 @@ def rpm_pin(tool, old):
 
 
 def prepare(tool):
-    if tool in ('opencode', 'nono'):
+    if tool == 'opencode':
         old, new, files, digest, _previous = native(tool)
         if old == new and any(path.read_text() != content for path, content in files.items()):
             raise ValueError(f'{tool}: upstream changed the existing pin; investigate manually')

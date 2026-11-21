@@ -1,0 +1,10 @@
+[dotfiles-tailscale]
+name=Tailscale (vendor stable)
+baseurl=https://pkgs.tailscale.com/stable/fedora/$basearch
+enabled=1
+repo_gpgcheck=1
+gpgcheck=1
+gpgkey=https://pkgs.tailscale.com/stable/fedora/repo.gpg
+includepkgs=tailscale
+skip_if_unavailable=0
+priority=110

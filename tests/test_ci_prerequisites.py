@@ -18,7 +18,7 @@ class Prerequisites(unittest.TestCase):
                 self.assertIn("registry.fedoraproject.org/fedora:${{ matrix.fedora }}", body)
 
     def test_comparison_helpers_declare_diffutils(self):
-        for module, group in (("diffutils", "core"), ("nono", "ai"), ("gnupg", "core")):
+        for module, group in (("diffutils", "core"), ("gnupg", "core")):
             with self.subTest(module=module):
                 fields = dict(
                     line.split("=", 1)

@@ -44,7 +44,7 @@ class OpenCodeConfig(unittest.TestCase):
         self.assertEqual(model["name"], "DeepSeek V4.1 Flash Uncensored")
 
     def test_runtime_and_package_owned_files_are_not_vendored(self):
-        for name in ("service.json", "plugins/nono-sandbox.ts", "skills/nono-sandbox"):
+        for name in ("service.json",):
             self.assertFalse((CONFIG_DIR / name).exists(), name)
 
 

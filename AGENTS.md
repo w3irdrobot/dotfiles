@@ -64,8 +64,7 @@
 - Keep API keys, authentication stores, private keys, wallet data, and machine
   exports out of Git and AI-readable checkouts. Machine environment overrides,
   secret or non-secret, belong in `~/.config/bash/variables.sh`, never in the
-  checkout. Managed nono profiles deny `~/.config/bash`; exported values may
-  still be inherited by AI processes. Prefer credential injection where available.
+  checkout. Exported values are inherited by AI processes. Prefer credential injection where available.
   Git overrides remain in `~/.gitconfig_local`.
 - The tracked SSH config is generic defaults plus `Include ~/.ssh/config.local`
   only. Personal host blocks, addresses, usernames, and identity paths are carried
@@ -74,9 +73,9 @@
 - Log meaningful installer phases and failures, never environment/credential
   values. Print next steps only after successful runs, with dry-runs clearly
   marked as plans. Do not emit installer-style progress logs during shell startup.
-- Do not modify live nono profiles/packages or execute bootstrap/setup scripts
-  merely to validate syntax. Source-controlled profiles are configuration data.
-- Pin and verify standalone upstream artifacts. Third-party RPM repositories and
+- Do not execute bootstrap/setup scripts merely to validate syntax.
+- Pin and verify standalone upstream artifacts: check both the checksum and the
+  signature whenever the vendor publishes them. Third-party RPM repositories and
   COPRs are explicit trust decisions; never disable package signature checks.
 
 ## Documentation

@@ -242,19 +242,7 @@ gshell() {
 	esac
 }
 function ai() {
-	local profile="opencode-dev"
-	local -a nono_args client_args=()
-
-	case "${1:-}" in
-	base | dev | setup | rust)
-		profile="opencode-$1"
-		shift
-		;;
-	opencode-base | opencode-dev | opencode-setup | opencode-rust)
-		profile="$1"
-		shift
-		;;
-	esac
+	local -a client_args=()
 
 	case "${1:-}" in
 	run | mini)
@@ -268,10 +256,5 @@ function ai() {
 		;;
 	esac
 
-	nono_args=(--profile "$profile" --silent --no-diagnostics --suppress-save-prompt /)
-	if [[ "$profile" == "opencode-dev" || "$profile" == "opencode-rust" ]]; then
-		nono_args+=(--allow-cwd)
-	fi
-
-	OPENCODE_DISABLE_EXTERNAL_SKILLS=1 nono run "${nono_args[@]}" -- opencode "${client_args[@]}" "$@"
+	OPENCODE_DISABLE_EXTERNAL_SKILLS=1 opencode "${client_args[@]}" "$@"
 }

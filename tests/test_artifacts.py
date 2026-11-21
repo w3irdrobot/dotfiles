@@ -1,4 +1,4 @@
-"""Native Nix and nono artifact fixtures; no host installation or real downloads."""
+"""Native Nix artifact fixtures; no host installation or real downloads."""
 
 from pathlib import Path
 import os
@@ -76,12 +76,6 @@ printf 'continued\\n'
         self.assertIn(str(self.nix_binary), text)
         self.assertNotIn("[[ -e /usr/bin/nix", text)
         self.assertNotIn("[[ -x /usr/bin/nix", text)
-
-    def run_nono(self):
-        return subprocess.run(
-            [test_dotfiles.BASH, str(self.repo / "modules/nono.sh")],
-            cwd=self.repo, env=self.env, capture_output=True, text=True, timeout=20,
-        )
 
     def existing_nix(self):
         self.nix_binary.parent.mkdir(parents=True)
@@ -261,60 +255,6 @@ sys.exit(97)
                       if line and not line.startswith("#"))
         self.assertEqual("core", fields["group"])
         self.assertEqual("nix nix-daemon", fields["packages"])
-
-    def nono_target(self):
-        return self.home / ".local/share/dotfiles/nono/0.80.0/nono"
-
-    def mock_nono_archive(self, binary):
-        self.mock("tar", f"sys.stdout.buffer.write({binary!r})")
-
-    def test_nono_checksum_failure_prevents_extraction_and_install(self):
-        self.mock_nono_archive(b"#!/bin/sh\nexit 0\n")
-        self.mock("sha256sum", "sys.stdin.read(); sys.exit(1)")
-        result = self.run_nono()
-        self.assert_failed(result)
-        self.assertFalse(any(c[0] in ("tar", "install") for c in self.calls()))
-        self.assertEqual({}, self.snapshot())
-        self.assertNotIn("nono installed.", result.stderr)
-
-    def test_nono_matching_nonexecutable_target_is_refused(self):
-        binary = b"#!/bin/sh\nexit 0\n"
-        self.mock_nono_archive(binary)
-        target = self.nono_target()
-        target.parent.mkdir(parents=True)
-        target.write_bytes(binary)
-        target.chmod(0o644)
-        link = self.home / ".local/bin/nono"
-        link.parent.mkdir(parents=True)
-        for linked in (False, True):
-            with self.subTest(linked=linked):
-                if linked:
-                    link.symlink_to(target)
-                before = self.snapshot()
-                result = self.run_nono()
-                self.assert_failed(result, "repair its executable permissions")
-                self.assertEqual(before, self.snapshot())
-                self.assertEqual(0o644, target.stat().st_mode & 0o777)
-                self.assertFalse(any(c[0] == "install" for c in self.calls()))
-                self.assertNotIn("nono installed.", result.stderr)
-
-    def test_nono_matching_binary_alone_does_not_claim_pack_ready(self):
-        binary = b"#!/bin/sh\nexit 0\n"
-        self.mock_nono_archive(binary)
-        target = self.nono_target()
-        target.parent.mkdir(parents=True)
-        target.write_bytes(binary)
-        target.chmod(0o755)
-        link = self.home / ".local/bin/nono"
-        link.parent.mkdir(parents=True)
-        link.symlink_to(target)
-        (self.home / ".config").mkdir()
-        before = self.snapshot()
-        for _ in range(2):
-            result = self.run_nono()
-            self.assert_failed(result, "did not install the pinned OpenCode pack")
-            self.assertEqual(before, self.snapshot())
-        self.assertFalse(any(c[0] == "install" for c in self.calls()))
 
 
 if __name__ == "__main__":
