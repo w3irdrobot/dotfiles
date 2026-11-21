@@ -10,15 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "agent-config/skills"
 INSTRUCTIONS = ROOT / "agent-config/instructions/AGENTS.md"
 TOOLS = ("maple", "codex", "claude", "opencode")
-STOW = ROOT / "stow/opencode/.config/opencode"
-
-
-def opencode_source(relative, canonical):
-    """Use the Stow adapter when present so either deployment order is safe."""
-    adapter = STOW / relative
-    if adapter.is_symlink() and adapter.resolve() == canonical.resolve():
-        return adapter
-    return canonical
 
 
 def links(home, tools=("maple",)):
@@ -37,8 +28,7 @@ def links(home, tools=("maple",)):
     }
     for tool in tools:
         if tool in instruction_paths:
-            source = opencode_source("AGENTS.md", INSTRUCTIONS) if tool == "opencode" else INSTRUCTIONS
-            result.append((home / instruction_paths[tool], source))
+            result.append((home / instruction_paths[tool], INSTRUCTIONS))
     for name in names:
         source = SKILLS / name
         if not (source / "SKILL.md").is_file():
@@ -48,12 +38,10 @@ def links(home, tools=("maple",)):
             result.append((home / ".claude/skills" / name, source))
         if "opencode" in tools:
             # Keep explicit discovery working when external skill discovery is off.
-            result.append((home / ".config/opencode/skills" / name,
-                           opencode_source(Path("skills") / name, source)))
+            result.append((home / ".config/opencode/skills" / name, source))
     if "opencode" in tools:
         for source in sorted((ROOT / "agent-config/agents/opencode").glob("*.md")):
-            result.append((home / ".config/opencode/agents" / source.name,
-                           opencode_source(Path("agents") / source.name, source)))
+            result.append((home / ".config/opencode/agents" / source.name, source))
     return result
 
 
@@ -65,17 +53,13 @@ def owned_link(destination, source):
 def preflight(home, plan):
     if not home.is_dir():
         raise ValueError(f"Target home must already exist: {home}")
-    stow_root = ROOT / "stow/opencode/.config/opencode"
-    allowed = {stow_root.resolve()}
     for destination, source in plan:
         if not source.exists():
             raise ValueError(f"Missing source: {source}")
         for parent in destination.parents:
             if parent == home:
                 break
-            # A Stow-managed directory may resolve to this exact source tree.
-            if (parent.is_symlink() and parent.resolve() not in allowed
-                    or parent.exists() and not parent.is_dir()):
+            if parent.is_symlink() or parent.exists() and not parent.is_dir():
                 raise ValueError(f"Conflicting parent: {parent}")
         if os.path.lexists(destination):
             if owned_link(destination, source) or destination.resolve() == source.resolve():

@@ -27,7 +27,7 @@ checkout or its access policy.
 2. Check Python, Git, selected apps and actual provider-home variables. The helper
    refuses unsupported custom homes; report that constraint instead of linking
    configuration into an unverified directory. Never run `install.sh` or
-   `bin/dotfiles install` to prepare a headless execution node.
+   `bootstrap.sh` to prepare a headless execution node.
 3. As the execution user, run `python3 scripts/link-agent-config.py --tools <selection> --dry-run`.
    Reconcile any conflicts with the user. If authorized and clean, rerun without
    `--dry-run`. Do not force links, prune unrelated skills, or deploy credentials.

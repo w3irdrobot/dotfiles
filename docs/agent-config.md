@@ -13,9 +13,9 @@ agent-config/
 └── agents/opencode/             # Existing OpenCode-format specialist definitions
 ```
 
-The old Stow instruction, skill, and agent entries now link back here;
-they are adapters, not separate editable copies. OpenCode provider/MCP settings,
-terminal preferences, themes, and sandbox integration remain tool-specific.
+Tools link straight to these files; there are no separate editable copies.
+OpenCode provider/MCP settings, terminal preferences, and themes stay in
+`files/opencode/`.
 
 ## Deploy to a node
 
@@ -25,19 +25,10 @@ checkout path (or let it ask). It uses this same helper, not another installer.
 
 ## New local workstation
 
-The normal `ai` group now selects the configuration-only `agent-config` module.
-`dotfiles install`, `dotfiles link`, and config/all updates with that selection
-preflight and deploy shared links for all four tools as part of the normal flow.
-The preflight runs before package transactions and reports existing instructions
-or foreign links as conflicts. Dry-runs never create links. Python 3 must be
-available for preflight and is also declared as a module dependency.
-
-This installs configuration, not the Codex, Claude Code, or Maple applications.
-OpenCode installation remains owned by its existing module. Selecting groups
-without `ai` skips shared configuration unless `--modules agent-config` is added.
-That explicit module can configure links without selecting workstation OpenCode
-settings or its application. For a subset of tools, use the standalone command
-below rather than selecting this all-tool workstation module.
+Home Manager links the shared instructions, every skill, and the OpenCode
+agents for all four tools on each `home-manager switch` (see `home.nix`). New
+skills appear after the next switch. This installs configuration, not the Codex,
+Claude Code, or Maple applications.
 
 ## Standalone local or remote deployment
 
@@ -85,27 +76,9 @@ configuration in T3 itself. There is no unverified T3-specific adapter here.
 Start with the dry-run and review any reported conflicts. The helper never
 replaces regular files, foreign links, or dangling links, even when their contents
 match. Back up and reconcile those files manually before removing a conflicting
-destination. Exact canonical links, including this checkout's Stow adapters, are
-reused. Symlinked parent directories are otherwise refused. The helper does not
-write missing files through an allowed Stow link into the source checkout.
-If an earlier PR revision installed whole-directory `skills` or `agents` links,
-review and unlink those exact home-level directory links before migrating to the
-individual-link layout. The helper and workstation preflight intentionally refuse
-to replace them automatically. Existing unrelated entries must be preserved.
-
-If you tried this PR's original four-skill helper, its `~/.agents/AGENTS.md` link
-points at the old `agent-config/AGENTS.md` location. Review and unlink that exact
-stale link before running the new helper. The moved skills remain reachable through
-the Stow compatibility paths. There is no automatic migration of old instruction links.
-
-For an existing Stow deployment, the old instruction file and skill/agent
-directories become links when this revision is deployed. Updating that checkout
-therefore changes the live instruction content. Review
-`instructions/legacy-opencode.md` against the shared rules first; it is retained
-only as migration context and is **not installed or loaded**. Its old workstation
-paths and unconditional knowledge-base usage must move to node guidance if wanted.
-
-The shared rules replace those assumptions with optional
+destination. Exact canonical links are
+reused. Symlinked parent directories are refused.
+Node-specific guidance lives in optional
 `~/.config/agent-config/node.md`. Copy `examples/agent-node.md` manually and fill in
 actual checkout paths, worktree conventions, and tools. For the existing workstation,
 `~/projects` can remain the checkout root; a remote node can choose another path.
@@ -119,97 +92,8 @@ the node's checkout root; skill creation no longer assumes OpenCode-only tooling
 Supporting scripts, references, and licenses move with the skills.
 The helper discovers non-hidden direct child directories containing `SKILL.md`;
 there is no separate skill manifest. New skills are automatically included on the
-next helper run. Stow has individual compatibility links for existing resources,
-not a whole-directory link, so package-managed entries stay outside the checkout.
-
-`design-workflow` and its writing/templates references live under
-`agent-config/skills/design-workflow/`. Its OpenCode Stow directory is only a
-symlink adapter, so the standard helper deploys the same skill to every selected
-consumer; no separate node-specific skill links are needed.
-
-## Delegation and review skills
-
-These came out of running a multi-slice feature with sub-agent teams. Shared
-habits that apply to every task, such as the edge-case test and the scratch
-rules, live in `instructions/AGENTS.md` instead.
-
-| Skill | Responsibility |
-| --- | --- |
-| `program-pm` | Run a multi-slice program: keep the plan current, delegate slice teams, run the independent final review, gate outward-facing steps |
-| `de-slop` | Readability standard for code, tests, docs, and history, for implementers and reviewers |
-| `upstream-contribution` | Read an outside project's contribution and AI rules first, then shape the work to fit |
-
-`program-pm` carries brief templates for slice teams and final reviewers, plus
-notes on the current model roster. The roster and the orchestration notes
-describe one setup at one time; check them against the node before use. Slice
-documents themselves still come from `design-workflow`.
-
-## Execution-node setup skills
-
-Use `setup-execution-node` to coordinate an approved selection of stages, or run
-each stage independently; selecting one child does not authorize the next. For
-example, ask to “use setup-execution-node to plan a node with Maple and Codex,
-testing one stage at a time,” or “use install-codex on this node.” Missing
-consequential inputs are questions, not invented defaults. Previously agreed
-answers can be reused from the conversation.
-
-| Skill | Responsibility |
-| --- | --- |
-| `setup-execution-node` | Gather inputs once, approve selected stages, sequence, verify, pause/resume |
-| `provision-execution-node` | Capacity, OS, CPU/RAM/disks, Btrfs layout, execution user, private access |
-| `configure-node-runtime` | Selected Nix/container tools, build concurrency, cache/storage policy |
-| `configure-node-git` | Explicit author identity, hosting authentication, optional SSH signing |
-| `install-maple-agent` | Verified Maple bundle, optional user service, remote pairing |
-| `install-codex` | Complete Codex/provider runtime, including release-matched helpers |
-| `install-claude-code` | Claude Code runtime and authentication handoff |
-| `deploy-agent-config` | This repository's reviewed shared links and node guidance |
-
-A usual order is provisioning, runtime/Git, whichever apps/providers are wanted,
-then shared configuration. App installations are separate choices, not a bundle;
-providers can be installed before hosts. Each stage has its own acceptance checks.
-Live smoke tests require an approved disposable workspace and provider allowance.
-The coordinator loads these skills rather than duplicating their procedures or
-spawning subagents. Resume checkpoints are recorded in the conversation; completed
-stages are rechecked before being skipped. It does not authorize VM destruction.
-
-The skills share an [execution-node contract](../agent-config/skills/provision-execution-node/references/node-contract.md).
-Btrfs is the default for new node filesystems, not permission to convert existing
-disks. Sizes, layout, OS, accounts, release policy, and exposure still need explicit
-answers. No migration or standalone diagnosis skill is included. Node destruction
-is a separate action with exact-resource confirmation; creating skills does not
-authorize deleting a VM.
-
-These are guided workflows, not a universal provisioning script. Frontmatter and
-disposable-home deployment tests do not verify real OS installation or provider
-integration. Test each selected skill against the replacement node separately;
-do not consider historical work on the original VM an end-to-end test of them.
-
-## Agents are tool-specific
-
-Existing specialist definitions retain their OpenCode format and disabled flags
-under `agents/opencode/`. Selecting OpenCode links them into its `agents/` folder.
-They are not copied into Claude's or Codex's agent directories: metadata, tool
-names, delegation policy, and availability differ. Maple has no equivalent custom
-agent adapter in this proposal. The shared skills work without these specialists.
-This preserves the prompts for later deliberate conversion without pretending
-that symlinking one format makes it valid in every tool.
-
-## Knowledge and machine configuration
-
-Knowledge access is disabled unless node guidance supplies a verified local path
-and permitted use. Nothing clones, syncs, or grants access to the personal knowledge
-base. A workstation can opt in to its existing checkout; remote nodes can use a
-separately reviewed subset or none. Enforce read-only access with OS permissions
-if required; instructions are not access controls. The existing OpenCode-specific
-`knowledge` reference remains in its config and must be reviewed separately when
-deploying that full workstation configuration.
-
-Credentials, Git identity/signing, private hosts, tool auth stores, MCP config,
-service state, and sandbox permissions are not part of this helper's deployment.
-Node guidance stays non-secret and outside Git. Repo-specific instructions and
-skills stay in the relevant repo.
-
-## Updates and verification
+next helper run. Links are per skill, not whole directories, so package-managed
+entries stay outside the checkout.
 
 Updating a linked checkout **is deployment**, because links see content changes
 immediately. Use a dedicated checkout pinned to a reviewed revision to control
@@ -224,8 +108,6 @@ does not revoke previously installed links. Review and unlink them manually.
 Interrupted deployments leave completed links in place and can be rerun safely.
 Do not run concurrent deployment or edit link parents during deployment.
 
-Fixture tests cover the filesystem layout, conflicts, Stow compatibility, and
-shared content. They do not prove an authenticated agent used the instructions.
 After deployment, start a fresh session in each selected tool, verify instruction
 sources and skills, and try a harmless relevant skill. In Claude use `/context`
 and `/skills`; in OpenCode use `/reload` and skill discovery. Check that the node

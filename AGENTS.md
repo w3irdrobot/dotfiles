@@ -1,108 +1,58 @@
-# Dotfiles installer
+# Dotfiles
 
-## Scope and ownership
+## Layout and ownership
 
-- Target x86_64 Fedora KDE Plasma Desktop 44 and 45 with Bash 5+. Do not run
-  provisioning on macOS. Leave desktop, login, and networking settings alone.
-- Primary desktop baseline: Fedora 45 KDE Plasma on Wayland; retain Fedora 44
-  support, no Arch support.
-  System76 packages are DMI-gated; service activation requires terminal
-  confirmation. Firmware flashing and privileged groups remain manual.
-- `install.sh` is the downloadable bootstrap; `bin/dotfiles` is the local entry
-  point. Keep bootstrap logic small and machine setup in focused modules.
-- `modules/<tool>.conf` describes a tool's group and package names as data, not
-  executable shell. Custom setup belongs in `modules/<tool>.sh`.
-- `stow/<tool>/` holds home-shaped configuration for that tool. Preserve the
-  Kestrel appearance and the distinction between standalone scripts and
-  interactive functions that affect the caller's shell.
-- `agent-config/` owns shared agent instructions and skills, plus explicitly
-  tool-scoped specialist definitions. OpenCode's Stow paths are symlink adapters;
-  edit canonical files, not duplicate copies. Use `scripts/link-agent-config.py`
-  for multi-tool deployment; the AI group's `agent-config` module calls it for
-  workstation setup. Remote agents follow `agent-config/SETUP.md`, never the
-  workstation bootstrap. Keep node paths and knowledge access local.
-- Bash deploys only `~/.bashrc`. Its loader sources helpers from repo `shell/`,
-  never home-level helper symlinks. Optional machine-local shell overrides live
-  in `~/.config/bash/variables.sh` for environment settings; optional non-secret
-  init/alias/function hooks remain in ignored `local/bash/`. Never read or migrate
-  real credentials automatically.
-- Default groups are core, AI, and desktop. Cloud/container, Bitcoin, and
-  hardware-security groups are optional. Project toolchains belong in project
-  Nix environments, not global Rustup/NVM installations.
-- Prefer Fedora repository packages, then documented vendor RPMs and selected
-  COPRs. Explicitly report applications requiring manual installation.
-  OpenCode V2 uses a pinned upstream binary until a verified V2 RPM is available
-  for supported Fedora releases; Nix uses Fedora nix/nix-daemon. Keep artifact/hash and PATH
-  checks; never silently replace a conflicting executable.
-  Nix daemon configuration is explicit; never mix upstream and repository Nix.
-- VSCodium's bundled Kestrel theme is built locally as a VSIX and registered with
-  codium, not Stow-linked into the extensions directory. Keep settings Stow-managed;
-  refuse legacy links/modified copies and explain manual cleanup without --force.
-- Bitwarden uses the reviewed upstream RPM pin in `modules/bitwarden-release.json`.
-  Check its SHA256 and RPM identity before protected installation; do not downgrade
-  an equal/newer installed version. CLI release checks are notices, not auto-updates.
-- Discord uses a reviewed vendor bootstrap RPM and the same protected transaction
-  boundary; its user-level client download/update happens on launch, outside the pin.
-- Signal's official AppImage requires initial hash and detached-signature verification
-  with an isolated public keyring. Preserve Signal-owned self-updates in its managed
-  writable location; never execute it during setup/validation.
-- Telegram and Gear Lever are per-user verified Flathub apps. Preserve remote/origin
-  conflicts, leave system installations alone, and update installed user Flatpaks
-  during system/all updates. Fonts remain manual.
+- Target x86_64 Fedora KDE Plasma (44+), regular RPM edition, not Atomic.
+- Two layers, kept separate:
+  - `bootstrap.sh` owns the system: vendor repos (`repos/`), RPMs, Flatpaks,
+    pinned vendor apps, services, debloat, and Plasma tweaks. It must stay safe
+    to rerun. `install.sh` only clones the repo and hands off to it.
+  - `flake.nix` + `home.nix` own the user environment through Home Manager:
+    CLI packages, fonts, `~/.bashrc`, and config links. Cloud/Kubernetes tools
+    are a devShell (`cloud`), not installed packages.
+- `files/<tool>/` is home-shaped config. `home.nix` links each file back to the
+  checkout (out-of-store), so edits apply without a switch. Add a tool by adding
+  its directory and listing it in `tools`.
+- Prefer nixpkgs for CLI tools. GUI apps and anything needing system services
+  stay on Fedora RPMs or Flatpak (Nix GUI apps break on graphics drivers here).
+- `shell/` is sourced by the Home Manager `.bashrc`. Keep the difference between
+  standalone scripts and functions that must affect the caller's shell.
+- `agent-config/` owns shared agent instructions and skills. `home.nix` links them
+  for all four tools on the workstation; remote nodes use
+  `scripts/link-agent-config.py` via `agent-config/SETUP.md`, never the bootstrap.
+- Project toolchains belong in project flakes, not global Rustup/NVM installs.
 
 ## Safety
 
-- Run as the normal user; use narrowly scoped privilege escalation only where
-  required. Keep DNF package and key confirmation interactive. No unattended upgrades.
-- Refuse unmanaged destination conflicts, including dangling symlinks and
-  conflicting parent paths. Never use Stow adoption, force replacement, or
-  automatic deletion. Explain manual conflict resolution instead.
-- Updates must verify repository identity and refuse dirty/diverged checkouts.
-  Do not reset, stash, or discard user work automatically.
-- No automatic Docker-group membership, autologin, wallet/key import, hardware
-  provisioning, or changes to networking services.
-- Keep API keys, authentication stores, private keys, wallet data, and machine
-  exports out of Git and AI-readable checkouts. Machine environment overrides,
-  secret or non-secret, belong in `~/.config/bash/variables.sh`, never in the
-  checkout. Exported values are inherited by AI processes. Prefer credential injection where available.
-  Git overrides remain in `~/.gitconfig_local`.
-- The tracked SSH config is generic defaults plus `Include ~/.ssh/config.local`
-  only. Personal host blocks, addresses, usernames, and identity paths are carried
-  outside Git by explicit secrets export/import. The current source-machine config
-  is authoritative; never repopulate removed hosts from stale tracked config/history.
-- Log meaningful installer phases and failures, never environment/credential
-  values. Print next steps only after successful runs, with dry-runs clearly
-  marked as plans. Do not emit installer-style progress logs during shell startup.
-- Do not execute bootstrap/setup scripts merely to validate syntax.
+- Run as the normal user; use `sudo` only where required. Keep DNF and Flatpak
+  confirmation interactive. No unattended upgrades.
 - Pin and verify standalone upstream artifacts: check both the checksum and the
   signature whenever the vendor publishes them. Third-party RPM repositories and
   COPRs are explicit trust decisions; never disable package signature checks.
+  Don't use Flathub builds that the vendor doesn't publish when a vendor package
+  exists.
+- No automatic Docker-group membership, autologin, wallet/key import, or
+  networking changes (Tailscale login stays manual).
+- Keep API keys, authentication stores, private keys, wallet data, and machine
+  exports out of Git. Machine environment overrides belong in
+  `~/.config/bash/variables.sh`; Git overrides in `~/.gitconfig_local`. Exported
+  values are inherited by AI processes; prefer credential injection.
+- The tracked SSH config is generic defaults plus `Include ~/.ssh/config.local`
+  only. Personal hosts travel via `secrets_export`/`secrets_import`.
+- Do not run `bootstrap.sh` or `home-manager switch` just to validate changes.
+
+## Checks
+
+- `just check`: ShellCheck, nixfmt, and `nix flake check`. Build the user
+  environment without activating it via
+  `nix build .#homeConfigurations.alex.activationPackage`.
+- New untracked files are invisible to flakes; use `path:$PWD` or `git add -N`.
+- Bash scripts use strict mode, optional `DEBUG=1` tracing, quoted expansions,
+  arrays, focused helpers, and a thin `main`.
 
 ## Documentation
 
-- Write developer-to-developer: direct, conversational, and concrete. Lead with
-  the intended use and runnable examples; keep the install command near the top
-  of `README.md`.
-- Explain behavior and responsibility before constraints. State safety rules
-  once near the relevant workflow, preserving their exact meaning.
-- Link detailed contracts and dated validation evidence rather than repeating
-  them. Keep current instructions separate from historical results and open work.
-
-## Bash and verification
-
-- Executable scripts use strict mode, optional `DEBUG=1` tracing, quoted
-  expansions, arrays, focused helpers, and a thin `main`. Sourced libraries and
-  interactive configs must not impose strict mode on their callers.
-- Use Bash syntax checks and ShellCheck. Keep checks scoped to changed
-  files; do not mask errors with blanket exclusions or `|| true`.
-- Test idempotence, conflicts, argument validation, dry-run side effects,
-  interrupted setup, and unsafe updates using disposable fixtures/mocks.
-- Use the repository's `justfile` and CI recipes for checks. Record skipped
-  checks and missing tools honestly; mocks do not validate real installation.
-- Fedora 45 support uses existing workstation experience; no separate rehearsal
-  is required for this update. Follow `docs/testing.md` when a separate Linux VM
-  rehearsal is requested. Do not install VM software, launch VMs, or change the
-  host without approval.
-- Pages publishes the standalone bootstrap only from `master`. PRs must not
-  deploy or merge automatically. Search for a PR template before opening
-  a PR and include verified checks plus remaining Fedora/Lemur Pro acceptance work.
+- Write developer-to-developer: direct and concrete, install command near the top
+  of `README.md`. Keep it short; this repo is meant to stay small.
+- Pages publishes `install.sh` only from `master`. Don't merge or deploy PRs
+  automatically.

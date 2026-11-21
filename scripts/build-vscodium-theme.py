@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-THEME = ROOT / 'modules/vscodium-theme'
+THEME = ROOT / 'vscodium-theme'
 FILES = ('package.json', 'themes/kestrel-color-theme.json')
 
 

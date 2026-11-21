@@ -13,7 +13,7 @@ It is configuration deployment, not workstation provisioning or agent installati
    never reset, stash, or overwrite to get deployment through. Use the requested
    reviewed revision; do not deploy an arbitrary branch or unreviewed update.
 3. Read `docs/agent-config.md` from that checkout. Do **not** run `install.sh` or
-   `bin/dotfiles install` on a remote node. Those provision a Fedora workstation.
+   `bootstrap.sh` on a remote node. Those provision a Fedora workstation.
 4. From the checkout, run the selected tools' preview, for example:
 
    ```bash

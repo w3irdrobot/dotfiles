@@ -65,14 +65,6 @@ fi
 # Docker
 export DOCKER_BUILDKIT=1
 
-# Google Cloud SDK
-if [[ -d "${HOME}/google-cloud-sdk/bin" ]]; then
-	case ":${PATH:-}:" in
-	*":${HOME}/google-cloud-sdk/bin:"*) ;;
-	*) export PATH="${HOME}/google-cloud-sdk/bin:${PATH}" ;;
-	esac
-fi
-
 # Default browser
 if command -v brave-browser >/dev/null 2>&1; then
 	export BROWSER="brave-browser"

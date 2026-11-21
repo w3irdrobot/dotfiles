@@ -1,14 +1,26 @@
 default:
     @just --list
 
-test:
-    python3 -m unittest discover -s tests -v
+# Apply home.nix (packages and config links).
+switch:
+    home-manager switch --flake .#alex
 
+# Update nixpkgs and Home Manager, then apply.
+update:
+    nix flake update
+    home-manager switch --flake .#alex
+
+# Update Fedora packages and user Flatpaks.
+upgrade:
+    sudo dnf upgrade --refresh
+    flatpak update --user
+
+# Rerun the Fedora system setup (repos, RPMs, Flatpaks, services).
+bootstrap *flags:
+    bash bootstrap.sh {{flags}}
+
+# Lint and evaluate.
 check:
-    python3 scripts/check-shell.py
-
-validate: check test
-
-# Explicit network check; never installs packages.
-check-packages:
-    python3 scripts/check-packages.py --network
+    shellcheck bootstrap.sh install.sh shell/*.sh
+    nix fmt -- --check flake.nix home.nix
+    nix flake check

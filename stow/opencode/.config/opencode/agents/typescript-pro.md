@@ -1,1 +1,0 @@
-../../../../../agent-config/agents/opencode/typescript-pro.md

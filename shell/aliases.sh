@@ -10,6 +10,15 @@ if command -v fd >/dev/null 2>&1; then alias find="fd"; fi
 if command -v lazygit >/dev/null 2>&1; then alias lg="lazygit"; fi
 if command -v bat >/dev/null 2>&1; then alias cat="bat"; fi
 
+# Cloud and Kubernetes tools live in a devShell, not on PATH.
+alias cloud='nix develop "$DOTFILES#cloud"'
+
+# Repository tasks from anywhere: dotfiles switch, update, upgrade, bootstrap.
+alias dotfiles='just --justfile "$DOTFILES/justfile"'
+
+# Repository tasks from anywhere: dotfiles switch, update, upgrade, bootstrap.
+alias dotfiles='just --justfile "$DOTFILES/justfile"'
+
 # Plasma Wayland is the baseline; retain clipboard support for X11 sessions.
 if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null 2>&1; then
 	alias clip="wl-copy"

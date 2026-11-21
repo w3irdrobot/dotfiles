@@ -1,1 +1,0 @@
-../../../../../agent-config/agents/opencode/mobile-developer.md
