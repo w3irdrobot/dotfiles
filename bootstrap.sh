@@ -241,6 +241,13 @@ setup_vscodium() {
 	done <"$ROOT/files/vscodium/.config/VSCodium/extensions.txt"
 }
 
+setup_tailscale() {
+	log 'Enabling Tailscale'
+	sudo systemctl enable --now tailscaled.service
+	# Lets tailscale up/down/set run without sudo. Login stays manual.
+	sudo tailscale set --operator="$USER"
+}
+
 switch_home_manager() {
 	log 'Starting the Nix daemon'
 	sudo systemctl enable --now nix-daemon.service
@@ -255,11 +262,8 @@ print_next_steps() {
 
 Done. Manual follow-ups:
   - Log out and back in so Plasma picks up the new environment and fonts.
-  - Tailscale: sudo systemctl enable --now tailscaled && sudo tailscale up
-               sudo tailscale set --operator="$USER"
+  - Tailscale: tailscale up
   - Bitwarden: sign in, unlock, and enable the SSH agent.
-  - Machine-local exports go in ~/.config/bash/variables.sh (see examples/).
-  - Git identity/signing goes in ~/.gitconfig_local.
 EOF
 }
 
@@ -291,6 +295,7 @@ main() {
 	install_vendor_rpms
 	install_signal
 	install_flatpaks
+	setup_tailscale
 	setup_system76
 	install_optional "$docker" "$yubikey" "$bitcoin"
 	configure_plasma

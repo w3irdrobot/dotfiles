@@ -22,8 +22,7 @@ first, download `install.sh` and read it. To try a branch:
 curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash -s -- --docker --yubikey --bitcoin
 ```
 
-Then log out and back in, and do the manual bits the script prints (Tailscale
-login, Bitwarden SSH agent, `~/.gitconfig_local`, `~/.config/bash/variables.sh`).
+Then log out and back in, run `tailscale up`, and turn on Bitwarden's SSH agent.
 
 ## What goes where
 
@@ -52,8 +51,7 @@ The `dotfiles` alias runs the `justfile` from anywhere:
 
 ```bash
 dotfiles switch      # apply home.nix changes
-dotfiles update      # bump nixpkgs + Home Manager, then switch
-dotfiles upgrade     # dnf upgrade + flatpak update
+dotfiles update      # dnf, Flatpaks, then bump flake.lock and switch
 dotfiles bootstrap   # rerun the Fedora setup (safe to repeat)
 dotfiles check       # shellcheck, nixfmt, nix flake check
 cloud                # shell with the cloud/k8s tools

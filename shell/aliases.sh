@@ -13,10 +13,7 @@ if command -v bat >/dev/null 2>&1; then alias cat="bat"; fi
 # Cloud and Kubernetes tools live in a devShell, not on PATH.
 alias cloud='nix develop "$DOTFILES#cloud"'
 
-# Repository tasks from anywhere: dotfiles switch, update, upgrade, bootstrap.
-alias dotfiles='just --justfile "$DOTFILES/justfile"'
-
-# Repository tasks from anywhere: dotfiles switch, update, upgrade, bootstrap.
+# Repository tasks from anywhere: dotfiles switch, update, bootstrap.
 alias dotfiles='just --justfile "$DOTFILES/justfile"'
 
 # Plasma Wayland is the baseline; retain clipboard support for X11 sessions.

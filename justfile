@@ -5,15 +5,12 @@ default:
 switch:
     home-manager switch --flake .#alex
 
-# Update nixpkgs and Home Manager, then apply.
+# Update everything: Fedora packages, Flatpaks, then nixpkgs and Home Manager.
 update:
-    nix flake update
-    home-manager switch --flake .#alex
-
-# Update Fedora packages and user Flatpaks.
-upgrade:
     sudo dnf upgrade --refresh
     flatpak update --user
+    nix flake update
+    home-manager switch --flake .#alex
 
 # Rerun the Fedora system setup (repos, RPMs, Flatpaks, services).
 bootstrap *flags:
