@@ -84,5 +84,5 @@ generation's `activate`.
 - `tailscale-exit-node` picks a random online US Mullvad exit node via Tailscale
   (needs a connected client with the Mullvad add-on).
 - Shared agent config for remote nodes: [docs/agent-config.md](docs/agent-config.md).
-- Execution-node tooling: [docs/cargo-metrics.md](docs/cargo-metrics.md),
-  [docs/node-build-metrics.md](docs/node-build-metrics.md), `scripts/node-cleanup.py`.
+- Execution-node tooling (node-cleanup, cargo-metrics) lives in
+  [agentfiles](https://github.com/w3irdrobot/agentfiles).
