@@ -5,10 +5,12 @@ default:
 switch:
     home-manager switch --flake .#alex
 
-# Update everything: Fedora packages, Flatpaks, then nixpkgs and Home Manager.
+# Update everything: Fedora packages, Flatpaks, pinned vendor apps, then nixpkgs
+# and Home Manager.
 update:
     sudo dnf upgrade --refresh
     flatpak update --user
+    scripts/vendor-pins.sh install
     nix flake update
     home-manager switch --flake .#alex
     scripts/vendor-pins.sh check

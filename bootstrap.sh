@@ -103,37 +103,8 @@ remove_unwanted() {
 	fi
 }
 
-# Installs a vendor RPM after verifying its checksum and, when given, its signature.
-# Keeps an installed copy that is the same version or newer.
-install_pinned_rpm() {
-	local name=$1 version=$2 url=$3 algorithm=$4 digest=$5 key=${6:-} fingerprint=${7:-}
-	local installed rpm=$WORK/$name.rpm
-	if installed=$(rpm -q --qf '%{VERSION}' "$name" 2>/dev/null); then
-		if [[ $(printf '%s\n%s\n' "$installed" "$version" | sort -V | tail -n1) == "$installed" ]]; then
-			log "Keeping $name $installed (pinned $version)"
-			return 0
-		fi
-	fi
-	log "Installing $name $version"
-	download "$url" "$rpm"
-	printf '%s  %s\n' "$digest" "$rpm" | "${algorithm}sum" --check --strict --status - || die "$name checksum mismatch."
-	if [[ -n $key ]]; then
-		# A throwaway keyring leaves the system RPM keyring untouched.
-		local -a keyring=(--dbpath "$WORK/$name-db" --define "_keyringpath $WORK/$name-keys" --define '_keyring fs')
-		mkdir -- "$WORK/$name-db" "$WORK/$name-keys"
-		rpmkeys "${keyring[@]}" --import "$key"
-		[[ -f $WORK/$name-keys/gpg-pubkey-$fingerprint.key ]] || die "$name signing key does not match the pinned fingerprint."
-		rpmkeys "${keyring[@]}" --checksig "$rpm" >/dev/null || die "$name signature check failed."
-	fi
-	[[ $(rpm -qp --qf '%{NAME}|%{VERSION}' "$rpm") == "$name|$version" ]] || die "$name RPM does not match the pinned version."
-	sudo dnf install "$rpm"
-}
-
 install_vendor_rpms() {
-	install_pinned_rpm bitwarden "$BITWARDEN_VERSION" "$BITWARDEN_URL" sha256 "$BITWARDEN_SHA256"
-	install_pinned_rpm discord "$DISCORD_VERSION" "$DISCORD_URL" sha256 "$DISCORD_SHA256"
-	install_pinned_rpm proton-mail "$PROTON_MAIL_VERSION" "$PROTON_MAIL_URL" sha512 "$PROTON_MAIL_SHA512" \
-		"$ROOT/repos/RPM-GPG-KEY-proton-mail" "$PROTON_MAIL_FINGERPRINT"
+	"$ROOT/scripts/vendor-pins.sh" install
 }
 
 install_signal() {
