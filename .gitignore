@@ -1,18 +1,3 @@
-become_pass
-dracula-pro
-paru
-machine_export
-.last_run
-/.worktrees/
-/local/
-
-# Only the generic SSH template belongs here; hosts and keys stay outside Git.
+# Only the generic SSH config is tracked; hosts and keys stay outside Git.
 /files/ssh/.ssh/*
 !/files/ssh/.ssh/config
-
-# VSCodium - ignore everything except settings and keybindings
-.config/VSCodium/*
-!.config/VSCodium/User/
-.config/VSCodium/User/*
-!.config/VSCodium/User/settings.json
-!.config/VSCodium/User/keybindings.json

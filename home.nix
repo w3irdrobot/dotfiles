@@ -62,11 +62,6 @@ let
       && builtins.pathExists (./agent-config/skills + "/${name}/SKILL.md")
     ) (builtins.readDir ./agent-config/skills)
   );
-  opencodeAgents = lib.attrNames (
-    lib.filterAttrs (name: type: lib.hasSuffix ".md" name) (
-      builtins.readDir ./agent-config/agents/opencode
-    )
-  );
   instructions = link "agent-config/instructions/AGENTS.md";
   agentLinks = lib.listToAttrs (
     [
@@ -83,12 +78,6 @@ let
         ".config/opencode/skills"
       ]
     ) skills
-    ++ map (
-      name:
-      lib.nameValuePair ".config/opencode/agents/${name}" {
-        source = link "agent-config/agents/opencode/${name}";
-      }
-    ) opencodeAgents
   );
 in
 {

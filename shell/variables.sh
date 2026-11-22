@@ -1,8 +1,6 @@
 # shellcheck shell=bash
 
 # terminal colors and language
-export CLICOLOR=1
-export TERM="${TERM:-xterm-256color}"
 export LS_COLORS="\
 ln=38;5;152:\
 di=38;5;110:\
@@ -55,6 +53,11 @@ case ":${PATH:-}:" in
 *":${HOME}/.local/bin:"*) ;;
 *) export PATH="${HOME}/.local/bin${PATH:+:${PATH}}" ;;
 esac
+
+# Bitwarden's SSH agent (enable it in the app). Keep an agent that is already set.
+if [[ ! -v SSH_AUTH_SOCK ]] && command -v bitwarden >/dev/null 2>&1; then
+	export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+fi
 
 # Gnupg
 if [[ -t 0 ]]; then

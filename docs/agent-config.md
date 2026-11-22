@@ -7,10 +7,8 @@ remote computer executing tasks. No agent software or credentials are installed.
 
 ```text
 agent-config/
-├── instructions/AGENTS.md       # Portable shared rules
-├── instructions/legacy-opencode.md # Previous rules, for migration review only
-├── skills/                     # Shared personal skills and supporting files
-└── agents/opencode/             # Existing OpenCode-format specialist definitions
+├── instructions/AGENTS.md  # Portable shared rules
+└── skills/                 # Shared personal skills and supporting files
 ```
 
 Tools link straight to these files; there are no separate editable copies.
@@ -25,8 +23,8 @@ checkout path (or let it ask). It uses this same helper, not another installer.
 
 ## New local workstation
 
-Home Manager links the shared instructions, every skill, and the OpenCode
-agents for all four tools on each `home-manager switch` (see `home.nix`). New
+Home Manager links the shared instructions and every skill for all four tools
+on each `home-manager switch` (see `home.nix`). New
 skills appear after the next switch. This installs configuration, not the Codex,
 Claude Code, or Maple applications.
 

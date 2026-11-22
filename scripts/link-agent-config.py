@@ -39,9 +39,6 @@ def links(home, tools=("maple",)):
         if "opencode" in tools:
             # Keep explicit discovery working when external skill discovery is off.
             result.append((home / ".config/opencode/skills" / name, source))
-    if "opencode" in tools:
-        for source in sorted((ROOT / "agent-config/agents/opencode").glob("*.md")):
-            result.append((home / ".config/opencode/agents" / source.name, source))
     return result
 
 

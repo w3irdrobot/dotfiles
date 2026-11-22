@@ -86,17 +86,3 @@ generation's `activate`.
 - Shared agent config for remote nodes: [docs/agent-config.md](docs/agent-config.md).
 - Execution-node tooling: [docs/cargo-metrics.md](docs/cargo-metrics.md),
   [docs/node-build-metrics.md](docs/node-build-metrics.md), `scripts/node-cleanup.py`.
-
-## Moving an existing stow-based machine over
-
-The old installer stowed links from `stow/`, which is now `files/`. On that
-machine, after pulling this branch:
-
-```bash
-rm ~/.local/bin/dotfiles ~/.local/bin/opencode   # old launchers (opencode now comes from Nix)
-nix run .#home-manager -- switch --flake .#alex -b backup
-```
-
-`-b backup` moves anything in the way (old stow links, Fedora's `.bash_profile`)
-to `*.backup`. Review and delete those afterwards. `~/.local/share/dotfiles/opencode`
-can go too.
