@@ -20,9 +20,8 @@
   setup (prompt, functions), sourced by the Home Manager `.bashrc`. Keep the
   difference between standalone scripts and functions that must affect the
   caller's shell.
-- `agent-config/` owns shared agent instructions and skills. `home.nix` links them
-  for all four tools on the workstation; remote nodes use
-  `scripts/link-agent-config.py` via `agent-config/SETUP.md`, never the bootstrap.
+- Agent instructions and skills live in the separate `w3irdrobot/agentfiles`
+  repository, which links itself. Nothing here depends on it.
 - Project toolchains belong in project flakes, not global Rustup/NVM installs.
 
 ## Safety

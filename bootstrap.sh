@@ -35,6 +35,8 @@ UNWANTED=(
 # shellcheck source=./pins.sh
 source "$ROOT/pins.sh"
 readonly SSH_REMOTE=git@github.com:w3irdrobot/dotfiles.git
+readonly AGENTFILES_REMOTE=git@github.com:w3irdrobot/agentfiles.git
+readonly AGENTFILES=$HOME/projects/github.com/w3irdrobot/agentfiles
 readonly SIGNAL_DIRECTORY=$HOME/.local/share/dotfiles/signal
 
 log() { printf '\033[1mdotfiles:\033[0m %s\n' "$*" >&2; }
@@ -219,8 +221,10 @@ Done. Manual follow-ups:
   - Tailscale: tailscale up
   - Bitwarden: sign in, unlock, and enable the SSH agent.
   - Secrets: run secrets_export on the old machine, then secrets_import here.
-  - Once SSH works, switch this checkout off HTTPS:
+  - Once SSH works, switch this checkout off HTTPS and set up agent config:
       git -C "$ROOT" remote set-url origin $SSH_REMOTE
+      git clone $AGENTFILES_REMOTE $AGENTFILES
+      $AGENTFILES/link.py --tools maple,codex,claude,opencode
 EOF
 }
 

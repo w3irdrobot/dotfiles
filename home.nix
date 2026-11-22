@@ -53,32 +53,6 @@ let
     "electrs"
   ];
 
-  # Shared agent instructions and skills from agent-config/.
-  skills = lib.attrNames (
-    lib.filterAttrs (
-      name: type:
-      type == "directory"
-      && !lib.hasPrefix "." name
-      && builtins.pathExists (./agent-config/skills + "/${name}/SKILL.md")
-    ) (builtins.readDir ./agent-config/skills)
-  );
-  instructions = link "agent-config/instructions/AGENTS.md";
-  agentLinks = lib.listToAttrs (
-    [
-      (lib.nameValuePair ".agents/AGENTS.md" { source = instructions; })
-      (lib.nameValuePair ".codex/AGENTS.md" { source = instructions; })
-      (lib.nameValuePair ".claude/CLAUDE.md" { source = instructions; })
-      (lib.nameValuePair ".config/opencode/AGENTS.md" { source = instructions; })
-    ]
-    ++ lib.concatMap (
-      name:
-      map (dir: lib.nameValuePair "${dir}/${name}" { source = link "agent-config/skills/${name}"; }) [
-        ".agents/skills"
-        ".claude/skills"
-        ".config/opencode/skills"
-      ]
-    ) skills
-  );
 in
 {
   home.username = "alex";
@@ -123,7 +97,7 @@ in
       sparrow
     ];
 
-  home.file = lib.mkMerge (map linkTree tools ++ [ agentLinks ]);
+  home.file = lib.mkMerge (map linkTree tools);
 
   # Environment and aliases live here so any shell Home Manager manages gets them.
   # Bash-only pieces (prompt, functions) stay in shell/.

@@ -24,7 +24,9 @@ curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash -s -- --docker --yubike
 
 Then log out and back in, run `tailscale up`, turn on Bitwarden's SSH agent,
 move secrets over (`secrets_export` on the old machine, `secrets_import` here),
-and switch the checkout's remote to SSH. The script prints the exact commands.
+switch the checkout's remote to SSH, and set up
+[agentfiles](https://github.com/w3irdrobot/agentfiles). The script prints the
+exact commands.
 
 ## What goes where
 
@@ -33,7 +35,6 @@ and switch the checkout's remote to SSH. The script prints the exact commands.
 | CLI tools, Nerd Fonts, opencode | `home.nix` | Home Manager, nixpkgs-unstable |
 | Env vars, aliases, `~/.bashrc` | `home.nix`, `shell/` | Home Manager; Bash-only bits (prompt, functions) in `shell/` |
 | Config files | `files/<tool>/` | Linked into `$HOME` by Home Manager, pointing at this checkout |
-| Agent instructions and skills | `agent-config/` | Linked by Home Manager for Claude, Codex, OpenCode, Maple |
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |
 | Brave, Ghostty, VSCodium, Tailscale | `repos/`, `bootstrap.sh` | Vendor RPM repos and COPRs |
 | Bitwarden, Discord, Proton Mail, Signal | `pins.sh`, `bootstrap.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
@@ -90,6 +91,5 @@ generation's `activate`.
 - `home-routes CONNECTION...` routes the other home subnets through the LAN
   gateway even with an exit node on. NetworkManager keeps it; run once per
   connection (`nmcli connection show` lists them).
-- Shared agent config for remote nodes: [docs/agent-config.md](docs/agent-config.md).
-- Execution-node tooling (node-cleanup, cargo-metrics) lives in
-  [agentfiles](https://github.com/w3irdrobot/agentfiles).
+- Agent instructions, skills, and worker-node tooling live in
+  [agentfiles](https://github.com/w3irdrobot/agentfiles), set up separately.
