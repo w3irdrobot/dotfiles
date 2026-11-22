@@ -22,7 +22,9 @@ first, download `install.sh` and read it. To try a branch:
 curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash -s -- --docker --yubikey --bitcoin
 ```
 
-Then log out and back in, run `tailscale up`, and turn on Bitwarden's SSH agent.
+Then log out and back in, run `tailscale up`, turn on Bitwarden's SSH agent,
+move secrets over (`secrets_export` on the old machine, `secrets_import` here),
+and switch the checkout's remote to SSH. The script prints the exact commands.
 
 ## What goes where
 
@@ -34,7 +36,7 @@ Then log out and back in, run `tailscale up`, and turn on Bitwarden's SSH agent.
 | Agent instructions and skills | `agent-config/` | Linked by Home Manager for Claude, Codex, OpenCode, Maple |
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |
 | Brave, Ghostty, VSCodium, Tailscale | `repos/`, `bootstrap.sh` | Vendor RPM repos and COPRs |
-| Bitwarden, Discord, Proton Mail, Signal | `bootstrap.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
+| Bitwarden, Discord, Proton Mail, Signal | `pins.sh`, `bootstrap.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
 | Telegram, Spotify, Gear Lever | `bootstrap.sh` | User Flathub |
 | System76 drivers and power | `bootstrap.sh` | COPR, only on System76 hardware |
 
@@ -67,8 +69,9 @@ generation's `activate`.
   `<tool>` to `tools` in `home.nix` if it's new, then `dotfiles switch`.
 - **GUI app or system service:** add it to `bootstrap.sh` (RPM, Flatpak, or a
   pinned download with checksum and signature checks).
-- **Pinned app update:** bump the version and hash at the top of `bootstrap.sh`
-  (Proton: copy from its `version.json`), then `dotfiles bootstrap`.
+- **Pinned app update:** `dotfiles update` reports newer Bitwarden, Discord, and
+  Proton Mail releases. Bump the version and hash in `pins.sh` (Proton: copy
+  from its `version.json`), then `dotfiles bootstrap`.
 
 ## Local settings and secrets
 
@@ -83,6 +86,9 @@ generation's `activate`.
 
 - `tailscale-exit-node` picks a random online US Mullvad exit node via Tailscale
   (needs a connected client with the Mullvad add-on).
+- `home-routes CONNECTION...` routes the other home subnets through the LAN
+  gateway even with an exit node on. NetworkManager keeps it; run once per
+  connection (`nmcli connection show` lists them).
 - Shared agent config for remote nodes: [docs/agent-config.md](docs/agent-config.md).
 - Execution-node tooling (node-cleanup, cargo-metrics) lives in
   [agentfiles](https://github.com/w3irdrobot/agentfiles).

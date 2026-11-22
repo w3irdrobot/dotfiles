@@ -11,6 +11,7 @@ update:
     flatpak update --user
     nix flake update
     home-manager switch --flake .#alex
+    scripts/check-pins.sh
 
 # Rerun the Fedora system setup (repos, RPMs, Flatpaks, services).
 bootstrap *flags:
@@ -18,6 +19,7 @@ bootstrap *flags:
 
 # Lint and evaluate.
 check:
-    shellcheck bootstrap.sh install.sh shell/*.sh
+    shellcheck bootstrap.sh install.sh pins.sh scripts/*.sh shell/*.sh files/*/.local/bin/*
     nix fmt -- --check flake.nix home.nix
     nix flake check
+    nix build --dry-run .#homeConfigurations.alex.activationPackage

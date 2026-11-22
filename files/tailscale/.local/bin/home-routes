@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+	set -x
+fi
+
+readonly GATEWAY=192.168.1.1
+readonly SUBNETS=(192.168.2.0/24 192.168.3.0/24 192.168.4.0/24 192.168.5.0/24)
+# Below Tailscale's rules (5210+), so an exit node never captures home subnets.
+readonly RULE_PRIORITY=2500
+readonly MAIN_TABLE=254
+
+usage() {
+	printf 'Usage: home-routes CONNECTION...\n\nAdds the home subnets to NetworkManager connections (see nmcli connection show)\nso they route through %s, even with a Tailscale exit node. Safe to rerun.\n' "$GATEWAY"
+}
+
+add_routes() {
+	local connection=$1 subnet route rule routes rules
+	routes=$(nmcli --get-values ipv4.routes connection show "$connection")
+	rules=$(nmcli --get-values ipv4.routing-rules connection show "$connection")
+	for subnet in "${SUBNETS[@]}"; do
+		route="$subnet $GATEWAY"
+		rule="priority $RULE_PRIORITY to $subnet table $MAIN_TABLE"
+		if [[ $routes != *"$route"* ]]; then
+			sudo nmcli connection modify "$connection" +ipv4.routes "$route"
+		fi
+		if [[ $rules != *"$rule"* ]]; then
+			sudo nmcli connection modify "$connection" +ipv4.routing-rules "$rule"
+		fi
+	done
+}
+
+reapply_if_active() {
+	local connection=$1 device
+	device=$(nmcli --get-values GENERAL.DEVICES connection show "$connection")
+	if [[ -n $device ]]; then
+		sudo nmcli device reapply "$device"
+	fi
+}
+
+main() {
+	case "${1:-}" in
+	'' | -h | --help)
+		usage
+		return 0
+		;;
+	esac
+	local connection
+	for connection in "$@"; do
+		add_routes "$connection"
+		reapply_if_active "$connection"
+	done
+}
+
+main "$@"
