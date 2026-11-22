@@ -11,7 +11,11 @@ update:
     flatpak update --user
     nix flake update
     home-manager switch --flake .#alex
-    scripts/check-pins.sh
+    scripts/vendor-pins.sh check
+
+# Bump Bitwarden, Discord, and Proton Mail pins to their latest verified releases.
+bump-pins:
+    scripts/vendor-pins.sh bump
 
 # Rerun the Fedora system setup (repos, RPMs, Flatpaks, services).
 bootstrap *flags:

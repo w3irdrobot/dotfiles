@@ -54,6 +54,7 @@ The `dotfiles` alias runs the `justfile` from anywhere:
 ```bash
 dotfiles switch      # apply home.nix changes
 dotfiles update      # dnf, Flatpaks, then bump flake.lock and switch
+dotfiles bump-pins   # move Bitwarden/Discord/Proton pins to verified latest
 dotfiles bootstrap   # rerun the Fedora setup (safe to repeat)
 dotfiles check       # shellcheck, nixfmt, nix flake check
 cloud                # shell with the cloud/k8s tools
@@ -70,8 +71,8 @@ generation's `activate`.
 - **GUI app or system service:** add it to `bootstrap.sh` (RPM, Flatpak, or a
   pinned download with checksum and signature checks).
 - **Pinned app update:** `dotfiles update` reports newer Bitwarden, Discord, and
-  Proton Mail releases. Bump the version and hash in `pins.sh` (Proton: copy
-  from its `version.json`), then `dotfiles bootstrap`.
+  Proton Mail releases. `dotfiles bump-pins` downloads them, checks the vendor
+  checksums, and rewrites `pins.sh`; then `dotfiles bootstrap` and commit.
 
 ## Local settings and secrets
 

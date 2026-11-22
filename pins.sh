@@ -1,14 +1,15 @@
 # shellcheck shell=bash
-# shellcheck disable=SC2034 # Used by bootstrap.sh and scripts/check-pins.sh.
-# Pinned vendor downloads. Check each vendor's checksum and signature when bumping.
+# shellcheck disable=SC2034 # Used by bootstrap.sh and scripts/vendor-pins.sh.
+# Pinned vendor downloads. Bump with `dotfiles bump-pins`.
 # Bitwarden: SHA256 from the GitHub release asset digest (RPM is unsigned).
-readonly BITWARDEN_VERSION=2026.10.4
-readonly BITWARDEN_URL=https://github.com/bitwarden/clients/releases/download/desktop-v$BITWARDEN_VERSION/Bitwarden-$BITWARDEN_VERSION-x86_64.rpm
-readonly BITWARDEN_SHA256=09abe8983dc493e107e9ae6f7b3f164cf58141cf4e74456611d7200d514576fd
+# oss- is the open-source build; bit- is the commercial one.
+readonly BITWARDEN_VERSION=2026.11.0
+readonly BITWARDEN_URL=https://github.com/bitwarden/clients/releases/download/desktop-v$BITWARDEN_VERSION/oss-Bitwarden-$BITWARDEN_VERSION-x86_64.rpm
+readonly BITWARDEN_SHA256=b30e042c8e90c23eab9ed8c7fe95632f11ea99ce874131856e987d9bb740f655
 # Discord: no vendor checksum or signature; SHA256 of the reviewed HTTPS download.
-readonly DISCORD_VERSION=1.0.169
+readonly DISCORD_VERSION=1.0.170
 readonly DISCORD_URL=https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/$DISCORD_VERSION/Discord.rpm
-readonly DISCORD_SHA256=ef32125248e2a694a8683a695525a397e56d6ef3afe19c1adb401f6d4b566fad
+readonly DISCORD_SHA256=e0b3d89ccc9e07f5e1c523a7ef573096708d0ba865c354e55a3502f076b07732
 # Proton Mail: SHA512 from https://proton.me/download/mail/linux/version.json,
 # signed RPM (https://proton.me/support/mail-desktop-verify-rpm-fedora).
 readonly PROTON_MAIL_VERSION=1.16.1
