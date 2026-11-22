@@ -1,0 +1,8 @@
+# Opens PRs when pinned GitHub Actions have new releases. Dependabot updates the
+# commit SHA and its version comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -97,7 +97,15 @@ in
       sparrow
     ];
 
-  home.file = lib.mkMerge (map linkTree tools);
+  home.file = lib.mkMerge (
+    map linkTree tools
+    ++ [
+      {
+        # Lets plain `home-manager news`, `switch`, etc. find this flake.
+        ".config/home-manager".source = config.lib.file.mkOutOfStoreSymlink dotfiles;
+      }
+    ]
+  );
 
   # Environment and aliases live here so any shell Home Manager manages gets them.
   # Bash-only pieces (prompt, functions) stay in shell/.
