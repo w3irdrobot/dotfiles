@@ -15,8 +15,11 @@
   its directory and listing it in `tools`.
 - Prefer nixpkgs for CLI tools. GUI apps and anything needing system services
   stay on Fedora RPMs or Flatpak (Nix GUI apps break on graphics drivers here).
-- `shell/` is sourced by the Home Manager `.bashrc`. Keep the difference between
-  standalone scripts and functions that must affect the caller's shell.
+- Environment variables and aliases go in `home.sessionVariables` and
+  `home.shellAliases` so they work in any shell. `shell/` holds only Bash-specific
+  setup (prompt, functions), sourced by the Home Manager `.bashrc`. Keep the
+  difference between standalone scripts and functions that must affect the
+  caller's shell.
 - `agent-config/` owns shared agent instructions and skills. `home.nix` links them
   for all four tools on the workstation; remote nodes use
   `scripts/link-agent-config.py` via `agent-config/SETUP.md`, never the bootstrap.

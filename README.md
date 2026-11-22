@@ -31,7 +31,7 @@ and switch the checkout's remote to SSH. The script prints the exact commands.
 | Thing | Where | How it's installed |
 | --- | --- | --- |
 | CLI tools, Nerd Fonts, opencode | `home.nix` | Home Manager, nixpkgs-unstable |
-| `~/.bashrc` | `home.nix` → `shell/` | Home Manager; sources `shell/startup.sh` |
+| Env vars, aliases, `~/.bashrc` | `home.nix`, `shell/` | Home Manager; Bash-only bits (prompt, functions) in `shell/` |
 | Config files | `files/<tool>/` | Linked into `$HOME` by Home Manager, pointing at this checkout |
 | Agent instructions and skills | `agent-config/` | Linked by Home Manager for Claude, Codex, OpenCode, Maple |
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |
