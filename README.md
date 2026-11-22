@@ -37,7 +37,7 @@ exact commands.
 | Config files | `files/<tool>/` | Linked into `$HOME` by Home Manager, pointing at this checkout |
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |
 | Brave, Ghostty, VSCodium, Tailscale | `repos/`, `bootstrap.sh` | Vendor RPM repos and COPRs |
-| Bitwarden, Discord, Proton Mail, Signal | `pins.sh`, `bootstrap.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
+| Bitwarden, Discord, Proton Mail, Signal | `pins.sh`, `scripts/vendor-pins.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
 | Telegram, Spotify, Gear Lever | `bootstrap.sh` | User Flathub |
 | System76 drivers and power | `bootstrap.sh` | COPR, only on System76 hardware |
 
@@ -55,7 +55,7 @@ The `dotfiles` alias runs the `justfile` from anywhere:
 ```bash
 dotfiles switch      # apply home.nix changes
 dotfiles update      # dnf, Flatpaks, pinned apps, then bump flake.lock and switch
-dotfiles bump-pins   # move Bitwarden/Discord/Proton pins to verified latest
+dotfiles bump-pins   # move vendor app pins to their verified latest
 dotfiles bootstrap   # rerun the Fedora setup (safe to repeat)
 dotfiles check       # shellcheck, nixfmt, nix flake check
 cloud                # shell with the cloud/k8s tools
@@ -71,8 +71,8 @@ generation's `activate`.
   `<tool>` to `tools` in `home.nix` if it's new, then `dotfiles switch`.
 - **GUI app or system service:** add it to `bootstrap.sh` (RPM, Flatpak, or a
   pinned download with checksum and signature checks).
-- **Pinned app update:** `dotfiles update` reports newer Bitwarden, Discord, and
-  Proton Mail releases. `dotfiles bump-pins` downloads them, checks the vendor
+- **Pinned app update:** `dotfiles update` reports newer Bitwarden, Discord,
+  Proton Mail, and Signal releases. `dotfiles bump-pins` downloads them, checks the vendor
   checksums, and rewrites `pins.sh`; then `dotfiles update` and commit.
 
 ## Local settings and secrets

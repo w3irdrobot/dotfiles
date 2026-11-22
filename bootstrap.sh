@@ -37,7 +37,6 @@ source "$ROOT/pins.sh"
 readonly SSH_REMOTE=git@github.com:w3irdrobot/dotfiles.git
 readonly AGENTFILES_REMOTE=git@github.com:w3irdrobot/agentfiles.git
 readonly AGENTFILES=$HOME/projects/github.com/w3irdrobot/agentfiles
-readonly SIGNAL_DIRECTORY=$HOME/.local/share/dotfiles/signal
 
 log() { printf '\033[1mdotfiles:\033[0m %s\n' "$*" >&2; }
 die() {
@@ -56,10 +55,6 @@ switches the Home Manager environment. Safe to rerun.
   --yubikey  Install YubiKey Manager and smart card support.
   --bitcoin  Install Bitcoin Core. Set `bitcoin = true` in home.nix for configs.
 EOF
-}
-
-download() {
-	curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --silent --show-error --location --output "$2" "$1"
 }
 
 check_platform() {
@@ -107,27 +102,6 @@ remove_unwanted() {
 
 install_vendor_rpms() {
 	"$ROOT/scripts/vendor-pins.sh" install
-}
-
-install_signal() {
-	if [[ -x $SIGNAL_DIRECTORY/Signal.AppImage ]]; then
-		log 'Keeping installed Signal; it updates itself'
-		return 0
-	fi
-	log "Installing Signal $SIGNAL_VERSION"
-	local url=https://updates.signal.org/desktop/signal-desktop_${SIGNAL_VERSION}_x86_64.AppImage status
-	download "$url" "$WORK/Signal.AppImage"
-	download "$url.gpg" "$WORK/Signal.AppImage.gpg"
-	download https://updates.signal.org/static/desktop/appimage.asc "$WORK/signal.asc"
-	printf '%s  %s\n%s  %s\n' "$SIGNAL_SHA256" "$WORK/Signal.AppImage" "$SIGNAL_KEY_SHA256" "$WORK/signal.asc" |
-		sha256sum --check --strict --status - || die 'Signal AppImage or key checksum mismatch.'
-	mkdir -m 0700 -- "$WORK/gnupg"
-	gpg --batch --homedir "$WORK/gnupg" --output "$WORK/signal.gpg" --dearmor "$WORK/signal.asc"
-	status=$(gpgv --homedir "$WORK/gnupg" --keyring "$WORK/signal.gpg" --status-fd 1 \
-		"$WORK/Signal.AppImage.gpg" "$WORK/Signal.AppImage") || die 'Signal signature check failed.'
-	grep -q "VALIDSIG .*$SIGNAL_FINGERPRINT" <<<"$status" || die 'Signal was not signed by the pinned key.'
-	mkdir -p -- "$SIGNAL_DIRECTORY"
-	install -m 0700 "$WORK/Signal.AppImage" "$SIGNAL_DIRECTORY/Signal.AppImage"
 }
 
 install_flatpaks() {
@@ -254,7 +228,6 @@ main() {
 	install_packages
 	remove_unwanted
 	install_vendor_rpms
-	install_signal
 	install_flatpaks
 	setup_tailscale
 	setup_system76

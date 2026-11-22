@@ -4,8 +4,8 @@
 #   bump     Download each newer release, verify the vendor checksum (Discord
 #            publishes none, so its hash is taken from the HTTPS download), and
 #            rewrite pins.sh.
-#   install  Install the pinned RPMs after verifying checksums and, where
-#            published, signatures. Keeps installed copies that are as new.
+#   install  Install the pinned RPMs and Signal after verifying checksums and,
+#            where published, signatures. Keeps installed copies that are as new.
 # shellcheck source-path=SCRIPTDIR
 set -euo pipefail
 
@@ -23,6 +23,11 @@ readonly BITWARDEN_RELEASES='https://api.github.com/repos/bitwarden/clients/rele
 readonly DISCORD_LATEST='https://discord.com/api/download/stable?platform=linux&format=rpm'
 readonly PROTON_MAIL_RELEASES=https://proton.me/download/mail/linux/version.json
 readonly PROTON_MAIL_KEY=$ROOT/repos/RPM-GPG-KEY-proton-mail
+readonly SIGNAL_DOWNLOADS=https://updates.signal.org/desktop
+readonly SIGNAL_MANIFEST=$SIGNAL_DOWNLOADS/latest-linux.yml
+readonly SIGNAL_KEY_URL=https://updates.signal.org/static/desktop/appimage.asc
+# ~/.local/bin/signal-desktop (files/signal) launches the AppImage from here.
+readonly SIGNAL_DIRECTORY=$HOME/.local/share/dotfiles/signal
 
 log() { printf '%s\n' "$*" >&2; }
 die() {
@@ -45,6 +50,10 @@ latest_discord() {
 	url=$(fetch --head --output /dev/null --write-out '%{url_effective}' "$DISCORD_LATEST")
 	url=${url%/*}
 	printf '%s\n' "${url##*/}"
+}
+
+latest_signal() {
+	fetch "$SIGNAL_MANIFEST" | sed -n 's/^version: //p'
 }
 
 latest_proton_mail() {
@@ -104,6 +113,38 @@ bump_proton_mail() {
 	set_pin PROTON_MAIL_SHA512 "$digest"
 }
 
+# Downloads a Signal AppImage and checks its signature against the pinned key,
+# which is itself pinned by SHA-256.
+download_signal() {
+	local version=$1 url status
+	url=$SIGNAL_DOWNLOADS/signal-desktop_${version}_x86_64.AppImage
+	fetch --output "$WORK/Signal.AppImage" "$url"
+	fetch --output "$WORK/Signal.AppImage.gpg" "$url.gpg"
+	fetch --output "$WORK/signal.asc" "$SIGNAL_KEY_URL"
+	printf '%s  %s\n' "$SIGNAL_KEY_SHA256" "$WORK/signal.asc" | sha256sum --check --strict --status - ||
+		die 'Signal signing key does not match the pinned checksum.'
+	mkdir -m 0700 -- "$WORK/gnupg"
+	gpg --batch --homedir "$WORK/gnupg" --output "$WORK/signal.gpg" --dearmor "$WORK/signal.asc"
+	status=$(gpgv --homedir "$WORK/gnupg" --keyring "$WORK/signal.gpg" --status-fd 1 \
+		"$WORK/Signal.AppImage.gpg" "$WORK/Signal.AppImage") || die 'Signal signature check failed.'
+	grep -q "VALIDSIG .*$SIGNAL_FINGERPRINT" <<<"$status" || die 'Signal was not signed by the pinned key.'
+}
+
+# Signal publishes a base64 SHA-512 in latest-linux.yml; pins.sh keeps SHA-256.
+bump_signal() {
+	local version=$1 manifest expected actual digest
+	manifest=$(fetch "$SIGNAL_MANIFEST")
+	[[ $(sed -n 's/^path: //p' <<<"$manifest") == "signal-desktop_${version}_x86_64.AppImage" ]] ||
+		die 'Signal latest-linux.yml no longer describes this AppImage; rerun.'
+	expected=$(sed -n 's/^sha512: //p' <<<"$manifest")
+	download_signal "$version"
+	actual=$(openssl dgst -sha512 -binary "$WORK/Signal.AppImage" | base64 --wrap=0)
+	[[ $actual == "$expected" ]] || die 'Signal checksum does not match latest-linux.yml.'
+	digest=$(sha256sum "$WORK/Signal.AppImage")
+	set_pin SIGNAL_VERSION "$version"
+	set_pin SIGNAL_SHA256 "${digest%% *}"
+}
+
 # Prints the newer version of an app, or nothing when it is current or the
 # lookup failed.
 newer_version() {
@@ -125,6 +166,7 @@ check_all() {
 	[[ -z $(newer_version Bitwarden "$BITWARDEN_VERSION" latest_bitwarden) ]] || outdated=1
 	[[ -z $(newer_version Discord "$DISCORD_VERSION" latest_discord) ]] || outdated=1
 	[[ -z $(newer_version 'Proton Mail' "$PROTON_MAIL_VERSION" latest_proton_mail) ]] || outdated=1
+	[[ -z $(newer_version Signal "$SIGNAL_VERSION" latest_signal) ]] || outdated=1
 	if ((outdated)); then
 		log 'Run "dotfiles bump-pins" to update pins.sh.'
 	fi
@@ -145,6 +187,11 @@ bump_all() {
 	version=$(newer_version 'Proton Mail' "$PROTON_MAIL_VERSION" latest_proton_mail)
 	if [[ -n $version ]]; then
 		bump_proton_mail "$version"
+		bumped=1
+	fi
+	version=$(newer_version Signal "$SIGNAL_VERSION" latest_signal)
+	if [[ -n $version ]]; then
+		bump_signal "$version"
 		bumped=1
 	fi
 	if ((bumped)); then
@@ -179,11 +226,26 @@ install_pinned_rpm() {
 	sudo dnf install "$rpm"
 }
 
+# Signal updates itself, so the pin only matters for a fresh install.
+install_signal() {
+	if [[ -x $SIGNAL_DIRECTORY/Signal.AppImage ]]; then
+		log 'Keeping installed Signal; it updates itself'
+		return 0
+	fi
+	log "Installing Signal $SIGNAL_VERSION"
+	download_signal "$SIGNAL_VERSION"
+	printf '%s  %s\n' "$SIGNAL_SHA256" "$WORK/Signal.AppImage" | sha256sum --check --strict --status - ||
+		die 'Signal checksum mismatch.'
+	mkdir -p -- "$SIGNAL_DIRECTORY"
+	install -m 0700 "$WORK/Signal.AppImage" "$SIGNAL_DIRECTORY/Signal.AppImage"
+}
+
 install_all() {
 	install_pinned_rpm bitwarden "$BITWARDEN_VERSION" "$BITWARDEN_URL" sha256 "$BITWARDEN_SHA256"
 	install_pinned_rpm discord "$DISCORD_VERSION" "$DISCORD_URL" sha256 "$DISCORD_SHA256"
 	install_pinned_rpm proton-mail "$PROTON_MAIL_VERSION" "$PROTON_MAIL_URL" sha512 "$PROTON_MAIL_SHA512" \
 		"$PROTON_MAIL_KEY" "$PROTON_MAIL_FINGERPRINT"
+	install_signal
 }
 
 main() {
