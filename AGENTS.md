@@ -48,7 +48,7 @@
 
 - `just check`: ShellCheck, nixfmt, and `nix flake check`. Build the user
   environment without activating it via
-  `nix build .#homeConfigurations.w3ird.activationPackage`.
+  `nix build .#homeConfigurations.$USER.activationPackage`.
 - New untracked files are invisible to flakes; use `path:$PWD` or `git add -N`.
 - Bash scripts use strict mode, optional `DEBUG=1` tracing, quoted expansions,
   arrays, focused helpers, and a thin `main`.

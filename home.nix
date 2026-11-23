@@ -55,8 +55,6 @@ let
 
 in
 {
-  home.username = "w3ird";
-  home.homeDirectory = "/home/w3ird";
   home.stateVersion = "26.05";
 
   programs.home-manager.enable = true;

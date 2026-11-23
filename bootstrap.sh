@@ -192,7 +192,7 @@ switch_home_manager() {
 	# -b moves Fedora's default dotfiles (and any stale links) aside as *.backup.
 	# NIX_REMOTE=daemon fails loudly instead of falling back to writing /nix/store.
 	NIX_REMOTE=daemon nix --extra-experimental-features 'nix-command flakes' run "$ROOT#home-manager" -- \
-		switch --flake "$ROOT#w3ird" -b backup
+		switch --flake "$ROOT" -b backup
 }
 
 print_next_steps() {

@@ -16,10 +16,22 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
-      homeConfigurations.w3ird = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [ ./home.nix ];
-      };
+      # The same home.nix for each account name I log in as. Home Manager only
+      # activates for the matching $USER, and `home-manager switch --flake .` picks
+      # the entry named after $USER. Add a name here for a new machine's account.
+      homeConfigurations = nixpkgs.lib.genAttrs [ "alex" "w3ird" ] (
+        username:
+        home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [
+            ./home.nix
+            {
+              home.username = username;
+              home.homeDirectory = "/home/${username}";
+            }
+          ];
+        }
+      );
 
       # Cloud and Kubernetes tools on demand: `cloud` (alias) or `nix develop $DOTFILES#cloud`.
       devShells.${system}.cloud = pkgs.mkShell {
