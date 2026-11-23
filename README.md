@@ -23,7 +23,7 @@ curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash -s -- --docker --yubike
 ```
 
 Then log out and back in, run `tailscale up`, turn on Bitwarden's SSH agent,
-move secrets over (`secrets_export` on the old machine, `secrets_import` here),
+move secrets over (`dotfiles secrets export` on the old machine, `dotfiles secrets import` here),
 switch the checkout's remote to SSH, and set up
 [agentfiles](https://github.com/w3irdrobot/agentfiles). The script prints the
 exact commands.
@@ -56,6 +56,7 @@ The `dotfiles` alias runs the `justfile` from anywhere:
 dotfiles switch      # apply home.nix changes
 dotfiles update      # pull, dnf, Flatpaks, pinned apps, bump flake.lock, switch, push the lock
 dotfiles bump-pins   # move vendor app pins to their verified latest
+dotfiles secrets export|import  # move keys and wallets between machines
 dotfiles bootstrap   # rerun the Fedora setup (safe to repeat)
 dotfiles check       # shellcheck, nixfmt, nix flake check
 cloud                # shell with the cloud/k8s tools

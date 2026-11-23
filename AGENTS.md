@@ -41,7 +41,7 @@
   `~/.config/bash/variables.sh`; Git overrides in `~/.gitconfig_local`. Exported
   values are inherited by AI processes; prefer credential injection.
 - The tracked SSH config is generic defaults plus `Include ~/.ssh/config.local`
-  only. Personal hosts travel via `secrets_export`/`secrets_import`.
+  only. Personal hosts travel via `dotfiles secrets export|import`.
 - Do not run `bootstrap.sh` or `home-manager switch` just to validate changes.
 
 ## Checks

@@ -1,11 +1,14 @@
 # Moving secrets between machines
 
-Home Manager puts the helpers on PATH from `files/gnupg/.local/bin`:
+Run them through the `dotfiles` alias:
 
 ```bash
-secrets_export
-secrets_import
+dotfiles secrets export
+dotfiles secrets import
 ```
+
+They're also on PATH as `secrets_export` and `secrets_import`, from
+`files/gnupg/.local/bin`.
 
 Neither runs as part of installation or updates. Selections and archive locations
 are interactive; do not pass credentials or passphrases as command arguments.

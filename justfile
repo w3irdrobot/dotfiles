@@ -21,6 +21,13 @@ update:
 bump-pins:
     scripts/vendor-pins.sh bump
 
+# Runs in the current directory, so start from a private one outside the checkout.
+[no-cd]
+[doc("Move GPG keys, SSH keys, and Sparrow wallets between machines: export or import.")]
+secrets action:
+    @case "{{action}}" in export | import) ;; *) echo "usage: dotfiles secrets export|import" >&2; exit 2 ;; esac
+    "{{justfile_directory()}}/files/gnupg/.local/bin/secrets_{{action}}"
+
 # Rerun the Fedora system setup (repos, RPMs, Flatpaks, services).
 bootstrap *flags:
     bash bootstrap.sh {{flags}}

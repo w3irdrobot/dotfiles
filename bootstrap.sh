@@ -194,7 +194,7 @@ Done. Manual follow-ups:
   - Log out and back in so Plasma picks up the new environment and fonts.
   - Tailscale: tailscale up
   - Bitwarden: sign in, unlock, and enable the SSH agent.
-  - Secrets: run secrets_export on the old machine, then secrets_import here.
+  - Secrets: run 'dotfiles secrets export' on the old machine, then 'dotfiles secrets import' here.
   - Once SSH works, switch this checkout off HTTPS and set up agent config:
       git -C "$ROOT" remote set-url origin $SSH_REMOTE
       git clone $AGENTFILES_REMOTE $AGENTFILES
