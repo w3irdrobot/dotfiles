@@ -14,7 +14,9 @@ curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash
 ```
 
 That installs git, clones this repo to `~/projects/github.com/w3irdrobot/dotfiles`
-over HTTPS, and runs `bootstrap.sh`. Expect DNF and Flatpak prompts. To review it
+over HTTPS (or fast-forwards an existing clone), and runs `bootstrap.sh`. If it
+stops partway, fix the cause and run the same command again. Expect DNF and
+Flatpak prompts. To review it
 first, download `install.sh` and read it. To try a branch:
 `... | bash -s -- --ref BRANCH`. Optional extras:
 

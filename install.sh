@@ -42,7 +42,13 @@ main() {
 		sudo dnf install git </dev/tty
 	fi
 	if [[ -d $DESTINATION/.git ]]; then
-		log "Using existing checkout: $DESTINATION"
+		local branch
+		branch=$(git -C "$DESTINATION" branch --show-current)
+		[[ $branch == "$ref" ]] || die "$DESTINATION is on '$branch', not '$ref'; switch it or pass --ref $branch."
+		log "Updating existing checkout: $DESTINATION"
+		# Fast-forward only: local commits or conflicting edits stop the install instead of being lost.
+		git -C "$DESTINATION" pull --ff-only --no-rebase origin "$ref" ||
+			die "Could not fast-forward $DESTINATION; sort out its local changes and rerun."
 	else
 		log "Cloning $ref into $DESTINATION"
 		mkdir -p -- "${DESTINATION%/*}"
