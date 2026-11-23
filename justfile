@@ -6,13 +6,15 @@ switch:
     home-manager switch --flake .#alex
 
 # Update everything: Fedora packages, Flatpaks, pinned vendor apps, then nixpkgs
-# and Home Manager.
+# and Home Manager. Pulls first, and commits and pushes flake.lock if it moved.
 update:
+    git pull --ff-only
     sudo dnf upgrade --refresh
     flatpak update --user
     scripts/vendor-pins.sh install
     nix flake update
     home-manager switch --flake .#alex
+    git diff --quiet -- flake.lock || { git commit -m "chore: update flake.lock" -- flake.lock && git push; }
     scripts/vendor-pins.sh check
 
 # Bump Bitwarden, Discord, and Proton Mail pins to their latest verified releases.

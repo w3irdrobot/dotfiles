@@ -54,7 +54,7 @@ The `dotfiles` alias runs the `justfile` from anywhere:
 
 ```bash
 dotfiles switch      # apply home.nix changes
-dotfiles update      # dnf, Flatpaks, pinned apps, then bump flake.lock and switch
+dotfiles update      # pull, dnf, Flatpaks, pinned apps, bump flake.lock, switch, push the lock
 dotfiles bump-pins   # move vendor app pins to their verified latest
 dotfiles bootstrap   # rerun the Fedora setup (safe to repeat)
 dotfiles check       # shellcheck, nixfmt, nix flake check
