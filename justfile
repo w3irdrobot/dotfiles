@@ -8,7 +8,7 @@ switch:
 # Update everything: Fedora packages, Flatpaks, pinned vendor apps, then nixpkgs
 # and Home Manager. Pulls first, and commits and pushes flake.lock if it moved.
 update:
-    git pull --ff-only
+    git pull --ff-only --no-rebase
     sudo dnf upgrade --refresh
     flatpak update --user
     scripts/vendor-pins.sh install
