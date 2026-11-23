@@ -181,10 +181,18 @@ setup_tailscale() {
 switch_home_manager() {
 	log 'Starting the Nix daemon'
 	sudo systemctl enable --now nix-daemon.service
+	# Without the socket, nix silently falls back to writing /nix/store itself.
+	local socket=/nix/var/nix/daemon-socket/socket
+	for _ in {1..50}; do
+		[[ -S $socket ]] && break
+		sleep 0.1
+	done
+	[[ -S $socket ]] || die 'nix-daemon did not start; see systemctl status nix-daemon.service.'
 	log 'Switching the Home Manager environment'
 	# -b moves Fedora's default dotfiles (and any stale links) aside as *.backup.
-	nix --extra-experimental-features 'nix-command flakes' run "$ROOT#home-manager" -- \
-		switch --flake "$ROOT#alex" -b backup
+	# NIX_REMOTE=daemon fails loudly instead of falling back to writing /nix/store.
+	NIX_REMOTE=daemon nix --extra-experimental-features 'nix-command flakes' run "$ROOT#home-manager" -- \
+		switch --flake "$ROOT#w3ird" -b backup
 }
 
 print_next_steps() {

@@ -16,7 +16,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in
     {
-      homeConfigurations.alex = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.w3ird = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [ ./home.nix ];
       };
