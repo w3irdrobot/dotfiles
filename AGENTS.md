@@ -34,8 +34,8 @@
   Don't use Flathub builds that the vendor doesn't publish when a vendor package
   exists.
 - No automatic Docker-group membership, autologin, wallet/key import, or
-  network logins. Bootstrap enables `tailscaled` and sets the operator;
-  `tailscale up` stays manual.
+  network logins. Bootstrap enables `tailscaled`; login and the
+  operator (`sudo tailscale up --operator=$USER`) stay manual.
 - Keep API keys, authentication stores, private keys, wallet data, and machine
   exports out of Git. Machine environment overrides belong in
   `~/.config/bash/variables.sh`; Git overrides in `~/.gitconfig_local`. Exported

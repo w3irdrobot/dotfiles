@@ -173,9 +173,9 @@ setup_vscodium() {
 
 setup_tailscale() {
 	log 'Enabling Tailscale'
+	# Login stays manual. The operator is set at login (see print_next_steps);
+	# setting it before the first login doesn't stick.
 	sudo systemctl enable --now tailscaled.service
-	# Lets tailscale up/down/set run without sudo. Login stays manual.
-	sudo tailscale set --operator="$USER"
 }
 
 switch_home_manager() {
@@ -200,7 +200,7 @@ print_next_steps() {
 
 Done. Manual follow-ups:
   - Log out and back in so Plasma picks up the new environment and fonts.
-  - Tailscale: tailscale up
+  - Tailscale: sudo tailscale up --operator=$USER  (later up/down/set work without sudo)
   - Bitwarden: sign in, unlock, and enable the SSH agent.
   - Secrets: run 'dotfiles secrets export' on the old machine, then 'dotfiles secrets import' here.
   - Once SSH works, switch this checkout off HTTPS and set up agent config:

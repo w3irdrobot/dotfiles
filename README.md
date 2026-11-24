@@ -24,7 +24,7 @@ first, download `install.sh` and read it. To try a branch:
 curl -fsSL https://dotfiles.w3ird.tech/install.sh | bash -s -- --docker --yubikey --bitcoin
 ```
 
-Then log out and back in, run `tailscale up`, turn on Bitwarden's SSH agent,
+Then log out and back in, run `sudo tailscale up --operator=$USER`, turn on Bitwarden's SSH agent,
 move secrets over (`dotfiles secrets export` on the old machine, `dotfiles secrets import` here),
 switch the checkout's remote to SSH, and set up
 [agentfiles](https://github.com/w3irdrobot/agentfiles). The script prints the
