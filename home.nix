@@ -39,7 +39,6 @@ let
     "kubie"
     "lazygit"
     "nix"
-    "opencode"
     "openssl"
     "signal"
     "ssh"
@@ -77,7 +76,6 @@ in
       just
       lazygit
       nixfmt
-      opencode
       openssl
       ripgrep
       shellcheck

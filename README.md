@@ -34,7 +34,7 @@ exact commands.
 
 | Thing | Where | How it's installed |
 | --- | --- | --- |
-| CLI tools, Nerd Fonts, opencode | `home.nix` | Home Manager, nixpkgs-unstable |
+| CLI tools, Nerd Fonts | `home.nix` | Home Manager, nixpkgs-unstable |
 | Env vars, aliases, `~/.bashrc` | `home.nix`, `shell/` | Home Manager; Bash-only bits (prompt, functions) in `shell/` |
 | Config files | `files/<tool>/` | Linked into `$HOME` by Home Manager, pointing at this checkout |
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |

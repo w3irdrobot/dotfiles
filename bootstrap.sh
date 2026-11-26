@@ -206,7 +206,7 @@ Done. Manual follow-ups:
   - Once SSH works, switch this checkout off HTTPS and set up agent config:
       git -C "$ROOT" remote set-url origin $SSH_REMOTE
       git clone $AGENTFILES_REMOTE $AGENTFILES
-      $AGENTFILES/link.py --tools maple,codex,claude,opencode
+      $AGENTFILES/link.py --tools maple,codex,claude
 EOF
 }
 
