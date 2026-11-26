@@ -40,7 +40,7 @@ exact commands.
 | kubectl, helm, k9s, kubie, opentofu, aws, gcloud, lazydocker | `flake.nix` | `cloud` devShell |
 | Brave, Ghostty, VSCodium, Tailscale | `repos/`, `bootstrap.sh` | Vendor RPM repos and COPRs |
 | Bitwarden, Discord, Proton Mail, Signal | `pins.sh`, `scripts/vendor-pins.sh` | Pinned vendor downloads, checksum (and signature where published) verified |
-| Telegram, Spotify, Gear Lever | `bootstrap.sh` | User Flathub |
+| Telegram, Spotify, Gear Lever, Element | `bootstrap.sh` | User Flathub |
 | System76 drivers and power | `bootstrap.sh` | COPR, only on System76 hardware |
 
 `bootstrap.sh` also removes Fedora KDE defaults I don't use (KMail/Kontact/Akonadi,

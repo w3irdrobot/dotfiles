@@ -20,7 +20,7 @@ PACKAGES=(
 	brave-browser ghostty codium tailscale
 )
 
-FLATPAKS=(org.telegram.desktop com.spotify.Client it.mijorus.gearlever)
+FLATPAKS=(org.telegram.desktop com.spotify.Client it.mijorus.gearlever im.riot.Riot)
 
 # Fedora KDE defaults this setup does not use.
 UNWANTED=(
@@ -108,6 +108,8 @@ install_flatpaks() {
 	log "Installing Flatpaks: ${FLATPAKS[*]}"
 	flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 	flatpak install --user --or-update flathub "${FLATPAKS[@]}"
+	# Element's Flatpak needs access to KWallet on Plasma 6 for local encryption.
+	flatpak override --user --talk-name=org.kde.kwalletd6 im.riot.Riot
 }
 
 setup_system76() {
