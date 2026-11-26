@@ -88,6 +88,13 @@ install_packages() {
 	sudo dnf install "${PACKAGES[@]}"
 }
 
+configure_inotify() {
+	local config=/etc/sysctl.d/90-dotfiles-inotify.conf
+	log 'Raising the per-user inotify instance limit'
+	sudo install -m 0644 "$ROOT/sysctl.d/${config##*/}" "$config"
+	sudo sysctl -p "$config"
+}
+
 remove_unwanted() {
 	local package
 	local -a installed=()
@@ -236,6 +243,7 @@ main() {
 
 	add_repositories
 	install_packages
+	configure_inotify
 	remove_unwanted
 	install_vendor_rpms
 	install_flatpaks
