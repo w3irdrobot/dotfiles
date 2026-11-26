@@ -7,9 +7,9 @@ readonly BITWARDEN_VERSION=2026.11.0
 readonly BITWARDEN_URL=https://github.com/bitwarden/clients/releases/download/desktop-v$BITWARDEN_VERSION/oss-Bitwarden-$BITWARDEN_VERSION-x86_64.rpm
 readonly BITWARDEN_SHA256=b30e042c8e90c23eab9ed8c7fe95632f11ea99ce874131856e987d9bb740f655
 # Discord: no vendor checksum or signature; SHA256 of the reviewed HTTPS download.
-readonly DISCORD_VERSION=1.0.170
+readonly DISCORD_VERSION=1.0.171
 readonly DISCORD_URL=https://stable.dl2.discordapp.net/distro/app/stable/linux/x64/$DISCORD_VERSION/Discord.rpm
-readonly DISCORD_SHA256=e0b3d89ccc9e07f5e1c523a7ef573096708d0ba865c354e55a3502f076b07732
+readonly DISCORD_SHA256=5d0c79c8b3ad8f84e871e8bf0ef60b4500787f6866fbfeb86c978eee425273b5
 # Proton Mail: SHA512 from https://proton.me/download/mail/linux/version.json,
 # signed RPM (https://proton.me/support/mail-desktop-verify-rpm-fedora).
 readonly PROTON_MAIL_VERSION=1.16.1
